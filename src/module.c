@@ -1,4 +1,5 @@
 #include "dr_api.h"
+#include "drsyms.h"
 #include "core/unix/include/syscall.h"
 #include "nashromi.h"
 
@@ -8,6 +9,11 @@ static void
 event_exit(void)
 {
     dr_printf("Info:\t\tExit.\n");
+
+    if (drsym_exit() != DRSYM_SUCCESS)
+    {
+      FAIL();
+    }
 }
 
 
@@ -71,6 +77,14 @@ dr_init(client_id_t client_id)
     disassemble_set_syntax(DR_DISASM_INTEL);
     dr_annotation_register_call("dynamorio_annotate_zhani_signal",
                                 (void *) nshr_handle_annotation, false, 1, DR_ANNOTATION_CALL_TYPE_FASTCALL);
+
+
+    if (drsym_init(0) != DRSYM_SUCCESS) 
+    {
+      dr_printf("Info:\t\tERROR:\t\tFailed starting drsym.\n");
+
+      FAIL();
+    }
 
     init();
     dr_printf("Info:\t\tStarted!\n");

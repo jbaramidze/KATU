@@ -4,6 +4,7 @@
 #include "dr_api.h"
 #include "core/unix/include/syscall.h"
 #include "nashromi.h"
+#include "drsyms.h"
 
 /*
   Helpful functions:
@@ -75,7 +76,7 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
   else
   {
-  	FAIL();
+  	//FAIL();
   }
 }
 
@@ -278,9 +279,74 @@ static void opcode_ignore(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
 static void wrong_opcode(void *drcontext, instr_t *instr, instrlist_t *ilist)
 { 
-  LERROR("ERROR! instruction not implemented.\n");
+  //LERROR("ERROR! instruction not implemented.\n");
 
   //FAIL();
+}
+
+static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
+{
+
+  dr_printf("KAKA %d %d.\n", instr_num_dsts(instr), instr_num_srcs(instr));
+
+  if (!instr_is_cti(instr)) FAIL();
+
+  app_pc pc;
+
+  opnd_t t = instr_get_target(instr);
+
+  if (opnd_is_pc(t))
+  {
+     pc = opnd_get_pc(t);
+  }
+  else if (opnd_is_rel_addr(t))
+  {
+  	app_pc tmp;
+
+    instr_get_rel_addr_target(instr, &tmp);
+
+    pc = *(uint64 *) tmp;
+  }
+  else
+  {
+  	FAIL();
+  }
+
+
+  dr_printf("LALA %llx: ", pc);
+
+  module_data_t *data;
+  data = dr_lookup_module(pc);
+  if (data == NULL) {
+      dr_printf("nowhere.\n");
+     return;
+  }
+
+  dr_printf("(%s) ", data -> full_path);
+
+  drsym_info_t sym;
+
+  char name_buf[1024];
+  char file_buf[1024];
+
+  sym.struct_size = sizeof(sym);
+  sym.name = name_buf;
+  sym.name_size = 1024;
+  sym.file = file_buf;
+  sym.file_size = 1024;
+
+  drsym_error_t symres;
+
+  symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
+
+  if (symres == DRSYM_SUCCESS)
+  {
+  	dr_printf("Calling %s\n", sym.name);
+  }
+  else
+  {
+  	dr_printf("Failed detecting\n");
+  }
 }
 
 
@@ -295,18 +361,30 @@ void nshr_init_opcodes(void)
   // Add custom handlers for all known opcodes.
   //
 
-  instrFunctions[OP_call]		= opcode_ignore;	// 42
-  instrFunctions[OP_jle_short]	= opcode_ignore;
-                                                               
-  instrFunctions[OP_mov_ld]		= opcode_mov;		// 55	Can be: mem2reg
-  instrFunctions[OP_mov_st]		= opcode_mov;		// 56	Can be: imm2mem, reg2mem, reg2reg.
-  instrFunctions[OP_mov_imm]	= opcode_mov;		// 57   Can be: imm2reg.
-// instrFunctions[OP_mov_seg]						// 58
-// instrFunctions[OP_mov_priv]						// 59
-  instrFunctions[OP_test]		= opcode_ignore;	// 60 
-  instrFunctions[OP_lea]		= opcode_lea;		// 61   It's arithmetic operation, not a memory reference.
 
-  instrFunctions[OP_syscall]	= opcode_ignore;	// 95 syscall processed by dr_register_post_syscall_event.
+  //instrFunctions[30]			= opcode_call;	// 42
+
+
+
+  instrFunctions[OP_call]			= opcode_call;	// 42
+  instrFunctions[OP_call_ind]		= opcode_call;	// 43
+  instrFunctions[OP_call_far]		= opcode_call;	// 44
+  instrFunctions[OP_call_far_ind]	= opcode_call;	// 45
+  instrFunctions[OP_jmp]			= opcode_call;  // 46
+  instrFunctions[OP_jmp_short]		= opcode_call;  // 47
+  instrFunctions[OP_jmp_ind]		= opcode_call;  // 48
+  instrFunctions[OP_jmp_far]		= opcode_call;  // 49
+  instrFunctions[OP_jmp_far_ind]	= opcode_call;  // 50
+                                                               
+  instrFunctions[OP_mov_ld]			= opcode_mov;		// 55	Can be: mem2reg
+  instrFunctions[OP_mov_st]			= opcode_mov;		// 56	Can be: imm2mem, reg2mem, reg2reg.
+  instrFunctions[OP_mov_imm]		= opcode_mov;		// 57   Can be: imm2reg.
+// instrFunctions[OP_mov_seg]							// 58
+// instrFunctions[OP_mov_priv]							// 59
+  instrFunctions[OP_test]			= opcode_ignore;	// 60 
+  instrFunctions[OP_lea]			= opcode_lea;		// 61   It's arithmetic operation, not a memory reference.
+
+  instrFunctions[OP_syscall]		= opcode_ignore;	// 95 syscall processed by dr_register_post_syscall_event.
 }
 
 //

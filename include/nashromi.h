@@ -73,7 +73,7 @@ typedef void (*instrFunc)(void *, instr_t *, instrlist_t *);
 #endif
 
 #define FAIL() dr_printf("FAIL! at %s:%d.\n", __FILE__, __LINE__); \
-				//exit(-1);
+			//	exit(-1);
 
 void assert(bool a);
 
