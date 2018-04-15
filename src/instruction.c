@@ -187,8 +187,6 @@ static void opcode_mov(void *drcontext, instr_t *instr, instrlist_t *ilist)
     UNUSED(regname);
     UNUSED(size);
 
-    ASSERT(opnd_is_base_disp(dst) || opnd_is_reg(dst));
-
     // reg to base+disp
     if (opnd_is_base_disp(dst))
     {
@@ -227,11 +225,11 @@ static void opcode_mov(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
       instr_get_rel_addr_target(instr, &addr);
 
-      LINSTRDETAIL("InsDetail:\tTaint %s to pc-relative %d, %d bytes.\n", 
+      LINSTRDETAIL("InsDetail:\tTaint %s to pc-relative %llx, %d bytes.\n", 
                                       regname, addr, size);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_class_reg2constmem, false, 2, 
-                               OPND_CREATE_INT32(ENCODE_REG(src_reg)), OPND_CREATE_INT32(addr));
+                               OPND_CREATE_INT32(ENCODE_REG(src_reg)), OPND_CREATE_INT64(addr));
     }
     else
     {
@@ -256,10 +254,10 @@ static void opcode_mov(void *drcontext, instr_t *instr, instrlist_t *ilist)
       UNUSED(regname);
       UNUSED(size);
 
-      LINSTRDETAIL("InsDetail:\tTaint from pc-relative %d to %s %d bytes.\n", addr, regname, size);
+      LINSTRDETAIL("InsDetail:\tTaint from pc-relative %llx to %s %d bytes.\n", addr, regname, size);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_class_constmem2reg, false, 2,
-                               OPND_CREATE_INT32(addr), OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
+                               OPND_CREATE_INT64(addr), OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
     }
     else
     {
@@ -282,7 +280,7 @@ static void wrong_opcode(void *drcontext, instr_t *instr, instrlist_t *ilist)
 { 
   LERROR("ERROR! instruction not implemented.\n");
 
-  FAIL();
+  //FAIL();
 }
 
 

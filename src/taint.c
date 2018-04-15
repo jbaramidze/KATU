@@ -62,7 +62,7 @@ void nshr_taint_class_reg2mem(int segment, int src_reg, int scale, int base_reg,
   }
 }
 
-void nshr_taint_class_reg2constmem(int src_reg, int addr)
+void nshr_taint_class_reg2constmem(int src_reg, uint64 addr)
 {
   LTAINT(false, "Taint:\t\tREG %s start %d->\t\t MEM %p size %d.\n", 
              REGNAME(src_reg), REGSTART(src_reg), addr, REGSIZE(src_reg)); 
@@ -95,7 +95,7 @@ void nshr_taint_class_reg2constmem(int src_reg, int addr)
   } 
 }
 
-void nshr_taint_class_constmem2reg(int addr, int dst_reg)
+void nshr_taint_class_constmem2reg(uint64 addr, int dst_reg)
 {
   LTAINT(false, "Taint:\t\tMEM %p->\t\t REG %s start %d size %d.\n", 
              addr, REGNAME(dst_reg), REGSTART(dst_reg), REGSIZE(dst_reg));  
@@ -264,14 +264,12 @@ void nshr_taint(reg_t addr, unsigned int size, int fd)
       LTAINT_VERBOSE(i, false, "Taint:\t\t\tADD MEM %p mark %d TAINT #%d INDEX %d.\n", 
       	                 ADDR(addr + i), nextID, MEMTAINTVAL(index, addr + i), index);
 
-      uids_[nextUID].fd		= fd;
-      uids_[nextUID].size	= 1;
-      uids_[nextUID].index	= 1;
+      uids_[nextUID].fd			= fd;
 
-      ids_[nextID].coeff[0]	= 1;
-      ids_[nextID].uids[0]	= nextUID;
-      ids_[nextID].offset	= 0;
-      ids_[nextID].size		= 1;
+      ids_[nextID].LScoeff[0]	= 1;
+      ids_[nextID].LSuids[0]	= nextUID;
+      ids_[nextID].LSoffset		= 0;
+      ids_[nextID].LSsize		= 1;
 
 
       MEMTAINTADDR(index, addr + i) = addr;
@@ -301,6 +299,5 @@ void nshr_taint_class_2coeffregs2reg(int src_reg1, int scale, int src_reg2, int 
     {
 
     }
-  }
-  
+  } 
 }

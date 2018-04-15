@@ -33,27 +33,27 @@ int nshr_addtid_scale_add(int scale, int id1, int id2)
 {
   int i, j;
 
-  for (i = 0; i < ids_[id1].size; i++)
+  for (i = 0; i < ids_[id1].LSsize; i++)
   {
-    ids_[nextID].coeff[i] = ids_[id1].coeff[i]*scale;
-    ids_[nextID].uids[i]  = ids_[id1].uids[i];
+    ids_[nextID].LScoeff[i] = ids_[id1].LScoeff[i]*scale;
+    ids_[nextID].LSuids[i]  = ids_[id1].LSuids[i];
   }
 
-  for (j = 0; j < ids_[id2].size; j++)
+  for (j = 0; j < ids_[id2].LSsize; j++)
   {
-  	ids_[nextID].coeff[i + j] = ids_[id2].coeff[j];
-  	ids_[nextID].uids[i + j]  = ids_[id2].uids[j];
+  	ids_[nextID].LScoeff[i + j] = ids_[id2].LScoeff[j];
+  	ids_[nextID].LSuids[i + j]  = ids_[id2].LSuids[j];
   }
 
-  ids_[nextID].offset = ids_[id1].offset + ids_[id2].offset;
-  ids_[nextID].size = ids_[id1].size + ids_[id2].size;
+  ids_[nextID].LSoffset = ids_[id1].LSoffset + ids_[id2].LSoffset;
+  ids_[nextID].LSsize = ids_[id1].LSsize + ids_[id2].LSsize;
 
   dr_printf("Engine:\t\tReturning new id %d size %d offset %d Sum of: ", 
-  	            nextID, ids_[nextID].size, ids_[nextID].offset);
+  	            nextID, ids_[nextID].LSsize, ids_[nextID].LSoffset);
 
-  for (i = 0; i < ids_[nextID].size; i++)
+  for (i = 0; i < ids_[nextID].LSsize; i++)
   {
-  	dr_printf("%d*#%d ", ids_[nextID].coeff[i], ids_[nextID].uids[i]);
+  	dr_printf("%d*#%d ", ids_[nextID].LScoeff[i], ids_[nextID].LSuids[i]);
   }
 
   dr_printf("\n");

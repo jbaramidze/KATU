@@ -60,8 +60,8 @@ void init(void)
 DR_EXPORT void
 dr_init(client_id_t client_id)
 {
-    dr_set_client_name("DynamoRIO Sample Client 'stl_test'",
-                       "http://dynamorio.org/issues");
+    dr_set_client_name("Nashromi",
+                       "jbaramidze@gmail.com");
 
     dr_register_bb_event(nshr_event_bb);
     dr_register_filter_syscall_event(nshr_syscall_filter);

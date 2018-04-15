@@ -36,18 +36,20 @@ typedef struct {
 
 typedef struct {
   int fd;
-  int size;
-  int index;
   Constr_type con[MAX_CONTSTR];
 
 } UID_entity;
 
-// Sum of coeff[i]*uids[i] + offset (0<=i<size)
+// Linear Sum of LScoeff[i]*LSuids[i] + LSoffset (0<=i<LSsize)
 typedef struct {
-  int coeff[MAX_UID_IN_ID];
-  int uids[MAX_UID_IN_ID];
-  int offset;
+  int LScoeff[MAX_UID_IN_ID];
+  int LSuids[MAX_UID_IN_ID];
+  int LSoffset;
+  int LSsize;
+
+  // this ID can be of 
   int size;
+  int index;
 
 } ID_entity;
 
@@ -71,7 +73,7 @@ typedef void (*instrFunc)(void *, instr_t *, instrlist_t *);
 #endif
 
 #define FAIL() dr_printf("FAIL! at %s:%d.\n", __FILE__, __LINE__); \
-				exit(-1);
+				//exit(-1);
 
 void assert(bool a);
 
@@ -166,8 +168,8 @@ void nshr_taint_class_2coeffregs2reg(int reg_mask1, int scale, int reg_mask2, in
 void nshr_taint_class_reg2reg(int reg_mask1, int reg_mask2);
 void nshr_taint_class_mem2reg(int segment, int disp, int scale, int base, int index, int reg_mask); 
 void nshr_taint_class_reg2mem(int segment, int reg_mask, int scale, int base, int index, int disp);
-void nshr_taint_class_constmem2reg(int addr, int reg_mask); 
-void nshr_taint_class_reg2constmem(int reg_mask, int addr); 
+void nshr_taint_class_constmem2reg(uint64 addr, int reg_mask); 
+void nshr_taint_class_reg2constmem(int reg_mask, uint64 addr); 
 void nshr_taint_class_reg_rm(int reg);
 void nshr_taint_class_mem_rm(int segment, int disp, int scale, int base, int index, int size);
 
