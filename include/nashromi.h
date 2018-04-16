@@ -174,7 +174,8 @@ void nshr_taint_class_reg_rm(int reg);
 void nshr_taint_class_mem_rm(int segment, int disp, int scale, int base, int index, int size);
 
 // instructions.
-dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, bool for_trace, bool translating);
+dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr_t *inst, bool for_trace, 
+	                              bool translating, void *user_data);
 void nshr_init_opcodes(void);
 
 int nshr_addtid_scale_add(int scale, int id1, int id2);

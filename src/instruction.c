@@ -1,10 +1,12 @@
 #define DUMP_INSTRUCTIONS
-//#define DUMP_INSTRUCTION_DETAILS
+#define DUMP_INSTRUCTION_DETAILS
 
 #include "dr_api.h"
 #include "core/unix/include/syscall.h"
 #include "nashromi.h"
 #include "drsyms.h"
+
+#include <string.h>
 
 /*
   Helpful functions:
@@ -286,9 +288,6 @@ static void wrong_opcode(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
 static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
-
-  dr_printf("KAKA %d %d.\n", instr_num_dsts(instr), instr_num_srcs(instr));
-
   if (!instr_is_cti(instr)) FAIL();
 
   app_pc pc;
@@ -305,24 +304,22 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
     instr_get_rel_addr_target(instr, &tmp);
 
-    pc = *(uint64 *) tmp;
+    pc = (app_pc) (*(uint64 *) tmp);
   }
   else
   {
   	FAIL();
   }
 
+  module_data_t *data = dr_lookup_module(pc);
 
-  dr_printf("LALA %llx: ", pc);
+  if (data == NULL)
+  {
+     LINSTRDETAIL("InsDetail:\tIgnoring jump to %llx.\n", pc);
 
-  module_data_t *data;
-  data = dr_lookup_module(pc);
-  if (data == NULL) {
-      dr_printf("nowhere.\n");
      return;
   }
-
-  dr_printf("(%s) ", data -> full_path);
+  const char *modname = dr_module_preferred_name(data);
 
   drsym_info_t sym;
 
@@ -333,7 +330,7 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
   sym.name = name_buf;
   sym.name_size = 1024;
   sym.file = file_buf;
-  sym.file_size = 1024;
+  sym.file_size = 0;
 
   drsym_error_t symres;
 
@@ -341,11 +338,27 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
   if (symres == DRSYM_SUCCESS)
   {
-  	dr_printf("Calling %s\n", sym.name);
+  	LINSTRDETAIL("InsDetail:\tDetected call to %s[%s] at %s.\n", sym.name, modname, data -> full_path);
+
+  	if (strncmp(modname, "libc.so", 7) == 0)
+  	{
+      
+  	}
   }
   else
   {
-  	dr_printf("Failed detecting\n");
+  	LINSTRDETAIL("InsDetail:\tMissing symbols for call to [%s] at %s.\n", modname, data -> full_path);
+/*
+    dr_mcontext_t mcontext = {sizeof(mcontext),DR_MC_ALL,}; 
+	
+	dr_get_mcontext(drcontext, &mcontext);
+
+    reg_t base  = reg_get_value(DR_REG_EDI, &mcontext);
+
+    dr_printf("AAAA %llx.\n", base);
+
+  	exit(0);
+*/
   }
 }
 
@@ -365,7 +378,6 @@ void nshr_init_opcodes(void)
   //instrFunctions[30]			= opcode_call;	// 42
 
 
-
   instrFunctions[OP_call]			= opcode_call;	// 42
   instrFunctions[OP_call_ind]		= opcode_call;	// 43
   instrFunctions[OP_call_far]		= opcode_call;	// 44
@@ -375,14 +387,14 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_jmp_ind]		= opcode_call;  // 48
   instrFunctions[OP_jmp_far]		= opcode_call;  // 49
   instrFunctions[OP_jmp_far_ind]	= opcode_call;  // 50
-                                                               
+
   instrFunctions[OP_mov_ld]			= opcode_mov;		// 55	Can be: mem2reg
   instrFunctions[OP_mov_st]			= opcode_mov;		// 56	Can be: imm2mem, reg2mem, reg2reg.
   instrFunctions[OP_mov_imm]		= opcode_mov;		// 57   Can be: imm2reg.
 // instrFunctions[OP_mov_seg]							// 58
 // instrFunctions[OP_mov_priv]							// 59
   instrFunctions[OP_test]			= opcode_ignore;	// 60 
-  instrFunctions[OP_lea]			= opcode_lea;		// 61   It's arithmetic operation, not a memory reference.
+  //instrFunctions[OP_lea]			= opcode_lea;		// 61   It's arithmetic operation, not a memory reference.
 
   instrFunctions[OP_syscall]		= opcode_ignore;	// 95 syscall processed by dr_register_post_syscall_event.
 }
@@ -391,15 +403,32 @@ void nshr_init_opcodes(void)
 // Called for each added basic block.
 //
 
-dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, bool for_trace,
-         bool translating)
+dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr_t *instr, bool for_trace,
+                                bool translating, void *user_data)
 {
-  STOP_IF_NOT_STARTED(DR_EMIT_DEFAULT)
+  STOP_IF_NOT_STARTED(DR_EMIT_DEFAULT);
 
   char instruction[64];
+
+  int opcode = instr_get_opcode(instr);
+
+  instr_disassemble_to_buffer(drcontext, instr, instruction, 64);
+    
+  LINSTR("\t\t(opcode %d)\t%s.\n", opcode, instruction);
+
+  (*instrFunctions[opcode])(drcontext, instr, bb);
+
+	/*
+
+  char instruction[64];
+
   instr_t *instr = instrlist_first(bb);
 
-  LINSTR("\nInstr:\t\tBeginning block.\n");
+  app_pc pc = instr_get_app_pc(instr);
+
+  module_data_t *data = dr_lookup_module(pc);
+
+  LINSTR("\nInstr:\t\tBeginning block at [%s].\n", data -> full_path);
 
   while (true) 
   {
@@ -424,7 +453,7 @@ dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, bool 
   }
 
   LINSTR("Instr:\t\tEnd.\n");
-
+*/
   return DR_EMIT_DEFAULT;
 }
 

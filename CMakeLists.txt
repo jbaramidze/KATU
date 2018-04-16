@@ -13,7 +13,7 @@ set(DynamoRIO_MAIN "/home/zhani/Thesis/installer/dynamorio")
 
 set(DynamoRIO_DIR "${DynamoRIO_MAIN}/build/cmake")
 
-include_directories("${DynamoRIO_MAIN}" "include", "${DynamoRIO_MAIN}/build/ext/include")
+include_directories("${DynamoRIO_MAIN}" "include" "${DynamoRIO_MAIN}/build/ext/include")
 
 option(SHOW_RESULTS
     "Display client results in pop-up (Windows) or console message (Linux)"
@@ -78,4 +78,4 @@ set(nashromi_sources
     src/taint.c
     src/vars.c)
 # Use ;-separated lists for source files and extensions.
-add_dr_client(nashromi "${nashromi_sources}" "drsyms")
+add_dr_client(nashromi "${nashromi_sources}" "drmgr;drsyms;drwrap")
