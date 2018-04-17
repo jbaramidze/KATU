@@ -19,7 +19,7 @@ const char *reg_mask_names[16] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi
 #define ADDR(address) ((address) % TAINTMAP_SIZE)
 
 
-inline int find_index(reg_t addr)
+inline int find_index(reg_t addr, int i)
 {
 	int index = 0;
 
@@ -55,7 +55,7 @@ void nshr_taint_mv_reg2mem(int segment, int src_reg, int scale, int base_reg, in
 
   for (int i = 0; i < REGSIZE(src_reg); i++)
   {
-    int index = find_index(addr);
+    int index = find_index(addr, i);
 
     LTAINT_VERBOSE(i, (REGTAINT(src_reg, i) > 0 || MEMTAINTVAL(index, addr + i) > 0), 
     	                 "Taint:\t\t\tREG %s byte %d TAINT#%d->\t\t MEM %p TAINT #%d INDEX %d.\n", 
@@ -74,7 +74,7 @@ void nshr_taint_mv_reg2constmem(int src_reg, uint64 addr)
 
   for (int i = 0; i < REGSIZE(src_reg); i++)
   {
-    int index = find_index(addr);
+    int index = find_index(addr, i);
 
     LTAINT_VERBOSE(i, (MEMTAINTVAL(index, addr + i) > 0 || REGTAINT(src_reg, i) > 0),
                        "Taint:\t\t\tREG %s byte %d TAINT #%d->\t\t MEM %p TAINT #%d INDEX %d.\n", 
@@ -93,7 +93,7 @@ void nshr_taint_mv_constmem2reg(uint64 addr, int dst_reg)
 
   for (int i = 0; i < REGSIZE(dst_reg); i++)
   {
-    int index = find_index(addr);
+    int index = find_index(addr, i);
 
 
     LTAINT_VERBOSE(i, (REGTAINT(dst_reg, i) > 0 || MEMTAINTVAL(index, addr + i) > 0), 
@@ -122,7 +122,7 @@ void nshr_taint_mv_mem2reg(int segment, int disp, int scale, int base_reg, int i
 
   for (int i = 0; i < REGSIZE(dst_reg); i++)
   {
-    int index = find_index(addr);
+    int index = find_index(addr, i);
 
     LTAINT_VERBOSE(i, (REGTAINT(dst_reg, i) > 0 || MEMTAINTVAL(index, addr + i) > 0),
                        "Taint:\t\t\tMEM %p TAINT #%d->\t\t REG %s byte %d TAINT #%d INDEX %d.\n", 
@@ -139,7 +139,7 @@ void nshr_taint_mv_mem_rm(uint64 addr, int size)
 
   for (int i = 0; i < size; i++)
   {
-    int index = find_index(addr);
+    int index = find_index(addr, i);
 
     LTAINT_VERBOSE(i, (MEMTAINTVAL(index, addr + i) > 0), 
                       "Taint:\t\t\tREMOVE MEM %p TAINT #%d INDEX %d.\n", 
@@ -165,7 +165,7 @@ void nshr_taint_mv_baseindexmem_rm(int segment, int disp, int scale, int base_re
 
   for (int i = 0; i < size; i++)
   {
-    int index = find_index(addr);
+    int index = find_index(addr, i);
 
     LTAINT_VERBOSE(i, (MEMTAINTVAL(index, addr + i) > 0), 
                       "Taint:\t\t\tREMOVE MEM %p TAINT #%d INDEX %d.\n", 

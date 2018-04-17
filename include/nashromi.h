@@ -165,15 +165,16 @@ bool nshr_syscall_filter(void *drcontext, int sysnum);
 
 // taint.
 void nshr_taint(reg_t addr, unsigned int size, int fd);
-void nshr_taint_class_2coeffregs2reg(int reg_mask1, int scale, int reg_mask2, int reg_mask3);
-void nshr_taint_class_reg2reg(int reg_mask1, int reg_mask2);
-void nshr_taint_class_mem2reg(int segment, int disp, int scale, int base, int index, int reg_mask); 
-void nshr_taint_class_reg2mem(int segment, int reg_mask, int scale, int base, int index, int disp);
-void nshr_taint_class_constmem2reg(uint64 addr, int reg_mask); 
-void nshr_taint_class_reg2constmem(int reg_mask, uint64 addr); 
-void nshr_taint_class_reg_rm(int reg);
-void nshr_taint_class_baseindexmem_rm(int segment, int disp, int scale, int base, int index, int size);
-void nshr_taint_class_mem_rm(uint64 addr, int size);
+
+void nshr_taint_mv_2coeffregs2reg(int reg_mask1, int scale, int reg_mask2, int reg_mask3);
+void nshr_taint_mv_reg2reg(int reg_mask1, int reg_mask2);
+void nshr_taint_mv_mem2reg(int segment, int disp, int scale, int base, int index, int reg_mask); 
+void nshr_taint_mv_reg2mem(int segment, int reg_mask, int scale, int base, int index, int disp);
+void nshr_taint_mv_constmem2reg(uint64 addr, int reg_mask); 
+void nshr_taint_mv_reg2constmem(int reg_mask, uint64 addr); 
+void nshr_taint_mv_reg_rm(int reg);
+void nshr_taint_mv_baseindexmem_rm(int segment, int disp, int scale, int base, int index, int size);
+void nshr_taint_mv_mem_rm(uint64 addr, int size);
 
 // instructions.
 dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr_t *inst, bool for_trace, 
