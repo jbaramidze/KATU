@@ -12,10 +12,15 @@ event_exit(void)
 {
     dr_printf("Info:\t\tExit.\n");
 
+    drwrap_exit();
+
     if (drsym_exit() != DRSYM_SUCCESS)
     {
       FAIL();
     }
+
+    drmgr_exit();
+
 }
 
 
@@ -65,27 +70,21 @@ void init(void)
   nshr_init_opcodes();
 }
 
-static void wrap_pre(void *wrapcxt, OUT void **user_data)
-{
-	char *d = (char *) drwrap_get_arg(wrapcxt, 0);
-
-	dr_printf("GOT! %s.\n", d);
-}
-
 void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
 {
    const char *module = dr_module_preferred_name(mod);
 
    dr_printf("Info:\t\tLoading %s.\n", module);
-
+/*
    if (strncmp(dr_module_preferred_name(mod), "libc.so", 7) == 0)
    {
-     app_pc printf_addr = (app_pc) dr_get_proc_address(mod -> handle, "printf");
+     app_pc scanf_addr = (app_pc) dr_get_proc_address(mod -> handle, "scanf");
 
-     dr_printf("found at %llx.\n", printf_addr);
+     dr_printf("Info:\t\tfound 'scanf' at %llx.\n", scanf_addr);
 
-     drwrap_wrap(printf_addr, wrap_pre, NULL);
+     drwrap_wrap(scanf_addr, pre_scanf, post_scanf);
    }
+   */
 }
 
 DR_EXPORT void
@@ -93,6 +92,8 @@ dr_init(client_id_t client_id)
 {
     if (!drmgr_init())
     {
+      dr_printf("Info:\t\tERROR:\t\tFailed starting drmgr.\n");
+
       FAIL();
     }
 
@@ -104,6 +105,7 @@ dr_init(client_id_t client_id)
     drmgr_register_bb_instrumentation_event(NULL, nshr_event_bb, NULL);
     drmgr_register_module_load_event(module_load_event);
     drmgr_register_post_syscall_event(nshr_event_post_syscall);
+    drmgr_register_pre_syscall_event(nshr_event_pre_syscall);
 
     dr_register_filter_syscall_event(nshr_syscall_filter);
     dr_register_exit_event(event_exit);
@@ -117,8 +119,14 @@ dr_init(client_id_t client_id)
       FAIL();
     }
 
-    drwrap_init();
+    if (!drwrap_init())
+    {	
+      dr_printf("Info:\t\tERROR:\t\tFailed starting drwrap.\n");
+
+      FAIL();
+    }
 
     init();
+    
     dr_printf("Info:\t\tStarted!\n");
 }

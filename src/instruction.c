@@ -36,22 +36,28 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
   opnd_t src = instr_get_src(instr, 0);
   opnd_t dst = instr_get_dst(instr, 0);
 
-  if (opnd_is_base_disp(src) && opnd_is_reg(dst))
+  if (!opnd_is_reg(dst))
   {
+  	FAIL();
+  }
 
-  	reg_id_t dst_reg   = opnd_get_reg(dst);
+  reg_id_t dst_reg   = opnd_get_reg(dst);
+  int size            = opnd_size_in_bytes(reg_get_size(dst_reg));
+
+  if (opnd_is_base_disp(src))
+  {
     reg_id_t base_reg  = opnd_get_base(src);
     reg_id_t index_reg = opnd_get_index(src);
     int scale          = opnd_get_scale(src);
+    int disp           = opnd_get_disp(src);
     
-    int size            = opnd_size_in_bytes(reg_get_size(dst_reg));
 
     UNUSED(size);
 
     if (base_reg > 0 && index_reg > 0)
     {
-      LINSTRDETAIL("InsDetail:\tTaint from %s + %d*%s to %s, %d bytes.\n", get_register_name(base_reg), 
-                       scale, get_register_name(index_reg), get_register_name(dst_reg), size);
+      LINSTRDETAIL("InsDetail:\tTaint from %s + %d*%s + %d to %s, %d bytes.\n", get_register_name(base_reg), 
+                       scale, get_register_name(index_reg), disp, get_register_name(dst_reg), size);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_class_2coeffregs2reg, false, 4,
                                OPND_CREATE_INT32(ENCODE_REG(index_reg)), OPND_CREATE_INT32(scale), 
@@ -76,23 +82,21 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
                                OPND_CREATE_INT32(ENCODE_REG(base_reg)), OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
     }
   }
+  else if (opnd_is_rel_addr(src))
+  {
+    LINSTRDETAIL("InsDetail:\tRemove taint at %s, %d bytes\n", get_register_name(dst_reg), size);
+
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_class_reg_rm, false, 1,
+                             OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
+  }
   else
   {
-  	//FAIL();
+  	FAIL();
   }
 }
 
-
-static void opcode_mov(void *drcontext, instr_t *instr, instrlist_t *ilist)
+static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_t src, opnd_t dst)
 {
-  opnd_t src = instr_get_src(instr, 0);
-  opnd_t dst = instr_get_dst(instr, 0);
-
-  //LINSTR("AAAAAAAAA src: isreg: %d isimmed: %d isbaseindex: %d ismem: %d isreladdr %d\n", opnd_is_reg(src), 
-  //                                      opnd_is_immed(src),  opnd_is_base_disp(src),  opnd_is_mem_instr(src), opnd_is_rel_addr(src));
-  //LINSTR("AAAAAAAAA dst: isreg: %d isimmed: %d isbaseindex: %d ismem: %d isreladdr %d\n", opnd_is_reg(dst), 
-  //                                     opnd_is_immed(dst),  opnd_is_base_disp(dst),  opnd_is_mem_instr(dst), opnd_is_rel_addr(dst));
-
   // src: base+index
   if (opnd_is_base_disp(src))
   {
@@ -164,7 +168,7 @@ static void opcode_mov(void *drcontext, instr_t *instr, instrlist_t *ilist)
                                    get_register_name(seg_reg), get_register_name(base_reg), scale, 
                                        get_register_name(index_reg), disp, size);
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_class_mem_rm, false, 6, 
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_class_baseindexmem_rm, false, 6, 
                             OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(disp), OPND_CREATE_INT32(scale), 
                                OPND_CREATE_INT32(base_reg),  OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(size));
       }
@@ -173,6 +177,21 @@ static void opcode_mov(void *drcontext, instr_t *instr, instrlist_t *ilist)
         // Temporarily ignore all memory accesses in FS and GS segments.
       	FAIL();
       }
+    }
+    // immediate to rel addr
+    else if (opnd_is_rel_addr(dst))
+    {
+      app_pc addr;
+
+      instr_get_rel_addr_target(instr, &addr);
+
+      int size = opnd_size_in_bytes(opnd_get_size(src));
+
+      LINSTRDETAIL("InsDetail:\tRemove taint at pc-relative %llx, %d bytes.\n", 
+                                      addr, size);
+
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_class_mem_rm, false, 2, 
+                               OPND_CREATE_INT64(addr), OPND_CREATE_INT32(size));
     }
     else
     {
@@ -274,6 +293,34 @@ static void opcode_mov(void *drcontext, instr_t *instr, instrlist_t *ilist)
 }
 
 
+static void opcode_mov(void *drcontext, instr_t *instr, instrlist_t *ilist)
+{
+  opnd_t src = instr_get_src(instr, 0);
+  opnd_t dst = instr_get_dst(instr, 0);
+
+  //LINSTR("AAAAAAAAA src: isreg: %d isimmed: %d isbaseindex: %d ismem: %d isreladdr %d\n", opnd_is_reg(src), 
+  //                                      opnd_is_immed(src),  opnd_is_base_disp(src),  opnd_is_mem_instr(src), opnd_is_rel_addr(src));
+  //LINSTR("AAAAAAAAA dst: isreg: %d isimmed: %d isbaseindex: %d ismem: %d isreladdr %d\n", opnd_is_reg(dst), 
+  //                                     opnd_is_immed(dst),  opnd_is_base_disp(dst),  opnd_is_mem_instr(dst), opnd_is_rel_addr(dst));
+
+  propagate(drcontext, instr, ilist, src, dst);
+}
+
+
+// src2 == dst
+static void opcode_add(void *drcontext, instr_t *instr, instrlist_t *ilist)
+{
+  opnd_t src1 = instr_get_src(instr, 0);
+  opnd_t src2 = instr_get_src(instr, 1);
+  opnd_t dst  = instr_get_dst(instr, 0);
+
+  if (memcmp((void *) &src2, (void *) &dst, sizeof(opnd_t)) != 0) {  FAIL(); }
+
+  propagate(drcontext, instr, ilist, src1, dst);
+
+}
+
+
 static void opcode_ignore(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
 
@@ -281,13 +328,14 @@ static void opcode_ignore(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
 static void wrong_opcode(void *drcontext, instr_t *instr, instrlist_t *ilist)
 { 
-  //LERROR("ERROR! instruction not implemented.\n");
+  LERROR("ERROR! instruction not implemented.\n");
 
-  //FAIL();
+  FAIL();
 }
 
 static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
+/*
   if (!instr_is_cti(instr)) FAIL();
 
   app_pc pc;
@@ -339,27 +387,12 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
   if (symres == DRSYM_SUCCESS)
   {
   	LINSTRDETAIL("InsDetail:\tDetected call to %s[%s] at %s.\n", sym.name, modname, data -> full_path);
-
-  	if (strncmp(modname, "libc.so", 7) == 0)
-  	{
-      
-  	}
   }
   else
   {
   	LINSTRDETAIL("InsDetail:\tMissing symbols for call to [%s] at %s.\n", modname, data -> full_path);
-/*
-    dr_mcontext_t mcontext = {sizeof(mcontext),DR_MC_ALL,}; 
-	
-	dr_get_mcontext(drcontext, &mcontext);
-
-    reg_t base  = reg_get_value(DR_REG_EDI, &mcontext);
-
-    dr_printf("AAAA %llx.\n", base);
-
-  	exit(0);
-*/
   }
+  */
 }
 
 
@@ -374,9 +407,7 @@ void nshr_init_opcodes(void)
   // Add custom handlers for all known opcodes.
   //
 
-
-  //instrFunctions[30]			= opcode_call;	// 42
-
+  instrFunctions[OP_sub]			= opcode_add;   //10
 
   instrFunctions[OP_call]			= opcode_call;	// 42
   instrFunctions[OP_call_ind]		= opcode_call;	// 43
@@ -394,7 +425,7 @@ void nshr_init_opcodes(void)
 // instrFunctions[OP_mov_seg]							// 58
 // instrFunctions[OP_mov_priv]							// 59
   instrFunctions[OP_test]			= opcode_ignore;	// 60 
-  //instrFunctions[OP_lea]			= opcode_lea;		// 61   It's arithmetic operation, not a memory reference.
+  instrFunctions[OP_lea]			= opcode_lea;		// 61
 
   instrFunctions[OP_syscall]		= opcode_ignore;	// 95 syscall processed by dr_register_post_syscall_event.
 }
@@ -418,42 +449,6 @@ dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr
 
   (*instrFunctions[opcode])(drcontext, instr, bb);
 
-	/*
-
-  char instruction[64];
-
-  instr_t *instr = instrlist_first(bb);
-
-  app_pc pc = instr_get_app_pc(instr);
-
-  module_data_t *data = dr_lookup_module(pc);
-
-  LINSTR("\nInstr:\t\tBeginning block at [%s].\n", data -> full_path);
-
-  while (true) 
-  {
-    //
-    // Log the instruction.
-    //
-
-    int opcode = instr_get_opcode(instr);
-
-    instr_disassemble_to_buffer(drcontext, instr, instruction, 64);
-    
-    LINSTR("\t\t(opcode %d)\t%s.\n", opcode, instruction);
-
-    (*instrFunctions[opcode])(drcontext, instr, bb);
-
-    if (instr == instrlist_last(bb)) 
-    {
-      break;
-    }
-
-    instr = instr_get_next(instr);
-  }
-
-  LINSTR("Instr:\t\tEnd.\n");
-*/
   return DR_EMIT_DEFAULT;
 }
 

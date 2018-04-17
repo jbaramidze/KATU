@@ -19,7 +19,26 @@ const char *reg_mask_names[16] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi
 #define ADDR(address) ((address) % TAINTMAP_SIZE)
 
 
-void nshr_taint_class_reg2mem(int segment, int src_reg, int scale, int base_reg, int index_reg, int disp)
+inline int find_index(reg_t addr)
+{
+	int index = 0;
+
+    while(!MEMTAINTISEMPTY(index, addr + i) && 
+              MEMTAINTADDR(index, addr + i) != addr &&
+                  index < TAINTMAP_NUM)
+    {
+      index++;
+    }
+
+    if (index == TAINTMAP_NUM)
+    {
+      FAIL();
+    }
+
+    return index;
+}
+
+void nshr_taint_mv_reg2mem(int segment, int src_reg, int scale, int base_reg, int index_reg, int disp)
 {
   GET_CONTEXT();
   
@@ -36,98 +55,57 @@ void nshr_taint_class_reg2mem(int segment, int src_reg, int scale, int base_reg,
 
   for (int i = 0; i < REGSIZE(src_reg); i++)
   {
-    int index = 0;
+    int index = find_index(addr);
 
-    while(!MEMTAINTISEMPTY(index, addr + i) && 
-              MEMTAINTADDR(index, addr + i) != addr &&
-                  index < TAINTMAP_NUM)
-    {
-      index++;
-    }
+    LTAINT_VERBOSE(i, (REGTAINT(src_reg, i) > 0 || MEMTAINTVAL(index, addr + i) > 0), 
+    	                 "Taint:\t\t\tREG %s byte %d TAINT#%d->\t\t MEM %p TAINT #%d INDEX %d.\n", 
+                           REGNAME(src_reg), REGSTART(src_reg) + i, REGTAINT(src_reg, i),
+                               ADDR(addr + i), MEMTAINTVAL(index, addr + i), index);
 
-    if (index == TAINTMAP_NUM)
-    {
-      FAIL(); 
-    }
-    else
-    {
-      LTAINT_VERBOSE(i, (REGTAINT(src_reg, i) > 0 || MEMTAINTVAL(index, addr + i) > 0), 
-      	                 "Taint:\t\t\tREG %s byte %d TAINT#%d->\t\t MEM %p TAINT #%d INDEX %d.\n", 
-                             REGNAME(src_reg), REGSTART(src_reg) + i, REGTAINT(src_reg, i),
-                                 ADDR(addr + i), MEMTAINTVAL(index, addr + i), index);
-
-      MEMTAINTADDR(index, addr + i) = addr + i;
-      MEMTAINTVAL(index, addr + i) = REGTAINT(src_reg, i);
-    }
+    MEMTAINTADDR(index, addr + i) = addr + i;
+    MEMTAINTVAL(index, addr + i) = REGTAINT(src_reg, i);
   }
 }
 
-void nshr_taint_class_reg2constmem(int src_reg, uint64 addr)
+void nshr_taint_mv_reg2constmem(int src_reg, uint64 addr)
 {
   LTAINT(false, "Taint:\t\tREG %s start %d->\t\t MEM %p size %d.\n", 
              REGNAME(src_reg), REGSTART(src_reg), addr, REGSIZE(src_reg)); 
 
   for (int i = 0; i < REGSIZE(src_reg); i++)
   {
-    int index = 0;
+    int index = find_index(addr);
 
-    while(!MEMTAINTISEMPTY(index, addr + i) && 
-              MEMTAINTADDR(index, addr + i) != addr &&
-                  index < TAINTMAP_NUM)
-    {
-      index++;
-    }
+    LTAINT_VERBOSE(i, (MEMTAINTVAL(index, addr + i) > 0 || REGTAINT(src_reg, i) > 0),
+                       "Taint:\t\t\tREG %s byte %d TAINT #%d->\t\t MEM %p TAINT #%d INDEX %d.\n", 
+                           REGNAME(src_reg), REGSTART(src_reg) + i, REGTAINT(src_reg, i), ADDR(addr + i), 
+                               MEMTAINTVAL(index, addr + i), index);
 
-    if (index == TAINTMAP_NUM)
-    {
-      FAIL(); 
-    }
-    else
-    {
-      LTAINT_VERBOSE(i, (MEMTAINTVAL(index, addr + i) > 0 || REGTAINT(src_reg, i) > 0),
-      	                 "Taint:\t\t\tREG %s byte %d TAINT #%d->\t\t MEM %p TAINT #%d INDEX %d.\n", 
-                             REGNAME(src_reg), REGSTART(src_reg) + i, REGTAINT(src_reg, i), ADDR(addr + i), 
-                                 MEMTAINTVAL(index, addr + i), index);
-
-      MEMTAINTADDR(index, addr + i) = addr + i;
-      MEMTAINTVAL(index, addr + i) = REGTAINT(src_reg, i);
-    }
+    MEMTAINTADDR(index, addr + i) = addr + i;
+    MEMTAINTVAL(index, addr + i) = REGTAINT(src_reg, i);
   } 
 }
 
-void nshr_taint_class_constmem2reg(uint64 addr, int dst_reg)
+void nshr_taint_mv_constmem2reg(uint64 addr, int dst_reg)
 {
   LTAINT(false, "Taint:\t\tMEM %p->\t\t REG %s start %d size %d.\n", 
              addr, REGNAME(dst_reg), REGSTART(dst_reg), REGSIZE(dst_reg));  
 
   for (int i = 0; i < REGSIZE(dst_reg); i++)
   {
-    int index = 0;
+    int index = find_index(addr);
 
-    while(!MEMTAINTISEMPTY(index, addr + i) && 
-              MEMTAINTADDR(index, addr + i) != addr &&
-                  index < TAINTMAP_NUM)
-    {
-      index++;
-    }
 
-    if (index == TAINTMAP_NUM)
-    {
-      FAIL();
-    }
-    else
-    {
-      LTAINT_VERBOSE(i, (REGTAINT(dst_reg, i) > 0 || MEMTAINTVAL(index, addr + i) > 0), 
-      	                 "Taint:\t\t\tMEM %p TAINT #%d->\t\t REG %s byte %d TAINT #%d INDEX %d.\n", 
-                             ADDR(addr + i), MEMTAINTVAL(index, addr + i), REGNAME(dst_reg), 
-                                 REGSTART(dst_reg) + i, REGTAINT(dst_reg, i), index);
+    LTAINT_VERBOSE(i, (REGTAINT(dst_reg, i) > 0 || MEMTAINTVAL(index, addr + i) > 0), 
+                       "Taint:\t\t\tMEM %p TAINT #%d->\t\t REG %s byte %d TAINT #%d INDEX %d.\n", 
+                           ADDR(addr + i), MEMTAINTVAL(index, addr + i), REGNAME(dst_reg), 
+                               REGSTART(dst_reg) + i, REGTAINT(dst_reg, i), index);
 
-      REGTAINT(dst_reg, i) = MEMTAINTVAL(index, addr + i);
-    }
+    REGTAINT(dst_reg, i) = MEMTAINTVAL(index, addr + i);
   }
 }
 
-void nshr_taint_class_mem2reg(int segment, int disp, int scale, int base_reg, int index_reg, int dst_reg)
+void nshr_taint_mv_mem2reg(int segment, int disp, int scale, int base_reg, int index_reg, int dst_reg)
 {
   GET_CONTEXT();
   
@@ -144,33 +122,34 @@ void nshr_taint_class_mem2reg(int segment, int disp, int scale, int base_reg, in
 
   for (int i = 0; i < REGSIZE(dst_reg); i++)
   {
-    int index = 0;
+    int index = find_index(addr);
 
-    while(!MEMTAINTISEMPTY(index, addr + i) && 
-              MEMTAINTADDR(index, addr + i) != addr &&
-                  index < TAINTMAP_NUM)
-    {
-      index++;
-    }
+    LTAINT_VERBOSE(i, (REGTAINT(dst_reg, i) > 0 || MEMTAINTVAL(index, addr + i) > 0),
+                       "Taint:\t\t\tMEM %p TAINT #%d->\t\t REG %s byte %d TAINT #%d INDEX %d.\n", 
+                           ADDR(addr + i), MEMTAINTVAL(index, addr + i), REGNAME(dst_reg), 
+                               REGSTART(dst_reg) + i, REGTAINT(dst_reg, i), index);
 
-    if (index == TAINTMAP_NUM)
-    {
-      FAIL();
-    }
-    else
-    {
-
-      LTAINT_VERBOSE(i, (REGTAINT(dst_reg, i) > 0 || MEMTAINTVAL(index, addr + i) > 0),
-      	                 "Taint:\t\t\tMEM %p TAINT #%d->\t\t REG %s byte %d TAINT #%d INDEX %d.\n", 
-                             ADDR(addr + i), MEMTAINTVAL(index, addr + i), REGNAME(dst_reg), 
-                                 REGSTART(dst_reg) + i, REGTAINT(dst_reg, i), index);
-
-      REGTAINT(dst_reg, i) = MEMTAINTVAL(index, addr + i);
-    }
+    REGTAINT(dst_reg, i) = MEMTAINTVAL(index, addr + i);
   }
 }
 
-void nshr_taint_class_mem_rm(int segment, int disp, int scale, int base_reg, int index_reg, int size)
+void nshr_taint_mv_mem_rm(uint64 addr, int size)
+{
+  LTAINT(false, "Taint:\t\tREMOVE MEM %p size %d\n", addr, size);
+
+  for (int i = 0; i < size; i++)
+  {
+    int index = find_index(addr);
+
+    LTAINT_VERBOSE(i, (MEMTAINTVAL(index, addr + i) > 0), 
+                      "Taint:\t\t\tREMOVE MEM %p TAINT #%d INDEX %d.\n", 
+                           ADDR(addr + i), MEMTAINTVAL(index, addr + i), index);
+
+    MEMTAINTVAL(index, addr + i) = -1;
+  }
+}
+
+void nshr_taint_mv_baseindexmem_rm(int segment, int disp, int scale, int base_reg, int index_reg, int size)
 {
   GET_CONTEXT();
   
@@ -186,31 +165,17 @@ void nshr_taint_class_mem_rm(int segment, int disp, int scale, int base_reg, int
 
   for (int i = 0; i < size; i++)
   {
-    int index = 0;
+    int index = find_index(addr);
 
-    while(!MEMTAINTISEMPTY(index, addr + i) && 
-              MEMTAINTADDR(index, addr + i) != addr &&
-                  index < TAINTMAP_NUM)
-    {
-      index++;
-    }
+    LTAINT_VERBOSE(i, (MEMTAINTVAL(index, addr + i) > 0), 
+                      "Taint:\t\t\tREMOVE MEM %p TAINT #%d INDEX %d.\n", 
+                           ADDR(addr + i), MEMTAINTVAL(index, addr + i), index);
 
-    if (index == TAINTMAP_NUM)
-    {
-      FAIL();
-    }
-    else
-    {
-      LTAINT_VERBOSE(i, (MEMTAINTVAL(index, addr + i) > 0), 
-      	                 "Taint:\t\t\tREMOVE MEM %p TAINT #%d INDEX %d.\n", 
-                             ADDR(addr + i), MEMTAINTVAL(index, addr + i), index);
-
-      MEMTAINTVAL(index, addr + i) = -1;
-    }
+    MEMTAINTVAL(index, addr + i) = -1;
   }
 }
 
-void nshr_taint_class_reg2reg(int src_reg, int dst_reg)
+void nshr_taint_mv_reg2reg(int src_reg, int dst_reg)
 {
   // mask1 -> mask2
 
@@ -229,7 +194,7 @@ void nshr_taint_class_reg2reg(int src_reg, int dst_reg)
   }
 }
 
-void nshr_taint_class_reg_rm(int mask)
+void nshr_taint_mv_reg_rm(int mask)
 {
   LTAINT(false, "Taint:\t\tREMOVE REG %s start %d size %d\n", REGNAME(mask), REGSTART(mask), REGSIZE(mask));
 
@@ -281,8 +246,7 @@ void nshr_taint(reg_t addr, unsigned int size, int fd)
   }
 }
 
-
-void nshr_taint_class_2coeffregs2reg(int src_reg1, int scale, int src_reg2, int dst_reg)
+void nshr_taint_mv_2coeffregs2reg(int src_reg1, int scale, int src_reg2, int dst_reg)
 {
   LTAINT(false, "Taint:\t\tREG %s*%d start %d + REG %s start %d ->\t\t REG %s start %d size %d.\n", 
              REGNAME(src_reg1), scale, REGSTART(src_reg1), REGNAME(src_reg2), REGSTART(src_reg2), 
@@ -290,14 +254,11 @@ void nshr_taint_class_2coeffregs2reg(int src_reg1, int scale, int src_reg2, int 
 
   for (int i = 0; i < REGSIZE(src_reg1); i++)
   {
-    // adding two differently-tainted regs.
-    if (REGTAINT(src_reg1, i) > 0 && REGTAINT(src_reg2, i) > 0)
+    if (REGTAINT(src_reg1, i) > 0 || REGTAINT(src_reg2, i) > 0)
     {
-      REGTAINT(dst_reg, i) = nshr_addtid_scale_add(scale, REGTAINT(src_reg1, i), REGTAINT(src_reg2, i));
+    	FAIL();
     }
-    else if (REGTAINT(src_reg1, i) > 0)
-    {
-
-    }
+    
+    REGTAINT(dst_reg, i) = -1;
   } 
 }

@@ -73,7 +73,7 @@ typedef void (*instrFunc)(void *, instr_t *, instrlist_t *);
 #endif
 
 #define FAIL() dr_printf("FAIL! at %s:%d.\n", __FILE__, __LINE__); \
-			//	exit(-1);
+                 				exit(-1);
 
 void assert(bool a);
 
@@ -92,7 +92,7 @@ void assert(bool a);
 #define DECODE_REG3(mask)		int reg_index3 =  (mask & 0xFF0000) >> 16; 	\
 					int reg_start3 = (mask & 0xFF00) >> 8;
 
-#define GET_CONTEXT()			dr_mcontext_t mcontext = {sizeof(mcontext),DR_MC_ALL,}; \
+#define GET_CONTEXT()			dr_mcontext_t mcontext = {sizeof(mcontext),DR_MC_ALL}; \
 					void *drcontext = dr_get_current_drcontext(); \
 					dr_get_mcontext(drcontext, &mcontext)
 
@@ -159,7 +159,8 @@ extern int nextID;
 
 
 // syscalls.
-void nshr_event_post_syscall(void *drcontext, int id);
+bool nshr_event_post_syscall(void *drcontext, int id);
+bool nshr_event_pre_syscall(void *drcontext, int id);
 bool nshr_syscall_filter(void *drcontext, int sysnum);
 
 // taint.
@@ -171,7 +172,8 @@ void nshr_taint_class_reg2mem(int segment, int reg_mask, int scale, int base, in
 void nshr_taint_class_constmem2reg(uint64 addr, int reg_mask); 
 void nshr_taint_class_reg2constmem(int reg_mask, uint64 addr); 
 void nshr_taint_class_reg_rm(int reg);
-void nshr_taint_class_mem_rm(int segment, int disp, int scale, int base, int index, int size);
+void nshr_taint_class_baseindexmem_rm(int segment, int disp, int scale, int base, int index, int size);
+void nshr_taint_class_mem_rm(uint64 addr, int size);
 
 // instructions.
 dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr_t *inst, bool for_trace, 

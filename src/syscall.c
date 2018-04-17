@@ -19,46 +19,54 @@ bool nshr_syscall_filter(void *drcontext, int sysnum)
   return false;
 }
 
-static void process_open(void *drcontext)
-{
-  char *path = (char *) dr_syscall_get_param(drcontext, 0);
+char *open_path;
 
+static void pre_open(void *drcontext)
+{
+  open_path = (char *) dr_syscall_get_param(drcontext, 0);
+}
+
+static void post_open(void *drcontext)
+{
   int result = (int) dr_syscall_get_result(drcontext);
 
   // WARNING! actual syscall returns -1 to -4095 for errors.
   if (result < 0)
   {
-    LSYSCALL("Syscall:\tFailed opening %s.\n", path);
+    LSYSCALL("Syscall:\tFailed opening %s.\n", open_path);
   }
   else
   {
-    LSYSCALL("Syscall:\tOpened %s as FD#%d.\n", path, result);
+    LSYSCALL("Syscall:\tOpened %s as FD#%d.\n", open_path, result);
 
     fds_[result].used = true;
-    fds_[result].path = path;
+    fds_[result].path = open_path;
   }
 }
 
-static void process_read(void *drcontext)
-{
-  int fd     = 			dr_syscall_get_param(drcontext, 0);
-  char *addr = (char *) dr_syscall_get_param(drcontext, 1);
-  int size   = 			dr_syscall_get_param(drcontext, 2);
-  int result = (int)    dr_syscall_get_result(drcontext);
+int read_fd;
+char *read_addr;
 
-  UNUSED(fd);
-  UNUSED(size);
+static void pre_read(void *drcontext)
+{
+  read_fd   = 			dr_syscall_get_param(drcontext, 0);
+  read_addr = (char *)	dr_syscall_get_param(drcontext, 1);
+}
+
+static void post_read(void *drcontext)
+{
+  int result = (int)    dr_syscall_get_result(drcontext);
 
   // WARNING! actual syscall returns -1 to -4095 for errors.
   if (result < 0)
   {
-    LSYSCALL("Syscall:\tfailed reading from FD#%d.\n", fd);
+    LSYSCALL("Syscall:\tfailed reading from FD#%d.\n", read_fd);
   }
   else
   {
-    LSYSCALL("Syscall:\tRead %d bytes from FD#%d to %p\n", result, fd, addr);
+    LSYSCALL("Syscall:\tRead %d bytes from FD#%d to %p\n", result, read_fd, read_addr);
 
-    nshr_taint((reg_t) addr, result, fd);
+    nshr_taint((reg_t) read_addr, result, read_fd);
   }
 }
 
@@ -66,18 +74,34 @@ static void process_read(void *drcontext)
 // Called for each syscall.
 //
 
-void nshr_event_post_syscall(void *drcontext, int id)
+bool nshr_event_pre_syscall(void *drcontext, int id)
 {
-  STOP_IF_NOT_STARTED()
+  STOP_IF_NOT_STARTED(true)
 
   if (id == SYS_read)
   {
-    process_read(drcontext);
+    pre_read(drcontext);
   }
   else if (id == SYS_open)
   {
-    process_open(drcontext);
+    pre_open(drcontext);
   }
 
-  return;
+  return true;
+}
+
+bool nshr_event_post_syscall(void *drcontext, int id)
+{
+  STOP_IF_NOT_STARTED(true)
+
+  if (id == SYS_read)
+  {
+    post_read(drcontext);
+  }
+  else if (id == SYS_open)
+  {
+    post_open(drcontext);
+  }
+
+  return true;
 }
