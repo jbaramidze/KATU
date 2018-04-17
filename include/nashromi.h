@@ -96,7 +96,22 @@ void assert(bool a);
 					void *drcontext = dr_get_current_drcontext(); \
 					dr_get_mcontext(drcontext, &mcontext)
 
- 
+enum prop_type {
+  PROP_MOV,
+  PROP_ADD,
+  PROP_SUB,
+  PROP_AND,
+  PROP_OR,
+  PROP_XOR,
+  PROP_MULT,
+  PROP_ADC,
+  PROP_SBB
+
+};
+
+static const char *PROP_NAMES[] = {
+    "mov", "add", "sub", "and", "or", "xor", "mul", "adc", "sbb"
+};
 
 //
 // Logging definitions.
@@ -176,12 +191,15 @@ void nshr_taint_mv_reg_rm(int reg);
 void nshr_taint_mv_baseindexmem_rm(int segment, int disp, int scale, int base, int index, int size);
 void nshr_taint_mv_mem_rm(uint64 addr, int size);
 
+void nshr_taint_mix_reg_add(int dst_reg, int64 value, int type);
+
 // instructions.
 dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr_t *inst, bool for_trace, 
 	                              bool translating, void *user_data);
 void nshr_init_opcodes(void);
 
 int nshr_addtid_scale_add(int scale, int id1, int id2);
+
 
 
 #endif

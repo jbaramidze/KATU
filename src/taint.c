@@ -19,7 +19,7 @@ const char *reg_mask_names[16] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi
 #define ADDR(address) ((address) % TAINTMAP_SIZE)
 
 
-inline int find_index(reg_t addr, int i)
+int find_index(reg_t addr, int i)
 {
 	int index = 0;
 
@@ -38,7 +38,7 @@ inline int find_index(reg_t addr, int i)
     return index;
 }
 
-void nshr_taint_mv_reg2mem(int segment, int src_reg, int scale, int base_reg, int index_reg, int disp)
+void nshr_taint_mv_reg2mem(int segment, int src_reg, int disp, int scale, int base_reg, int index_reg)
 {
   GET_CONTEXT();
   
@@ -191,6 +191,20 @@ void nshr_taint_mv_reg2reg(int src_reg, int dst_reg)
                                    REGTAINT(dst_reg, i));
 
     REGTAINT(dst_reg, i) = REGTAINT(src_reg, i);
+  }
+}
+
+void nshr_taint_mix_reg_add(int dst_reg, int64 value, int type)
+{
+  LTAINT(true, "Taint:\t\tDOING '%s' by 0x%x to %s size %d\n", PROP_NAMES[type], value, 
+  	         REGNAME(dst_reg), REGSIZE(dst_reg));
+
+  for (int i = 0; i < REGSIZE(mask); i++)
+  {
+    LTAINT_VERBOSE(i, (REGTAINT(dst_reg, i) > 0), "Taint:\t\t\tDOING '%s' by 0x%x to %s byte %d TAINT #%d.\n", 
+                       PROP_NAMES[type], value, REGNAME(mask), REGSTART(mask) + i, REGTAINT(mask, i));
+
+   // ???
   }
 }
 

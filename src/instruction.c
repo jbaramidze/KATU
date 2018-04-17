@@ -95,7 +95,7 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
 }
 
-static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_t src, opnd_t dst)
+static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_t src, opnd_t dst, enum prop_type type)
 {
   // src: base+index
   if (opnd_is_base_disp(src))
@@ -106,9 +106,11 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
     int scale          = opnd_get_scale(src);
     int disp           = opnd_get_disp(src);
 
-    // base+index to reg
     if (opnd_is_reg(dst))
     {
+      /*
+          base+index to register.
+      */
       const char *regname = get_register_name(opnd_get_reg(dst));
       int size            = opnd_size_in_bytes(reg_get_size(opnd_get_reg(dst)));
 
@@ -134,9 +136,11 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
   // src: immediate.
   else if (opnd_is_immed(src))
   {
-    // immediate to reg
     if (opnd_is_reg(dst))
     {
+      /*
+          immediate to register.
+      */
       const char *regname = get_register_name(opnd_get_reg(dst));
       int size            = opnd_size_in_bytes(reg_get_size(opnd_get_reg(dst)));
 
@@ -145,15 +149,31 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       UNUSED(regname);
       UNUSED(size);
 
-      LINSTRDETAIL("InsDetail:\tRemove taint at %s, %d bytes\n", regname, size);
+      if (type == PROP_MOV)
+      {
+        LINSTRDETAIL("InsDetail:\tRemove taint at %s, %d bytes\n", regname, size);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, 1,
-                               OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, 1,
+                                 OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
+      }
+      else
+      {
+        int64 value = opnd_get_immed_int(src);
 
+        LINSTRDETAIL("InsDetail:\tDoing '%s' to taint at %s, by 0x%x, %d bytes\n", PROP_NAMES[type], 
+        	             regname, value, size);
+
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_reg_add, false, 3,
+                                 OPND_CREATE_INT32(ENCODE_REG(dst_reg)), OPND_CREATE_INT64(value),
+                                     OPND_CREATE_INT32(type));
+
+      }
     }
-    // immediate to base+index
     else if (opnd_is_base_disp(dst))
     {
+      /*
+          immediate to base+index.
+      */
       reg_id_t base_reg  = opnd_get_base(dst);
       reg_id_t index_reg = opnd_get_index(dst);
       reg_id_t seg_reg   = opnd_get_segment(dst);
@@ -178,9 +198,11 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       	FAIL();
       }
     }
-    // immediate to rel addr
     else if (opnd_is_rel_addr(dst))
     {
+      /*
+          immediate to relative memory.
+      */
       app_pc addr;
 
       instr_get_rel_addr_target(instr, &addr);
@@ -209,9 +231,11 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
     UNUSED(regname);
     UNUSED(size);
 
-    // reg to base+disp
     if (opnd_is_base_disp(dst))
     {
+      /*
+          register to base+index.
+      */
       reg_id_t base_reg  = opnd_get_base(dst);
       reg_id_t index_reg = opnd_get_index(dst);
       reg_id_t seg_reg   = opnd_get_segment(dst);
@@ -226,11 +250,13 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
                        OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(ENCODE_REG(src_reg)), OPND_CREATE_INT32(disp), 
                             OPND_CREATE_INT32(scale), OPND_CREATE_INT32(base_reg),  OPND_CREATE_INT32(index_reg));
     }
-    // reg to reg
     else if (opnd_is_reg(dst))
     {
-
+      /*
+          register to register.
+      */
       reg_id_t dst_reg = opnd_get_reg(dst);
+
       const char *regname2 = get_register_name(dst_reg);
 
       UNUSED(regname2);
@@ -240,9 +266,11 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2reg, false, 2,
                              OPND_CREATE_INT32(ENCODE_REG(src_reg)), OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
     }
-    // reg to rel addr
     else if (opnd_is_rel_addr(dst))
     {
+      /*
+          register to relative memory.
+      */
       app_pc addr;
 
       instr_get_rel_addr_target(instr, &addr);
@@ -265,9 +293,11 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
 
     instr_get_rel_addr_target(instr, &addr);
 
-    // rel addr to reg
     if (opnd_is_reg(dst))
     {
+      /*
+          relative memory to register.
+      */
       const char *regname = get_register_name(opnd_get_reg(dst));
       int size            = opnd_size_in_bytes(reg_get_size(opnd_get_reg(dst)));
 
@@ -303,7 +333,7 @@ static void opcode_mov(void *drcontext, instr_t *instr, instrlist_t *ilist)
   //LINSTR("AAAAAAAAA dst: isreg: %d isimmed: %d isbaseindex: %d ismem: %d isreladdr %d\n", opnd_is_reg(dst), 
   //                                     opnd_is_immed(dst),  opnd_is_base_disp(dst),  opnd_is_mem_instr(dst), opnd_is_rel_addr(dst));
 
-  propagate(drcontext, instr, ilist, src, dst);
+  propagate(drcontext, instr, ilist, src, dst, PROP_MOV);
 }
 
 
@@ -316,7 +346,32 @@ static void opcode_add(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
   if (memcmp((void *) &src2, (void *) &dst, sizeof(opnd_t)) != 0) {  FAIL(); }
 
-  propagate(drcontext, instr, ilist, src1, dst);
+  int opcode = instr_get_opcode(instr);
+
+  if (opcode == OP_sub)
+  {
+    propagate(drcontext, instr, ilist, src1, dst, PROP_SUB);
+  }
+  else if (opcode == OP_add)
+  {
+    propagate(drcontext, instr, ilist, src1, dst, PROP_ADD);
+  }
+  else if (opcode == OP_or)
+  {
+    propagate(drcontext, instr, ilist, src1, dst, PROP_OR);
+  }
+  else if (opcode == OP_adc)
+  {
+    propagate(drcontext, instr, ilist, src1, dst, PROP_ADC);
+  }
+  else if (opcode == OP_sbb)
+  {
+    propagate(drcontext, instr, ilist, src1, dst, PROP_SBB);
+  }
+  else if (opcode == OP_and)
+  {
+    propagate(drcontext, instr, ilist, src1, dst, PROP_AND);
+  }
 
 }
 
@@ -328,9 +383,9 @@ static void opcode_ignore(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
 static void wrong_opcode(void *drcontext, instr_t *instr, instrlist_t *ilist)
 { 
-  LERROR("ERROR! instruction not implemented.\n");
+//  LERROR("ERROR! instruction not implemented.\n");
 
-  FAIL();
+//  FAIL();
 }
 
 static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
