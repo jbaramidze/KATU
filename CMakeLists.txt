@@ -28,12 +28,14 @@ else ()
   set(libtype SHARED)
 endif ()
 
+set(IGNORE_WARNINGS "-Wno-unused-function -Wno-unused-variable -Wno-missing-field-initializers")
+
 if (NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE MATCHES Debug)
-  set(CMAKE_C_FLAGS "-std=gnu99 -DDEBUG -Wall -Wextra -g -O0 -Wno-unused-parameter -Wno-unused-function")
-  set(CMAKE_CXX_FLAGS "-DDEBUG -Wall -Wextra -std=c++11 -g -O0 -Wno-unused-parameter -Wno-unused-function")
+  set(CMAKE_C_FLAGS "${IGNORE_WARNINGS} -std=gnu99 -DDEBUG -Wall -Wextra -g -O0 -Wno-unused-parameter")
+  set(CMAKE_CXX_FLAGS "${IGNORE_WARNINGS} -DDEBUG -Wall -Wextra -std=c++11 -g -O0 -Wno-unused-parameter")
 else ()
-  set(CMAKE_C_FLAGS "-O2 -Wall -std=gnu99 -Wno-unused-function")
-  set(CMAKE_CXX_FLAGS "-O2 -Wall -std=c++11 -Wno-unused-function")
+  set(CMAKE_C_FLAGS "${IGNORE_WARNINGS} -O2 -Wall -std=gnu99")
+  set(CMAKE_CXX_FLAGS "${IGNORE_WARNINGS} -O2 -Wall -std=c++11")
 endif ()
 
 if (NOT DEFINED DynamoRIO_DIR)

@@ -9,24 +9,32 @@
 // Constants.
 //
 
-#define MAX_FD 			255
-#define MAX_UID			1000
-#define MAX_ID			1000000
-#define MAX_OPCODE	 	2048
-#define MAX_UID_IN_ID	8
-#define MAX_CONTSTR		8
-#define TAINTMAP_NUM	10
-#define TAINTMAP_SIZE	65536
+#define MAX_FD                255
+#define MAX_UID               1000
+#define MAX_ID                1000000
+#define MAX_OPCODE            2048
+#define DEFAULT_OPERATIONS    8
+#define TAINTMAP_NUM          10
+#define TAINTMAP_SIZE         65536
+
+enum prop_type {
+  PROP_MOV,
+  PROP_ADD,
+  PROP_SUB,
+  PROP_AND,
+  PROP_OR,
+  PROP_XOR,
+  PROP_MULT,
+  PROP_ADC,
+  PROP_SBB
+
+};
 
 //
 // Types.
 //
 
 typedef int taint_t;
-
-typedef struct {
-
-} Constr_type;
 
 typedef struct {
   bool used;
@@ -36,16 +44,21 @@ typedef struct {
 
 typedef struct {
   int fd;
-  Constr_type con[MAX_CONTSTR];
 
 } UID_entity;
 
-// Linear Sum of LScoeff[i]*LSuids[i] + LSoffset (0<=i<LSsize)
 typedef struct {
-  int LScoeff[MAX_UID_IN_ID];
-  int LSuids[MAX_UID_IN_ID];
-  int LSoffset;
-  int LSsize;
+  enum prop_type type;
+  int64 value;
+  int is_id;
+
+} Operations;
+
+
+typedef struct {
+  int uid;
+  Operations ops[DEFAULT_OPERATIONS];
+  int ops_size;
 
   // this ID can be of 
   int size;
@@ -96,19 +109,6 @@ void assert(bool a);
 					void *drcontext = dr_get_current_drcontext(); \
 					dr_get_mcontext(drcontext, &mcontext)
 
-enum prop_type {
-  PROP_MOV,
-  PROP_ADD,
-  PROP_SUB,
-  PROP_AND,
-  PROP_OR,
-  PROP_XOR,
-  PROP_MULT,
-  PROP_ADC,
-  PROP_SBB
-
-};
-
 static const char *PROP_NAMES[] = {
     "mov", "add", "sub", "and", "or", "xor", "mul", "adc", "sbb"
 };
@@ -117,40 +117,44 @@ static const char *PROP_NAMES[] = {
 // Logging definitions.
 //
 
-#ifdef DUMP_SYSCALL
-#define LSYSCALL(...) dr_printf(__VA_ARGS__)
+#ifdef LOGTEST
+#define LTEST(...) dr_printf(__VA_ARGS__)
 #else
-#define LSYSCALL(format, ...)
+#define LTEST(...) 
 #endif
 
-#ifdef DUMP_INSTRUCTIONS
-#define LINSTR(...) dr_printf(__VA_ARGS__)
+#ifdef LOGDEBUG
+#define LDEBUG(...) dr_printf(__VA_ARGS__)
 #else
-#define LINSTR(...) 
+#define LDEBUG(...) 
 #endif
 
-#ifdef DUMP_INSTRUCTION_DETAILS
-#define LINSTRDETAIL(...) dr_printf(__VA_ARGS__)
+#ifdef LOGDUMP
+#define LDUMP(...) dr_printf(__VA_ARGS__)
 #else
-#define LINSTRDETAIL(...)
+#define LDUMP(...)
 #endif
 
 #define LERROR(...) dr_printf(__VA_ARGS__)
 
-#if defined DUMP_TAINT
-#define LTAINT(A, ...) dr_printf(__VA_ARGS__)
-#elif defined TEST_TAINT
-#define LTAINT(A, ...) if (A) dr_printf(__VA_ARGS__)
+/*
+Specific logging functions.
+*/
+
+#if defined LOGDEBUG
+#define LDEBUG_TAINT(A, ...) dr_printf(__VA_ARGS__)
+#elif defined LOGTEST
+#define LDEBUG_TAINT(A, ...) if (A) dr_printf(__VA_ARGS__)
 #else
-#define LTAINT(A, ...)
+#define LDEBUG_TAINT(A, ...)
 #endif
 
-#if defined DUMP_TAINT_VERBOSE
-#define LTAINT_VERBOSE(i, A, ...) dr_printf(__VA_ARGS__)
-#elif defined TEST_TAINT_VERBOSE
-#define LTAINT_VERBOSE(i, A, ...) if ((A) && i == 0) dr_printf(__VA_ARGS__)				
+#if defined LOGDUMP
+#define LDUMP_TAINT(i, A, ...) dr_printf(__VA_ARGS__)
+#elif defined LOGTEST
+#define LDUMP_TAINT(i, A, ...) if ((A) && i == 0) dr_printf(__VA_ARGS__)				
 #else
-#define LTAINT_VERBOSE(i, A, ...)
+#define LDUMP_TAINT(i, A, ...)
 #endif
 
 //
@@ -168,13 +172,16 @@ extern ID_entity ids_[MAX_ID];
 extern int nextUID;
 extern int nextID;
 
+int newUID(int fd);
+int changeID(int id, enum prop_type operation, int64 value, int is_id);
+
 //
 // Function declarations.
 //
 
 
 // syscalls.
-bool nshr_event_post_syscall(void *drcontext, int id);
+void nshr_event_post_syscall(void *drcontext, int id);
 bool nshr_event_pre_syscall(void *drcontext, int id);
 bool nshr_syscall_filter(void *drcontext, int sysnum);
 
@@ -197,8 +204,6 @@ void nshr_taint_mix_reg_add(int dst_reg, int64 value, int type);
 dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr_t *inst, bool for_trace, 
 	                              bool translating, void *user_data);
 void nshr_init_opcodes(void);
-
-int nshr_addtid_scale_add(int scale, int id1, int id2);
 
 
 

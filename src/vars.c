@@ -1,3 +1,7 @@
+#define LOGTEST
+#define LOGDEBUG
+#define LOGDUMP
+
 #include "dr_api.h"
 #include "core/unix/include/syscall.h"
 #include "nashromi.h"
@@ -28,37 +32,68 @@ void assert(bool a)
 }
 
 
-// Create new taint id, scal1*id1 + id2 and return it's id
-int nshr_addtid_scale_add(int scale, int id1, int id2)
+int changeID(int id, enum prop_type operation, int64 value, int is_id)
 {
-  int i, j;
+  /*
+  First copy everything from old id.
+  */
+  ids_[nextID].uid      = ids_[id].uid;
+  ids_[nextID].ops_size = ids_[id].ops_size;
+  ids_[nextID].size     = ids_[id].size;
+  ids_[nextID].index    = ids_[id].index;
 
-  for (i = 0; i < ids_[id1].LSsize; i++)
+  int i;
+
+  for (i = 0; i < ids_[id].ops_size; i++)
   {
-    ids_[nextID].LScoeff[i] = ids_[id1].LScoeff[i]*scale;
-    ids_[nextID].LSuids[i]  = ids_[id1].LSuids[i];
+    ids_[nextID].ops[i].type  = ids_[id].ops[i].type;
+    ids_[nextID].ops[i].value = ids_[id].ops[i].value;
+    ids_[nextID].ops[i].is_id = ids_[id].ops[i].is_id;
   }
 
-  for (j = 0; j < ids_[id2].LSsize; j++)
+  /*
+  Now append the new one. For some cases we can just
+  modify the last operation to include the new one.
+  */
+
+  if (ids_[nextID].ops_size > 0 &&                                            // we have at least 1 operation
+          ids_[nextID].ops[ids_[nextID].ops_size - 1].type == operation &&    // last operation is the same
+              (operation == PROP_ADD || operation == PROP_SUB) &&             // operation is of specific type
+                  ids_[nextID].ops[ids_[nextID].ops_size - 1].is_id == 0  &&  // last operation is by constant 
+                      is_id == 0)                                              // new operation is also by constant
   {
-  	ids_[nextID].LScoeff[i + j] = ids_[id2].LScoeff[j];
-  	ids_[nextID].LSuids[i + j]  = ids_[id2].LSuids[j];
+    if (operation == PROP_ADD)
+    {
+      ids_[nextID].ops[ids_[nextID].ops_size - 1].value += value;
+    }
+    else if (operation == PROP_SUB)
+    {
+      ids_[nextID].ops[ids_[nextID].ops_size - 1].value -= value;
+    }
+  }
+  else
+  {
+    /*
+    Just add a new operation.
+    */
+    ids_[nextID].ops[ids_[nextID].ops_size].type  = operation;
+    ids_[nextID].ops[ids_[nextID].ops_size].is_id = is_id;
+    ids_[nextID].ops[ids_[nextID].ops_size].value = value;
+
+    ids_[nextID].ops_size++;
   }
 
-  ids_[nextID].LSoffset = ids_[id1].LSoffset + ids_[id2].LSoffset;
-  ids_[nextID].LSsize = ids_[id1].LSsize + ids_[id2].LSsize;
+  return nextID++;
+}
 
-  dr_printf("Engine:\t\tReturning new id %d size %d offset %d Sum of: ", 
-  	            nextID, ids_[nextID].LSsize, ids_[nextID].LSoffset);
+int newUID(int fd)
+{
+  uids_[nextUID++].fd       = fd;
 
-  for (i = 0; i < ids_[nextID].LSsize; i++)
-  {
-  	dr_printf("%d*#%d ", ids_[nextID].LScoeff[i], ids_[nextID].LSuids[i]);
-  }
+  ids_[nextID].uid          = nextUID;
+  ids_[nextID].ops_size     = 0;
+  ids_[nextID].size         = 1;
+  ids_[nextID].index        = 0;
 
-  dr_printf("\n");
-
-  nextID++;
-
-  return nextID;
+  return nextID++;
 }

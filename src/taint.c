@@ -1,5 +1,6 @@
-#define TEST_TAINT
-#define TEST_TAINT_VERBOSE
+#define LOGTEST
+#define LOGDEBUG
+#undef  LOGDUMP
 
 #include "dr_api.h"
 #include "core/unix/include/syscall.h"
@@ -47,17 +48,17 @@ void nshr_taint_mv_reg2mem(int segment, int src_reg, int disp, int scale, int ba
 
   reg_t addr = base + index*scale + disp;
 
-  LTAINT_VERBOSE(0, false, "Taint:\t\tDECODED: base %p index %d scale %d disp %d.\n", 
+  LDUMP_TAINT(0, false, "Taint:\t\tDECODED: base %p index %d scale %d disp %d.\n", 
                      base, index, scale, disp);
 
-  LTAINT(false, "Taint:\t\tREG %s start %d->\t\t MEM %p size %d.\n", 
+  LDEBUG_TAINT(false, "Taint:\t\tREG %s start %d->\t\t MEM %p size %d.\n", 
   	         REGNAME(src_reg), REGSTART(src_reg), addr, REGSIZE(src_reg));
 
   for (int i = 0; i < REGSIZE(src_reg); i++)
   {
     int index = find_index(addr, i);
 
-    LTAINT_VERBOSE(i, (REGTAINT(src_reg, i) > 0 || MEMTAINTVAL(index, addr + i) > 0), 
+    LDUMP_TAINT(i, (REGTAINT(src_reg, i) > 0 || MEMTAINTVAL(index, addr + i) > 0), 
     	                 "Taint:\t\t\tREG %s byte %d TAINT#%d->\t\t MEM %p TAINT #%d INDEX %d.\n", 
                            REGNAME(src_reg), REGSTART(src_reg) + i, REGTAINT(src_reg, i),
                                ADDR(addr + i), MEMTAINTVAL(index, addr + i), index);
@@ -69,14 +70,14 @@ void nshr_taint_mv_reg2mem(int segment, int src_reg, int disp, int scale, int ba
 
 void nshr_taint_mv_reg2constmem(int src_reg, uint64 addr)
 {
-  LTAINT(false, "Taint:\t\tREG %s start %d->\t\t MEM %p size %d.\n", 
+  LDEBUG_TAINT(false, "Taint:\t\tREG %s start %d->\t\t MEM %p size %d.\n", 
              REGNAME(src_reg), REGSTART(src_reg), addr, REGSIZE(src_reg)); 
 
   for (int i = 0; i < REGSIZE(src_reg); i++)
   {
     int index = find_index(addr, i);
 
-    LTAINT_VERBOSE(i, (MEMTAINTVAL(index, addr + i) > 0 || REGTAINT(src_reg, i) > 0),
+    LDUMP_TAINT(i, (MEMTAINTVAL(index, addr + i) > 0 || REGTAINT(src_reg, i) > 0),
                        "Taint:\t\t\tREG %s byte %d TAINT #%d->\t\t MEM %p TAINT #%d INDEX %d.\n", 
                            REGNAME(src_reg), REGSTART(src_reg) + i, REGTAINT(src_reg, i), ADDR(addr + i), 
                                MEMTAINTVAL(index, addr + i), index);
@@ -88,7 +89,7 @@ void nshr_taint_mv_reg2constmem(int src_reg, uint64 addr)
 
 void nshr_taint_mv_constmem2reg(uint64 addr, int dst_reg)
 {
-  LTAINT(false, "Taint:\t\tMEM %p->\t\t REG %s start %d size %d.\n", 
+  LDEBUG_TAINT(false, "Taint:\t\tMEM %p->\t REG %s start %d size %d.\n", 
              addr, REGNAME(dst_reg), REGSTART(dst_reg), REGSIZE(dst_reg));  
 
   for (int i = 0; i < REGSIZE(dst_reg); i++)
@@ -96,7 +97,7 @@ void nshr_taint_mv_constmem2reg(uint64 addr, int dst_reg)
     int index = find_index(addr, i);
 
 
-    LTAINT_VERBOSE(i, (REGTAINT(dst_reg, i) > 0 || MEMTAINTVAL(index, addr + i) > 0), 
+    LDUMP_TAINT(i, (REGTAINT(dst_reg, i) > 0 || MEMTAINTVAL(index, addr + i) > 0), 
                        "Taint:\t\t\tMEM %p TAINT #%d->\t\t REG %s byte %d TAINT #%d INDEX %d.\n", 
                            ADDR(addr + i), MEMTAINTVAL(index, addr + i), REGNAME(dst_reg), 
                                REGSTART(dst_reg) + i, REGTAINT(dst_reg, i), index);
@@ -114,17 +115,17 @@ void nshr_taint_mv_mem2reg(int segment, int disp, int scale, int base_reg, int i
 
   reg_t addr = base + index*scale + disp;
 
-  LTAINT_VERBOSE(0, false, "Taint:\t\tDECODED: base %p index %d scale %d disp %d.\n", 
+  LDUMP_TAINT(0, false, "Taint:\t\tDECODED: base %p index %d scale %d disp %d.\n", 
                      base, index, scale, disp);
 
-  LTAINT(false, "Taint:\t\tMEM %p->\t\t REG %s start %d size %d.\n", 
+  LDEBUG_TAINT(false, "Taint:\t\tMEM %p->\t REG %s start %d size %d.\n", 
              addr, REGNAME(dst_reg), REGSTART(dst_reg), REGSIZE(dst_reg));
 
   for (int i = 0; i < REGSIZE(dst_reg); i++)
   {
     int index = find_index(addr, i);
 
-    LTAINT_VERBOSE(i, (REGTAINT(dst_reg, i) > 0 || MEMTAINTVAL(index, addr + i) > 0),
+    LDUMP_TAINT(i, (REGTAINT(dst_reg, i) > 0 || MEMTAINTVAL(index, addr + i) > 0),
                        "Taint:\t\t\tMEM %p TAINT #%d->\t\t REG %s byte %d TAINT #%d INDEX %d.\n", 
                            ADDR(addr + i), MEMTAINTVAL(index, addr + i), REGNAME(dst_reg), 
                                REGSTART(dst_reg) + i, REGTAINT(dst_reg, i), index);
@@ -135,14 +136,14 @@ void nshr_taint_mv_mem2reg(int segment, int disp, int scale, int base_reg, int i
 
 void nshr_taint_mv_mem_rm(uint64 addr, int size)
 {
-  LTAINT(false, "Taint:\t\tREMOVE MEM %p size %d\n", addr, size);
+  LDEBUG_TAINT(false, "Taint:\t\tREMOVE MEM %p size %d\n", addr, size);
 
   for (int i = 0; i < size; i++)
   {
     int index = find_index(addr, i);
 
-    LTAINT_VERBOSE(i, (MEMTAINTVAL(index, addr + i) > 0), 
-                      "Taint:\t\t\tREMOVE MEM %p TAINT #%d INDEX %d.\n", 
+    LDUMP_TAINT(i, (MEMTAINTVAL(index, addr + i) > 0), 
+                      "Taint:\t\t\tREMOVE\t\t\t\t MEM %p TAINT #%d INDEX %d.\n", 
                            ADDR(addr + i), MEMTAINTVAL(index, addr + i), index);
 
     MEMTAINTVAL(index, addr + i) = -1;
@@ -158,16 +159,16 @@ void nshr_taint_mv_baseindexmem_rm(int segment, int disp, int scale, int base_re
 
   reg_t addr = base + index*scale + disp;
 
-  LTAINT_VERBOSE(0, false, "Taint:\t\tDECODED: base %p index %d scale %d disp %d.\n", 
+  LDUMP_TAINT(0, false, "Taint:\t\tDECODED: base %p index %d scale %d disp %d.\n", 
   	                 base, index, scale, disp);
 
-  LTAINT(false, "Taint:\t\tREMOVE MEM %p size %d\n", addr, size);
+  LDEBUG_TAINT(false, "Taint:\t\tREMOVE\t\t\t\t MEM %p size %d\n", addr, size);
 
   for (int i = 0; i < size; i++)
   {
     int index = find_index(addr, i);
 
-    LTAINT_VERBOSE(i, (MEMTAINTVAL(index, addr + i) > 0), 
+    LDUMP_TAINT(i, (MEMTAINTVAL(index, addr + i) > 0), 
                       "Taint:\t\t\tREMOVE MEM %p TAINT #%d INDEX %d.\n", 
                            ADDR(addr + i), MEMTAINTVAL(index, addr + i), index);
 
@@ -179,12 +180,12 @@ void nshr_taint_mv_reg2reg(int src_reg, int dst_reg)
 {
   // mask1 -> mask2
 
-  LTAINT(false, "Taint:\t\tREG %s start %d->\t\t REG %s start %d size %d.\n", 
+  LDEBUG_TAINT(false, "Taint:\t\tREG %s start %d->\t\t REG %s start %d size %d.\n", 
              REGNAME(src_reg), REGSTART(src_reg), REGNAME(dst_reg), REGSTART(dst_reg), REGSIZE(src_reg));
 
   for (int i = 0; i < REGSIZE(src_reg); i++)
   {
-    LTAINT_VERBOSE(i, (REGTAINT(dst_reg, i) > 0 || REGTAINT(src_reg, i) > 0), 
+    LDUMP_TAINT(i, (REGTAINT(dst_reg, i) > 0 || REGTAINT(src_reg, i) > 0), 
     	               "Taint:\t\t\tREG %s byte %d TAINT #%d->\t\t\t REG %s byte %d TAINT #%d.\n", 
                            REGNAME(src_reg), REGSTART(src_reg) + i, REGTAINT(src_reg, i),
                                REGNAME(dst_reg), REGSTART(dst_reg) + i,
@@ -196,25 +197,27 @@ void nshr_taint_mv_reg2reg(int src_reg, int dst_reg)
 
 void nshr_taint_mix_reg_add(int dst_reg, int64 value, int type)
 {
-  LTAINT(true, "Taint:\t\tDOING '%s' by 0x%x to %s size %d\n", PROP_NAMES[type], value, 
+  LDEBUG_TAINT(true, "Taint:\t\tDOING '%s' by 0x%x to\t\t REG %s size %d\n", PROP_NAMES[type], value, 
   	         REGNAME(dst_reg), REGSIZE(dst_reg));
 
-  for (int i = 0; i < REGSIZE(mask); i++)
+  for (int i = 0; i < REGSIZE(dst_reg); i++)
   {
-    LTAINT_VERBOSE(i, (REGTAINT(dst_reg, i) > 0), "Taint:\t\t\tDOING '%s' by 0x%x to %s byte %d TAINT #%d.\n", 
-                       PROP_NAMES[type], value, REGNAME(mask), REGSTART(mask) + i, REGTAINT(mask, i));
+    LDUMP_TAINT(i, (REGTAINT(dst_reg, i) > 0), "Taint:\t\t\tDOING '%s' by 0x%x to %s byte %d TAINT #%d.\n", 
+                       PROP_NAMES[type], value, REGNAME(dst_reg), REGSTART(dst_reg) + i, REGTAINT(dst_reg, i));
 
-   // ???
+    if (REGTAINT(dst_reg, i) > 0)
+    {
+    }
   }
 }
 
 void nshr_taint_mv_reg_rm(int mask)
 {
-  LTAINT(false, "Taint:\t\tREMOVE REG %s start %d size %d\n", REGNAME(mask), REGSTART(mask), REGSIZE(mask));
+  LDEBUG_TAINT(false, "Taint:\t\tREMOVE\t\t\t\t REG %s start %d size %d\n", REGNAME(mask), REGSTART(mask), REGSIZE(mask));
 
   for (int i = 0; i < REGSIZE(mask); i++)
   {
-    LTAINT_VERBOSE(i, (REGTAINT(mask, i) > 0), "Taint:\t\t\tREMOVE REG %s byte %d TAINT #%d.\n", 
+    LDUMP_TAINT(i, (REGTAINT(mask, i) > 0), "Taint:\t\t\tREMOVE REG %s byte %d TAINT #%d.\n", 
                        REGNAME(mask), REGSTART(mask) + i, REGTAINT(mask, i));
 
     REGTAINT(mask, i) = -1;
@@ -223,7 +226,7 @@ void nshr_taint_mv_reg_rm(int mask)
 
 void nshr_taint(reg_t addr, unsigned int size, int fd)
 {
-  LTAINT(true, "Taint:\t\tADD MEM %p size %d mark %d\n", addr, size, nextID);
+  LDEBUG_TAINT(true, "Taint:\t\tADD MEM %p size %d mark %d\n", addr, size, nextID);
 
   for (int i = 0; i < size; i++)
   {
@@ -240,29 +243,18 @@ void nshr_taint(reg_t addr, unsigned int size, int fd)
     }
     else
     {
-      LTAINT_VERBOSE(i, false, "Taint:\t\t\tADD MEM %p mark %d TAINT #%d INDEX %d.\n", 
+      LDUMP_TAINT(i, false, "Taint:\t\t\tADD MEM %p mark %d TAINT #%d INDEX %d.\n", 
       	                 ADDR(addr + i), nextID, MEMTAINTVAL(index, addr + i), index);
 
-      uids_[nextUID].fd			= fd;
-
-      ids_[nextID].LScoeff[0]	= 1;
-      ids_[nextID].LSuids[0]	= nextUID;
-      ids_[nextID].LSoffset		= 0;
-      ids_[nextID].LSsize		= 1;
-
-
       MEMTAINTADDR(index, addr + i) = addr;
-      MEMTAINTVAL(index, addr + i) = nextID;
-
-      nextUID++;
-      nextID++;
+      MEMTAINTVAL(index, addr + i) = newUID(fd);
     }
   }
 }
 
 void nshr_taint_mv_2coeffregs2reg(int src_reg1, int scale, int src_reg2, int dst_reg)
 {
-  LTAINT(false, "Taint:\t\tREG %s*%d start %d + REG %s start %d ->\t\t REG %s start %d size %d.\n", 
+  LDEBUG_TAINT(false, "Taint:\t\tREG %s*%d start %d + REG %s start %d ->\t\t REG %s start %d size %d.\n", 
              REGNAME(src_reg1), scale, REGSTART(src_reg1), REGNAME(src_reg2), REGSTART(src_reg2), 
                  REGNAME(dst_reg), REGSTART(dst_reg), REGSIZE(src_reg1));
 

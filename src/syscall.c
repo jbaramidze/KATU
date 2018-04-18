@@ -1,4 +1,6 @@
-#define DUMP_SYSCALL
+#define LOGTEST
+#define LOGDEBUG
+#define LOGDUMP
 
 #include "dr_api.h"
 #include "core/unix/include/syscall.h"
@@ -33,11 +35,11 @@ static void post_open(void *drcontext)
   // WARNING! actual syscall returns -1 to -4095 for errors.
   if (result < 0)
   {
-    LSYSCALL("Syscall:\tFailed opening %s.\n", open_path);
+    LTEST("Syscall:\tFailed opening %s.\n", open_path);
   }
   else
   {
-    LSYSCALL("Syscall:\tOpened %s as FD#%d.\n", open_path, result);
+    LTEST("Syscall:\tOpened %s as FD#%d.\n", open_path, result);
 
     fds_[result].used = true;
     fds_[result].path = open_path;
@@ -60,11 +62,11 @@ static void post_read(void *drcontext)
   // WARNING! actual syscall returns -1 to -4095 for errors.
   if (result < 0)
   {
-    LSYSCALL("Syscall:\tfailed reading from FD#%d.\n", read_fd);
+    LTEST("Syscall:\tfailed reading from FD#%d.\n", read_fd);
   }
   else
   {
-    LSYSCALL("Syscall:\tRead %d bytes from FD#%d to %p\n", result, read_fd, read_addr);
+    LTEST("Syscall:\tRead %d bytes from FD#%d to %p\n", result, read_fd, read_addr);
 
     nshr_taint((reg_t) read_addr, result, read_fd);
   }
@@ -90,9 +92,9 @@ bool nshr_event_pre_syscall(void *drcontext, int id)
   return true;
 }
 
-bool nshr_event_post_syscall(void *drcontext, int id)
+void nshr_event_post_syscall(void *drcontext, int id)
 {
-  STOP_IF_NOT_STARTED(true)
+  STOP_IF_NOT_STARTED()
 
   if (id == SYS_read)
   {
@@ -103,5 +105,5 @@ bool nshr_event_post_syscall(void *drcontext, int id)
     post_open(drcontext);
   }
 
-  return true;
+  return;
 }

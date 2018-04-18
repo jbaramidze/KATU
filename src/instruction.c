@@ -1,5 +1,6 @@
-#define DUMP_INSTRUCTIONS
-#define DUMP_INSTRUCTION_DETAILS
+#define LOGTEST
+#define LOGDEBUG
+#define LOGDUMP
 
 #include "dr_api.h"
 #include "core/unix/include/syscall.h"
@@ -56,7 +57,7 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
     if (base_reg > 0 && index_reg > 0)
     {
-      LINSTRDETAIL("InsDetail:\tTaint from %s + %d*%s + %d to %s, %d bytes.\n", get_register_name(base_reg), 
+      LDUMP("InsDetail:\tTaint from %s + %d*%s + %d to %s, %d bytes.\n", get_register_name(base_reg), 
                        scale, get_register_name(index_reg), disp, get_register_name(dst_reg), size);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_2coeffregs2reg, false, 4,
@@ -66,7 +67,7 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
     else if (index_reg > 0) 
     {
 
-      LINSTRDETAIL("InsDetail:\tTaint from %s to %s, %d bytes.\n", get_register_name(index_reg), 
+      LDUMP("InsDetail:\tTaint from %s to %s, %d bytes.\n", get_register_name(index_reg), 
                        get_register_name(dst_reg), size);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2reg, false, 2,
@@ -75,7 +76,7 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
     else if (base_reg > 0)
     {
 
-      LINSTRDETAIL("InsDetail:\tTaint from %s to %s, %d bytes.\n", get_register_name(base_reg), 
+      LDUMP("InsDetail:\tTaint from %s to %s, %d bytes.\n", get_register_name(base_reg), 
                        get_register_name(dst_reg), size);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2reg, false, 2,
@@ -84,7 +85,7 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
   else if (opnd_is_rel_addr(src))
   {
-    LINSTRDETAIL("InsDetail:\tRemove taint at %s, %d bytes\n", get_register_name(dst_reg), size);
+    LDUMP("InsDetail:\tRemove taint at %s, %d bytes\n", get_register_name(dst_reg), size);
 
     dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, 1,
                              OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
@@ -119,7 +120,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       UNUSED(regname);
       UNUSED(size);
 
-      LINSTRDETAIL("InsDetail:\tTaint from base+disp %s:%s + %d*%s + %d to %s %d bytes.\n", 
+      LDUMP("InsDetail:\tTaint from base+disp %s:%s + %d*%s + %d to %s %d bytes.\n", 
                                          get_register_name(seg_reg), get_register_name(base_reg), scale, 
                                               get_register_name(index_reg), disp, regname, size);
 
@@ -151,7 +152,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
 
       if (type == PROP_MOV)
       {
-        LINSTRDETAIL("InsDetail:\tRemove taint at %s, %d bytes\n", regname, size);
+        LDUMP("InsDetail:\tRemove taint at %s, %d bytes\n", regname, size);
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, 1,
                                  OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
@@ -160,7 +161,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       {
         int64 value = opnd_get_immed_int(src);
 
-        LINSTRDETAIL("InsDetail:\tDoing '%s' to taint at %s, by 0x%x, %d bytes\n", PROP_NAMES[type], 
+        LDUMP("InsDetail:\tDoing '%s' to taint at %s, by 0x%x, %d bytes\n", PROP_NAMES[type], 
         	             regname, value, size);
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_reg_add, false, 3,
@@ -184,7 +185,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
 
       if (seg_reg == DR_REG_NULL)
       {
-        LINSTRDETAIL("InsDetail:\tRemove taint at base+disp %s: %s + %d*%s + %d, %d bytes.\n",
+        LDUMP("InsDetail:\tRemove taint at base+disp %s: %s + %d*%s + %d, %d bytes.\n",
                                    get_register_name(seg_reg), get_register_name(base_reg), scale, 
                                        get_register_name(index_reg), disp, size);
 
@@ -209,7 +210,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
 
       int size = opnd_size_in_bytes(opnd_get_size(src));
 
-      LINSTRDETAIL("InsDetail:\tRemove taint at pc-relative %llx, %d bytes.\n", 
+      LDUMP("InsDetail:\tRemove taint at pc-relative %llx, %d bytes.\n", 
                                       addr, size);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_mem_rm, false, 2, 
@@ -242,7 +243,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       int scale          = opnd_get_scale(dst);
       int disp           = opnd_get_disp(dst);
 
-      LINSTRDETAIL("InsDetail:\tTaint %s to base+disp %s: %s + %d*%s + %d, %d bytes.\n", 
+      LDUMP("InsDetail:\tTaint %s to base+disp %s: %s + %d*%s + %d, %d bytes.\n", 
                                       regname, get_register_name(seg_reg), get_register_name(base_reg), scale, 
                                           get_register_name(index_reg), disp, size);
 
@@ -261,7 +262,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
 
       UNUSED(regname2);
 
-      LINSTRDETAIL("InsDetail:\tTaint %s to %s.\n", regname, regname2);
+      LDUMP("InsDetail:\tTaint %s to %s.\n", regname, regname2);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2reg, false, 2,
                              OPND_CREATE_INT32(ENCODE_REG(src_reg)), OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
@@ -275,7 +276,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
 
       instr_get_rel_addr_target(instr, &addr);
 
-      LINSTRDETAIL("InsDetail:\tTaint %s to pc-relative %llx, %d bytes.\n", 
+      LDUMP("InsDetail:\tTaint %s to pc-relative %llx, %d bytes.\n", 
                                       regname, addr, size);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2constmem, false, 2, 
@@ -306,7 +307,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       UNUSED(regname);
       UNUSED(size);
 
-      LINSTRDETAIL("InsDetail:\tTaint from pc-relative %llx to %s %d bytes.\n", addr, regname, size);
+      LDUMP("InsDetail:\tTaint from pc-relative %llx to %s %d bytes.\n", addr, regname, size);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_constmem2reg, false, 2,
                                OPND_CREATE_INT64(addr), OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
@@ -328,9 +329,9 @@ static void opcode_mov(void *drcontext, instr_t *instr, instrlist_t *ilist)
   opnd_t src = instr_get_src(instr, 0);
   opnd_t dst = instr_get_dst(instr, 0);
 
-  //LINSTR("AAAAAAAAA src: isreg: %d isimmed: %d isbaseindex: %d ismem: %d isreladdr %d\n", opnd_is_reg(src), 
+  //LDEBUG("AAAAAAAAA src: isreg: %d isimmed: %d isbaseindex: %d ismem: %d isreladdr %d\n", opnd_is_reg(src), 
   //                                      opnd_is_immed(src),  opnd_is_base_disp(src),  opnd_is_mem_instr(src), opnd_is_rel_addr(src));
-  //LINSTR("AAAAAAAAA dst: isreg: %d isimmed: %d isbaseindex: %d ismem: %d isreladdr %d\n", opnd_is_reg(dst), 
+  //LDEBUG("AAAAAAAAA dst: isreg: %d isimmed: %d isbaseindex: %d ismem: %d isreladdr %d\n", opnd_is_reg(dst), 
   //                                     opnd_is_immed(dst),  opnd_is_base_disp(dst),  opnd_is_mem_instr(dst), opnd_is_rel_addr(dst));
 
   propagate(drcontext, instr, ilist, src, dst, PROP_MOV);
@@ -418,7 +419,7 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
   if (data == NULL)
   {
-     LINSTRDETAIL("InsDetail:\tIgnoring jump to %llx.\n", pc);
+     LDUMP("InsDetail:\tIgnoring jump to %llx.\n", pc);
 
      return;
   }
@@ -441,11 +442,11 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
   if (symres == DRSYM_SUCCESS)
   {
-  	LINSTRDETAIL("InsDetail:\tDetected call to %s[%s] at %s.\n", sym.name, modname, data -> full_path);
+  	LDUMP("InsDetail:\tDetected call to %s[%s] at %s.\n", sym.name, modname, data -> full_path);
   }
   else
   {
-  	LINSTRDETAIL("InsDetail:\tMissing symbols for call to [%s] at %s.\n", modname, data -> full_path);
+  	LDUMP("InsDetail:\tMissing symbols for call to [%s] at %s.\n", modname, data -> full_path);
   }
   */
 }
@@ -462,6 +463,8 @@ void nshr_init_opcodes(void)
   // Add custom handlers for all known opcodes.
   //
 
+  instrFunctions[OP_add]			= opcode_add;   //4
+  
   instrFunctions[OP_sub]			= opcode_add;   //10
 
   instrFunctions[OP_call]			= opcode_call;	// 42
@@ -500,7 +503,7 @@ dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr
 
   instr_disassemble_to_buffer(drcontext, instr, instruction, 64);
     
-  LINSTR("\t\t(opcode %d)\t%s.\n", opcode, instruction);
+  LDEBUG("\t\t(opcode %d)\t%s.\n", opcode, instruction);
 
   (*instrFunctions[opcode])(drcontext, instr, bb);
 
