@@ -10,7 +10,7 @@ int64_t			taint_[TAINTMAP_NUM][TAINTMAP_SIZE][2];
 instrFunc		instrFunctions[MAX_OPCODE];
 taint_t 		taintReg_[16][8];
 Fd_entity 		fds_[MAX_FD];
-bool 			started_ 						= 0;
+enum mode 		started_ 						= MODE_IGNORING;
 
 UID_entity		uids_[MAX_UID];
 ID_entity		ids_[MAX_ID];
@@ -96,4 +96,18 @@ int newUID(int fd)
   ids_[nextID].index        = 0;
 
   return nextID++;
+}
+
+void nshr_pre_scanf(void *wrapcxt, OUT void **user_data)
+{
+  const char *format = (const char *) drwrap_get_arg(wrapcxt, 0);
+
+  LTEST("DRWRAP:\t\tGoing into scanf.\n");
+
+  started_ = MODE_IN_LIBC;
+}
+
+void nshr_post_scanf(void *wrapcxt, void *user_data)
+{
+
 }

@@ -78,7 +78,7 @@ static void post_read(void *drcontext)
 
 bool nshr_event_pre_syscall(void *drcontext, int id)
 {
-  STOP_IF_NOT_STARTED(true)
+  STOP_IF_NOT_ACTIVE(true)
 
   if (id == SYS_read)
   {
@@ -94,7 +94,7 @@ bool nshr_event_pre_syscall(void *drcontext, int id)
 
 void nshr_event_post_syscall(void *drcontext, int id)
 {
-  STOP_IF_NOT_STARTED()
+  STOP_IF_NOT_ACTIVE()
 
   if (id == SYS_read)
   {

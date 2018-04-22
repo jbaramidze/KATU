@@ -376,7 +376,6 @@ static void opcode_add(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
 }
 
-
 static void opcode_ignore(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
 
@@ -391,7 +390,6 @@ static void wrong_opcode(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
 static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
-/*
   if (!instr_is_cti(instr)) FAIL();
 
   app_pc pc;
@@ -401,6 +399,8 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
   if (opnd_is_pc(t))
   {
      pc = opnd_get_pc(t);
+
+     return;
   }
   else if (opnd_is_rel_addr(t))
   {
@@ -409,21 +409,51 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
     instr_get_rel_addr_target(instr, &tmp);
 
     pc = (app_pc) (*(uint64 *) tmp);
+
+    return;
+  }
+  else if (opnd_is_reg(t))
+  {
+  	if (opnd_get_reg(t) == DR_REG_RSP)
+  	{
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_ret, false, 0);
+  	}
+  	else
+  	{
+  	  return;
+      //dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_ret, false, 1,
+      //                       OPND_CREATE_INT32(ENCODE_REG(opnd_get_reg(t))));
+  	}
+  }
+  else if (opnd_is_base_disp(t))
+  {
+  	return;
   }
   else
   {
   	FAIL();
   }
 
+  return;
+
+/*
   module_data_t *data = dr_lookup_module(pc);
 
   if (data == NULL)
   {
      LDUMP("InsDetail:\tIgnoring jump to %llx.\n", pc);
 
+     dr_free_module_data(data);
+
      return;
   }
+
   const char *modname = dr_module_preferred_name(data);
+
+  dr_printf("Performing jump to %s.\n", modname);
+
+  // DON'T FORGET IT!
+  dr_free_module_data(data);
 
   drsym_info_t sym;
 
@@ -464,7 +494,7 @@ void nshr_init_opcodes(void)
   //
 
   instrFunctions[OP_add]			= opcode_add;   //4
-  
+
   instrFunctions[OP_sub]			= opcode_add;   //10
 
   instrFunctions[OP_call]			= opcode_call;	// 42
@@ -485,6 +515,8 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_test]			= opcode_ignore;	// 60 
   instrFunctions[OP_lea]			= opcode_lea;		// 61
 
+  instrFunctions[OP_ret]			= opcode_call;		// 70
+
   instrFunctions[OP_syscall]		= opcode_ignore;	// 95 syscall processed by dr_register_post_syscall_event.
 }
 
@@ -495,17 +527,24 @@ void nshr_init_opcodes(void)
 dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr_t *instr, bool for_trace,
                                 bool translating, void *user_data)
 {
-  STOP_IF_NOT_STARTED(DR_EMIT_DEFAULT);
+  STOP_IF_IGNORING(DR_EMIT_DEFAULT);
 
   char instruction[64];
 
   int opcode = instr_get_opcode(instr);
 
-  instr_disassemble_to_buffer(drcontext, instr, instruction, 64);
-    
-  LDEBUG("\t\t(opcode %d)\t%s.\n", opcode, instruction);
+  if (started_ == MODE_ACTIVE || 
+  	     (started_ == MODE_IN_LIBC && opcode == OP_ret))
+  {
+    instr_disassemble_to_buffer(drcontext, instr, instruction, 64);
 
-  (*instrFunctions[opcode])(drcontext, instr, bb);
+    if (started_ == MODE_ACTIVE)
+    {
+      LDEBUG("\t\t(opcode %d)\t%s.\n", opcode, instruction);
+    }
+
+    (*instrFunctions[opcode])(drcontext, instr, bb);
+  }
 
   return DR_EMIT_DEFAULT;
 }

@@ -30,6 +30,13 @@ enum prop_type {
 
 };
 
+enum mode {
+  MODE_IGNORING,
+  MODE_ACTIVE,
+  MODE_IN_LIBC,
+
+};
+
 //
 // Types.
 //
@@ -68,11 +75,14 @@ typedef struct {
 
 typedef void (*instrFunc)(void *, instr_t *, instrlist_t *);
 
+
+
 //
 // Utility definitions.
 //
 
-#define STOP_IF_NOT_STARTED(retval)  	if (started_ == 0)  {  return retval;  }
+#define STOP_IF_NOT_ACTIVE(retval)    if (started_ != MODE_ACTIVE)  {  return retval;  }
+#define STOP_IF_IGNORING(retval)    if (started_ == MODE_IGNORING)  {  return retval;  }
 #define UNUSED(expr) 			do { (void)(expr); } while (0)
 
 //
@@ -85,8 +95,8 @@ typedef void (*instrFunc)(void *, instr_t *, instrlist_t *);
 #define ASSERT
 #endif
 
-#define FAIL() dr_printf("FAIL! at %s:%d.\n", __FILE__, __LINE__); \
-                 				exit(-1);
+#define FAIL() { dr_printf("FAIL! at %s:%d.\n", __FILE__, __LINE__); \
+                 				exit(-1); }
 
 void assert(bool a);
 
@@ -162,7 +172,7 @@ Specific logging functions.
 //
 
 
-extern bool started_;
+extern enum mode started_;
 extern Fd_entity fds_[MAX_FD];
 extern UID_entity uids_[MAX_UID];
 extern int64_t taint_[TAINTMAP_NUM][TAINTMAP_SIZE][2];
@@ -200,11 +210,16 @@ void nshr_taint_mv_mem_rm(uint64 addr, int size);
 
 void nshr_taint_mix_reg_add(int dst_reg, int64 value, int type);
 
+void nshr_taint_ret();
+void nshr_taint_jmp_reg(int dst_reg);
+
 // instructions.
 dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr_t *inst, bool for_trace, 
 	                              bool translating, void *user_data);
 void nshr_init_opcodes(void);
 
+void nshr_pre_scanf(void *wrapcxt, OUT void **user_data);
+void nshr_post_scanf(void *wrapcxt, void *user_data);
 
 
 #endif

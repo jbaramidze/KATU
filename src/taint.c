@@ -1,5 +1,5 @@
 #define LOGTEST
-#define LOGDEBUG
+#undef LOGDEBUG
 #undef  LOGDUMP
 
 #include "dr_api.h"
@@ -19,6 +19,7 @@ const char *reg_mask_names[16] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi
 #define REGTAINT(mask, offset)					(taintReg_[(mask & 0xFF0000) >> 16][((mask & 0xFF00) >> 8) + i])
 #define ADDR(address) ((address) % TAINTMAP_SIZE)
 
+#define LIBC_NAME "libc.so.6"
 
 int find_index(reg_t addr, int i)
 {
@@ -195,9 +196,49 @@ void nshr_taint_mv_reg2reg(int src_reg, int dst_reg)
   }
 }
 
+void nshr_taint_ret()
+{
+  GET_CONTEXT();
+  
+  reg_t address = *((reg_t *) reg_get_value(DR_REG_RSP, &mcontext));
+
+  module_data_t *data = dr_lookup_module((app_pc) address);
+
+  if (data == NULL)
+  {
+     LDEBUG_TAINT(false, "Taint:\t\t\tJUMPING to unknown address %llx.\n", address);
+
+     dr_free_module_data(data);
+
+     return;
+  }
+
+  const char *modname = dr_module_preferred_name(data);
+
+  LDEBUG_TAINT(false, "Taint:\t\t\tJUMPING to '%s' at address %llx.\n", modname, address);
+
+  if (strcmp(modname, LIBC_NAME) != 0)
+  {
+    LDEBUG_TAINT(true, "Taint:\t\tRETURNING to '%s'\n", modname);
+
+    started_ = MODE_ACTIVE;
+  }
+
+  dr_free_module_data(data);
+}
+
+void nshr_taint_jmp_reg(int dst_reg)
+{
+  LDEBUG_TAINT(true, "Taint:\t\tJUMPING to '%s'\n", REGNAME(dst_reg));
+
+  GET_CONTEXT();
+  
+  reg_t base  = reg_get_value(dst_reg, &mcontext);
+}
+
 void nshr_taint_mix_reg_add(int dst_reg, int64 value, int type)
 {
-  LDEBUG_TAINT(true, "Taint:\t\tDOING '%s' by 0x%x to\t\t REG %s size %d\n", PROP_NAMES[type], value, 
+  LDEBUG_TAINT(false, "Taint:\t\tDOING '%s' by 0x%x to\t\t REG % s size %d\n", PROP_NAMES[type], value, 
   	         REGNAME(dst_reg), REGSIZE(dst_reg));
 
   for (int i = 0; i < REGSIZE(dst_reg); i++)
