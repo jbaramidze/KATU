@@ -19,6 +19,7 @@
 
 enum prop_type {
   PROP_MOV,
+  PROP_MOVZX,
   PROP_ADD,
   PROP_SUB,
   PROP_AND,
@@ -29,6 +30,7 @@ enum prop_type {
   PROP_SBB
 
 };
+
 
 enum mode {
   MODE_IGNORING,
@@ -201,6 +203,7 @@ void nshr_taint(reg_t addr, unsigned int size, int fd);
 void nshr_taint_mv_2coeffregs2reg(int reg_mask1, int scale, int reg_mask2, int reg_mask3);
 void nshr_taint_mv_reg2reg(int reg_mask1, int reg_mask2);
 void nshr_taint_mv_mem2reg(int segment, int disp, int scale, int base, int index, int reg_mask); 
+void nshr_taint_mv_mem2regzx(int segment, int disp, int scale, int base, int index, int reg_mask, int srcsize); 
 void nshr_taint_mv_reg2mem(int segment, int reg_mask, int scale, int base, int index, int disp);
 void nshr_taint_mv_constmem2reg(uint64 addr, int reg_mask); 
 void nshr_taint_mv_reg2constmem(int reg_mask, uint64 addr); 
@@ -208,7 +211,7 @@ void nshr_taint_mv_reg_rm(int reg);
 void nshr_taint_mv_baseindexmem_rm(int segment, int disp, int scale, int base, int index, int size);
 void nshr_taint_mv_mem_rm(uint64 addr, int size);
 
-void nshr_taint_mix_reg_add(int dst_reg, int64 value, int type);
+void nshr_taint_mix_val2reg(int dst_reg, int64 value, int type);
 
 void nshr_taint_ret();
 void nshr_taint_jmp_reg(int dst_reg);

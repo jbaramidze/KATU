@@ -120,14 +120,31 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       UNUSED(regname);
       UNUSED(size);
 
-      LDUMP("InsDetail:\tTaint from base+disp %s:%s + %d*%s + %d to %s %d bytes.\n", 
-                                         get_register_name(seg_reg), get_register_name(base_reg), scale, 
-                                              get_register_name(index_reg), disp, regname, size);
+      if (type == PROP_MOV)
+      {
+        LDUMP("InsDetail:\tTaint from base+disp %s:%s + %d*%s + %d to %s %d bytes.\n", 
+                                           get_register_name(seg_reg), get_register_name(base_reg), scale, 
+                                                get_register_name(index_reg), disp, regname, size);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_mem2reg, false, 6,
-                           OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(disp), OPND_CREATE_INT32(scale), 
-                             OPND_CREATE_INT32(base_reg),  OPND_CREATE_INT32(index_reg),
-                               OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_mem2reg, false, 6,
+                             OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(disp), OPND_CREATE_INT32(scale), 
+                               OPND_CREATE_INT32(base_reg),  OPND_CREATE_INT32(index_reg),
+                                 OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
+      }
+      else if (type == PROP_MOVZX)
+      {
+        int dstsize = size;
+        int srcsize = opnd_size_in_bytes(opnd_get_size(src));
+
+        LDUMP("InsDetail:\tTaint from base+disp %s:%s + %d*%s + %d to %s zero extend %d bytes to %d bytes.\n", 
+                                           get_register_name(seg_reg), get_register_name(base_reg), scale, 
+                                                get_register_name(index_reg), disp, regname, srcsize, dstsize);
+
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_mem2regzx, false, 7,
+                             OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(disp), OPND_CREATE_INT32(scale), 
+                               OPND_CREATE_INT32(base_reg),  OPND_CREATE_INT32(index_reg),
+                                 OPND_CREATE_INT32(ENCODE_REG(dst_reg)), OPND_CREATE_INT32(srcsize));
+      }
     }
     else
     {
@@ -164,7 +181,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
         LDUMP("InsDetail:\tDoing '%s' to taint at %s, by 0x%x, %d bytes\n", PROP_NAMES[type], 
         	             regname, value, size);
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_reg_add, false, 3,
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_val2reg, false, 3,
                                  OPND_CREATE_INT32(ENCODE_REG(dst_reg)), OPND_CREATE_INT64(value),
                                      OPND_CREATE_INT32(type));
 
@@ -335,6 +352,14 @@ static void opcode_mov(void *drcontext, instr_t *instr, instrlist_t *ilist)
   //                                     opnd_is_immed(dst),  opnd_is_base_disp(dst),  opnd_is_mem_instr(dst), opnd_is_rel_addr(dst));
 
   propagate(drcontext, instr, ilist, src, dst, PROP_MOV);
+}
+
+static void opcode_movzx(void *drcontext, instr_t *instr, instrlist_t *ilist)
+{
+  opnd_t src = instr_get_src(instr, 0);
+  opnd_t dst = instr_get_dst(instr, 0);
+
+  propagate(drcontext, instr, ilist, src, dst, PROP_MOVZX);
 }
 
 
@@ -515,9 +540,11 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_test]			= opcode_ignore;	// 60 
   instrFunctions[OP_lea]			= opcode_lea;		// 61
 
-  instrFunctions[OP_ret]			= opcode_call;		// 70
+  //instrFunctions[OP_ret]			= opcode_call;		// 70
 
   instrFunctions[OP_syscall]		= opcode_ignore;	// 95 syscall processed by dr_register_post_syscall_event.
+
+  instrFunctions[OP_movzx]          = opcode_movzx;     // 195
 }
 
 //
