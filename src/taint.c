@@ -29,7 +29,6 @@ int find_index(reg_t addr, int i)
               MEMTAINTADDR(index, addr + i) != addr &&
                   index < TAINTMAP_NUM)
     {
-      dr_printf("Comparing %llx and %llx\n", MEMTAINTADDR(index, addr + i), addr);
       index++;
     }
 
@@ -120,25 +119,25 @@ void nshr_taint_mv_mem2regzx(int segment, int disp, int scale, int base_reg, int
   LDUMP_TAINT(0, false, "Taint:\t\tDECODED: base %p index %d scale %d disp %d.\n", 
                      base, index, scale, disp);
 
-  LDEBUG_TAINT(false, "Taint:\t\tMMEM %p->\t REG %s start %d size %d.\n", 
-             addr, REGNAME(dst_reg), REGSTART(dst_reg), REGSIZE(dst_reg));
+  LDEBUG_TAINT(false, "Taint:\t\tMEM %p->\t REG %s start %d size %d zero extended to %d.\n", 
+             addr, REGNAME(dst_reg), REGSTART(dst_reg), srcsize, REGSIZE(dst_reg));
 
-
-  for (int i = 0; i < REGSIZE(dst_reg); i++)
-  {
-  	REGTAINT(dst_reg, i) = -1;
-  }
 
   for (int i = 0; i < srcsize; i++)
   {
     int index = find_index(addr, i);
 
     LDUMP_TAINT(i, (REGTAINT(dst_reg, i) > 0 || MEMTAINTVAL(index, addr + i) > 0),
-                       "Taint:\t\t\tMEM %p TAINT #%d->\t\t REG %s byte %d TAINT #%d INDEX %d TOTAL %d.\n", 
-                           ADDR(addr + i), MEMTAINTVAL(index, addr + i), REGNAME(dst_reg), 
-                               REGSTART(dst_reg) + i, REGTAINT(dst_reg, i), index, srcsize);
+                      "Taint:\t\t\tMEM %p TAINT #%d->\t\t REG %s byte %d TAINT #%d INDEX %d TOTAL %d.\n", 
+                          ADDR(addr + i), MEMTAINTVAL(index, addr + i), REGNAME(dst_reg), 
+                              REGSTART(dst_reg) + i, REGTAINT(dst_reg, i), index, srcsize);
 
     REGTAINT(dst_reg, i) = MEMTAINTVAL(index, addr + i);
+  }
+
+  for (int i = srcsize; i < REGSIZE(dst_reg); i++)
+  {
+  	REGTAINT(dst_reg, i) = -1;
   }
 }
 
