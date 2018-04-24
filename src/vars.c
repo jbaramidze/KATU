@@ -79,6 +79,12 @@ int nshr_reg_fix_size(int index_reg)
   int tainted = 0;
   int uid     = -1;
 
+  if (REGTAINT(index_reg, 0) > 0 && REGTAINTSIZE(index_reg, 0) == REGSIZE(index_reg))
+  {
+  	// Already set the correct size.
+  	return REGTAINTID(index_reg, 0);
+  }
+
   for (int i = 0; i < REGSIZE(index_reg); i++)
   {
     if (REGTAINT(index_reg, i) > 0)
@@ -109,9 +115,11 @@ int nshr_reg_fix_size(int index_reg)
 
     REGTAINT(index_reg, i) = newiid;
   }
+
+  return newid;
 }
 
-int nshr_tid_change_id(int id, enum prop_type operation, int64 value, int is_id)
+int nshr_tid_modify_id(int id, enum prop_type operation, int64 value, int is_id)
 {
   int newid = nshr_tid_copy_id(id);
 

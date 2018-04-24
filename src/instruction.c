@@ -19,6 +19,8 @@
 // [AL AH EAX EAX RAX RAX RAX RAX]
 //   8  7  6   5   4   3   2   1
 
+// [base + index*scale + disp]
+
 // for each register, specify where to start tainting from, according our table
 static const int reg_mask_start[69] = { 0x0,
                                  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
@@ -60,7 +62,7 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
     if (base_reg > 0 && index_reg > 0)
     {
-      LDUMP("InsDetail:\tTaint from %s + %d*%s + %d to %s, %d bytes.\n", get_register_name(base_reg), 
+      LDUMP("InsDetail:\tTaint %s + %d*%s + %d to %s, %d bytes.\n", get_register_name(base_reg), 
                        scale, get_register_name(index_reg), disp, get_register_name(dst_reg), size);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_2coeffregs2reg, false, 5,
@@ -71,19 +73,19 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
     else if (index_reg > 0) 
     {
 
-      LDUMP("InsDetail:\tTaint from %s to %s, %d bytes.\n", get_register_name(index_reg), 
+      LDUMP("InsDetail:\tTaint %s to %s, %d bytes.\n", get_register_name(index_reg), 
                        get_register_name(dst_reg), size);
 
       FAIL();
     }
-    else if (base_reg > 0)
+    else if (base_reg > 0) // dst = base + disp
     {
-
-      LDUMP("InsDetail:\tTaint from %s to %s, %d bytes.\n", get_register_name(base_reg), 
+      LDUMP("InsDetail:\tTaint %s + %d to %s, %d bytes.\n", get_register_name(base_reg), disp,
                        get_register_name(dst_reg), size);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2reg, false, 2,
-                               OPND_CREATE_INT32(ENCODE_REG(base_reg)), OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_add_val2newreg, false, 3,
+                               OPND_CREATE_INT32(ENCODE_REG(base_reg)), OPND_CREATE_INT32(ENCODE_REG(dst_reg)), 
+                                   OPND_CREATE_INT64(disp));
     }
   }
   else if (opnd_is_rel_addr(src))

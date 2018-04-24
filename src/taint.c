@@ -260,10 +260,35 @@ void nshr_taint_jmp_reg(int dst_reg)
   reg_t base  = reg_get_value(dst_reg, &mcontext);
 }
 
+
+void nshr_taint_add_val2newreg(int src_reg, int dst_reg, int64 value)
+{
+  LDEBUG_TAINT(false, "Taint:\t\tREG %s start %d + 0x%x to\t\t REG %s start %dsize %d\n", REGNAME(src_reg), 
+  	              REGSTART(src_reg), value, REGNAME(dst_reg), REGSTART(dst_reg));
+
+  int newid = nshr_reg_fix_size(src_reg); // new id has correct size.
+
+  int newerid = nshr_tid_modify_id(newid, PROP_ADD, value, 0);
+
+
+  for (int i = 0; i < REGSIZE(src_reg); i++)
+  {
+    LDUMP_TAINT(i, (REGTAINT(dst_reg, i) > 0 || REGTAINT(src_reg, i) > 0), 
+    	               "Taint:\t\t\tREG %s byte %d + %d TAINT #%d->\t\t\t REG %s byte %d TAINT #%d TOTAL %d.\n", 
+                           REGNAME(src_reg), REGSTART(src_reg) + i, value, REGTAINT(src_reg, i),
+                               REGNAME(dst_reg), REGSTART(dst_reg) + i,
+                                   REGTAINT(dst_reg, i), REGSIZE(src_reg));
+
+    REGTAINT(dst_reg, i) = nshr_tid_new_iid(newerid, REGSIZE(src_reg), i);
+  }
+}
+
 void nshr_taint_mix_val2reg(int dst_reg, int64 value, int type)
 {
-  LDEBUG_TAINT(false, "Taint:\t\tDOING '%s' by 0x%x to\t\t REG % s size %d\n", PROP_NAMES[type], value, 
+  LDEBUG_TAINT(false, "Taint:\t\tDOING '%s' by 0x%x to\t\t REG %s size %d\n", PROP_NAMES[type], value, 
   	         REGNAME(dst_reg), REGSIZE(dst_reg));
+
+  //FAIL();
 
   for (int i = 0; i < REGSIZE(dst_reg); i++)
   {
@@ -325,6 +350,7 @@ void nshr_taint_mv_2coeffregs2reg(int index_reg, int scale, int base_reg, int di
              REGNAME(index_reg), scale, REGSTART(index_reg), REGNAME(base_reg), REGSTART(base_reg), 
                  REGNAME(dst_reg), REGSTART(dst_reg), REGSIZE(index_reg));
 
+  FAIL();
 
   if (scale > 1 || disp != 0)  // Make sure index_reg has correct taint size
   {
@@ -340,7 +366,6 @@ void nshr_taint_mv_2coeffregs2reg(int index_reg, int scale, int base_reg, int di
     
     if (REGTAINT(index_reg, i) > 0) // we have dst = index_reg*scale + disp
     {
-      REGTAINT(dst_reg, i) = nshr_tid_change_id(REGTAINT(index_reg, i), PROP_MULT, scale, 0);
     }
   } 
 }

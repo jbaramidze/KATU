@@ -119,7 +119,7 @@ typedef void (*instrFunc)(void *, instr_t *, instrlist_t *);
 					dr_get_mcontext(drcontext, &mcontext)
 
 static const char *PROP_NAMES[] = {
-    "mov", "add", "sub", "and", "or", "xor", "mul", "adc", "sbb"
+    "mov", "movzx", "add", "sub", "and", "or", "xor", "mul", "adc", "sbb"
 };
 
 #define MEMTAINTISEMPTY(index, address)     (taint_[index][(address) % TAINTMAP_SIZE][1] == -1)
@@ -129,11 +129,16 @@ static const char *PROP_NAMES[] = {
 #define REGINDEX(mas)                       ((mask & 0xFF0000) >> 16);
 #define REGSTART(mask)                      ((mask & 0xFF00) >> 8)
 #define REGSIZE(mask)                       (mask & 0xFF)
-#define REGTAINT(mask, offset)              (taintReg_[(mask & 0xFF0000) >> 16][((mask & 0xFF00) >> 8) + i])
+#define REGTAINT(mask, offset)              (taintReg_[(mask & 0xFF0000) >> 16][((mask & 0xFF00) >> 8) + offset])
 #define ADDR(address) ((address) % TAINTMAP_SIZE)
 
-#define REGTAINTID(mask, offset)            (iids_[(taintReg_[(mask & 0xFF0000) >> 16][((mask & 0xFF00) >> 8) + i])].id)
+#define REGTAINTID(mask, offset)            (iids_[(taintReg_[(mask & 0xFF0000) >> 16][((mask & 0xFF00) >> 8) + offset])].id)
+#define REGTAINTSIZE(mask, offset)          (iids_[(taintReg_[(mask & 0xFF0000) >> 16][((mask & 0xFF00) >> 8) + offset])].size)
 #define MEMTAINTID(index, address)          (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].id)
+#define MEMTAINTSIZE(index, address)        (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].size)
+#define MEMTAINTINDEX(index, address)       (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].index)
+
+#define LOGMEMTAINT(index, address)         (taint_[index][(address) % TAINTMAP_SIZE][1]), (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].id), (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].size), (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].index)
 #define IIDTOID(iid)                        (iids_[iid].id)
 //
 // Logging definitions.
@@ -207,7 +212,7 @@ int nshr_tid_new_iid(int id, int size, int index);
 int nshr_tid_new_iid_get();
 int nshr_tid_new_uid(int fd);
 int nshr_tid_copy_id(int id);
-int nshr_tid_change_id(int id, enum prop_type operation, int64 value, int is_id);
+int nshr_tid_modify_id(int id, enum prop_type operation, int64 value, int is_id);
 
 int nshr_reg_fix_size(int index_reg);
 
@@ -235,7 +240,12 @@ void nshr_taint_mv_reg_rm(int reg);
 void nshr_taint_mv_baseindexmem_rm(int segment, int disp, int scale, int base, int index, int size);
 void nshr_taint_mv_mem_rm(uint64 addr, int size);
 
+// e.g dst_reg+=val, dst_reg^=val.....
 void nshr_taint_mix_val2reg(int dst_reg, int64 value, int type);
+
+// dst_reg = src_reg+val
+void nshr_taint_add_val2newreg(int src_reg, int dst_reg, int64 value);
+
 
 void nshr_taint_ret();
 void nshr_taint_jmp_reg(int dst_reg);
