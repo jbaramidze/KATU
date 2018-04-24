@@ -63,9 +63,10 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
       LDUMP("InsDetail:\tTaint from %s + %d*%s + %d to %s, %d bytes.\n", get_register_name(base_reg), 
                        scale, get_register_name(index_reg), disp, get_register_name(dst_reg), size);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_2coeffregs2reg, false, 4,
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_2coeffregs2reg, false, 5,
                                OPND_CREATE_INT32(ENCODE_REG(index_reg)), OPND_CREATE_INT32(scale), 
-                                   OPND_CREATE_INT32(ENCODE_REG(base_reg)), OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
+                                   OPND_CREATE_INT32(ENCODE_REG(base_reg)), OPND_CREATE_INT32(disp), 
+                                       OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
     }
     else if (index_reg > 0) 
     {
@@ -73,8 +74,7 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
       LDUMP("InsDetail:\tTaint from %s to %s, %d bytes.\n", get_register_name(index_reg), 
                        get_register_name(dst_reg), size);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2reg, false, 2,
-                               OPND_CREATE_INT32(ENCODE_REG(index_reg)), OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
+      FAIL();
     }
     else if (base_reg > 0)
     {

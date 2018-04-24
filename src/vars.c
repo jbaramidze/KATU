@@ -8,67 +8,131 @@
 
 int64_t			taint_[TAINTMAP_NUM][TAINTMAP_SIZE][2];
 instrFunc		instrFunctions[MAX_OPCODE];
-taint_t 		taintReg_[16][8];
+int64_t 		taintReg_[16][8];
 Fd_entity 		fds_[MAX_FD];
 enum mode 		started_ 						= MODE_IGNORING;
 
 UID_entity		uids_[MAX_UID];
 ID_entity		ids_[MAX_ID];
+IID_entity      iids_[MAX_IID];
 
 // Used to describe true taint sources (e.g. read())
 int				nextUID							= 1;
 
-// Used to describe memory area
+// Used to describe taint and operations
 int 			nextID							= 1;
 
+// Used to describe which ID memory has, of what size and which index
+int 			nextIID							= 1;
 
-void assert(bool a)
+
+int nshr_tid_new_id()
 {
-  if (a == false)
-  {
-  	dr_printf("ASSERT FAILED!!!\n");
-  	exit(1);
-  }
+  return nextID++;
 }
 
-
-int changeID(int id, enum prop_type operation, int64 value, int is_id)
+int nshr_tid_new_iid(int id, int size, int index)
 {
+  iids_[nextIID].id    = id;
+  iids_[nextIID].size  = size;
+  iids_[nextIID].index = index;
+
+  return nextIID++;
+}
+
+int nshr_tid_new_id_get()
+{
+  return nextID;
+}
+
+int nshr_tid_new_iid_get()
+{
+  return nextIID;
+}
+
+int nshr_tid_copy_id(int id)
+{
+  int newid = nshr_tid_new_id();
+
   /*
   First copy everything from old id.
   */
-  ids_[nextID].uid      = ids_[id].uid;
-  ids_[nextID].ops_size = ids_[id].ops_size;
-  ids_[nextID].size     = ids_[id].size;
-  ids_[nextID].index    = ids_[id].index;
+
+  ids_[newid].uid      = ids_[id].uid;
+  ids_[newid].ops_size = ids_[id].ops_size;
 
   int i;
 
   for (i = 0; i < ids_[id].ops_size; i++)
   {
-    ids_[nextID].ops[i].type  = ids_[id].ops[i].type;
-    ids_[nextID].ops[i].value = ids_[id].ops[i].value;
-    ids_[nextID].ops[i].is_id = ids_[id].ops[i].is_id;
+    ids_[newid].ops[i].type  = ids_[id].ops[i].type;
+    ids_[newid].ops[i].value = ids_[id].ops[i].value;
+    ids_[newid].ops[i].is_id = ids_[id].ops[i].is_id;
   }
+
+  return newid;
+}
+
+
+int nshr_reg_fix_size(int index_reg)
+{
+  int tainted = 0;
+  int uid     = -1;
+
+  for (int i = 0; i < REGSIZE(index_reg); i++)
+  {
+    if (REGTAINT(index_reg, i) > 0)
+    {
+      tainted = 1;
+
+      uid = ids_[REGTAINTID(index_reg, i)].uid;
+    }
+  }
+
+  if (tainted == 0) return -1;
+ 
+  /*
+  FIXME: Make sure no constraints were applied before we change the size.
+         If there are some constratins, things get too complicated -> FAIL();
+  */
+
+  // Make new taint.
+
+  int newid = nshr_tid_new_id();
+
+  ids_[newid].uid      = uid;
+  ids_[newid].ops_size = 0;
+
+  for (int i = 0; i < REGSIZE(index_reg); i++)
+  {
+    int newiid = nshr_tid_new_iid(newid, REGSIZE(index_reg), i);
+
+    REGTAINT(index_reg, i) = newiid;
+  }
+}
+
+int nshr_tid_change_id(int id, enum prop_type operation, int64 value, int is_id)
+{
+  int newid = nshr_tid_copy_id(id);
 
   /*
   Now append the new one. For some cases we can just
   modify the last operation to include the new one.
   */
 
-  if (ids_[nextID].ops_size > 0 &&                                            // we have at least 1 operation
-          ids_[nextID].ops[ids_[nextID].ops_size - 1].type == operation &&    // last operation is the same
-              (operation == PROP_ADD || operation == PROP_SUB) &&             // operation is of specific type
-                  ids_[nextID].ops[ids_[nextID].ops_size - 1].is_id == 0  &&  // last operation is by constant 
-                      is_id == 0)                                              // new operation is also by constant
+  if (ids_[newid].ops_size > 0 &&                                            // we have at least 1 operation
+          ids_[newid].ops[ids_[newid].ops_size - 1].type == operation &&     // last operation is the same
+              (operation == PROP_ADD || operation == PROP_SUB) &&            // operation is of specific type
+                  ids_[newid].ops[ids_[newid].ops_size - 1].is_id == 0  &&   // last operation is by constant 
+                      is_id == 0)                                            // new operation is also by constant
   {
     if (operation == PROP_ADD)
     {
-      ids_[nextID].ops[ids_[nextID].ops_size - 1].value += value;
+      ids_[newid].ops[ids_[newid].ops_size - 1].value += value;
     }
     else if (operation == PROP_SUB)
     {
-      ids_[nextID].ops[ids_[nextID].ops_size - 1].value -= value;
+      ids_[newid].ops[ids_[newid].ops_size - 1].value -= value;
     }
   }
   else
@@ -76,26 +140,30 @@ int changeID(int id, enum prop_type operation, int64 value, int is_id)
     /*
     Just add a new operation.
     */
-    ids_[nextID].ops[ids_[nextID].ops_size].type  = operation;
-    ids_[nextID].ops[ids_[nextID].ops_size].is_id = is_id;
-    ids_[nextID].ops[ids_[nextID].ops_size].value = value;
+    ids_[newid].ops[ids_[newid].ops_size].type  = operation;
+    ids_[newid].ops[ids_[newid].ops_size].is_id = is_id;
+    ids_[newid].ops[ids_[newid].ops_size].value = value;
 
-    ids_[nextID].ops_size++;
+    ids_[newid].ops_size++;
   }
 
-  return nextID++;
+  return newid;
 }
 
-int newUID(int fd)
+int nshr_tid_new_uid(int fd)
 {
-  uids_[nextUID++].fd       = fd;
+  uids_[nextUID].fd       = fd;
 
-  ids_[nextID].uid          = nextUID;
-  ids_[nextID].ops_size     = 0;
-  ids_[nextID].size         = 1;
-  ids_[nextID].index        = 0;
+  int newid = nshr_tid_new_id();
+  int newiid = nshr_tid_new_iid(newid, 1, 0);
 
-  return nextID++;
+
+  ids_[newid].uid          = nextUID;
+  ids_[newid].ops_size     = 0;
+
+  nextUID++;
+
+  return newiid;
 }
 
 void nshr_pre_scanf(void *wrapcxt, OUT void **user_data)

@@ -3,8 +3,6 @@
 
 #include <stdint.h>
 
-#define ENABLE_ASSERT
-
 //
 // Constants.
 //
@@ -12,6 +10,7 @@
 #define MAX_FD                255
 #define MAX_UID               1000
 #define MAX_ID                1000000
+#define MAX_IID               4000000
 #define MAX_OPCODE            2048
 #define DEFAULT_OPERATIONS    8
 #define TAINTMAP_NUM          10
@@ -43,8 +42,6 @@ enum mode {
 // Types.
 //
 
-typedef int taint_t;
-
 typedef struct {
   bool used;
   char *path;
@@ -75,6 +72,18 @@ typedef struct {
 
 } ID_entity;
 
+/*
+We need this because we don't want to carry all the 
+operations with all bytes if taint is e.g 4-byte
+*/
+
+typedef struct {
+  int id;
+  int size;
+  int index;
+
+} IID_entity;
+
 typedef void (*instrFunc)(void *, instr_t *, instrlist_t *);
 
 
@@ -87,20 +96,8 @@ typedef void (*instrFunc)(void *, instr_t *, instrlist_t *);
 #define STOP_IF_IGNORING(retval)    if (started_ == MODE_IGNORING)  {  return retval;  }
 #define UNUSED(expr) 			do { (void)(expr); } while (0)
 
-//
-// Assert.
-//
-
-#ifdef ENABLE_ASSERT
-#define ASSERT assert
-#else
-#define ASSERT
-#endif
-
 #define FAIL() { dr_printf("FAIL! at %s:%d.\n", __FILE__, __LINE__); \
                  				exit(-1); }
-
-void assert(bool a);
 
 // Encode in 3 bytes: index of register, which byte to start from in reg. and how many bytes to taint.
 #define ENCODE_REG(reg)			reg_mask_index[reg] * 0x10000 + \
@@ -125,6 +122,19 @@ static const char *PROP_NAMES[] = {
     "mov", "add", "sub", "and", "or", "xor", "mul", "adc", "sbb"
 };
 
+#define MEMTAINTISEMPTY(index, address)     (taint_[index][(address) % TAINTMAP_SIZE][1] == -1)
+#define MEMTAINTADDR(index, address)        (taint_[index][(address) % TAINTMAP_SIZE][0])
+#define MEMTAINTVAL(index, address)         (taint_[index][(address) % TAINTMAP_SIZE][1])
+#define REGNAME(mask)                       (reg_mask_names[(mask & 0xFF0000) >> 16])
+#define REGINDEX(mas)                       ((mask & 0xFF0000) >> 16);
+#define REGSTART(mask)                      ((mask & 0xFF00) >> 8)
+#define REGSIZE(mask)                       (mask & 0xFF)
+#define REGTAINT(mask, offset)              (taintReg_[(mask & 0xFF0000) >> 16][((mask & 0xFF00) >> 8) + i])
+#define ADDR(address) ((address) % TAINTMAP_SIZE)
+
+#define REGTAINTID(mask, offset)            (iids_[(taintReg_[(mask & 0xFF0000) >> 16][((mask & 0xFF00) >> 8) + i])].id)
+#define MEMTAINTID(index, address)          (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].id)
+#define IIDTOID(iid)                        (iids_[iid].id)
 //
 // Logging definitions.
 //
@@ -175,17 +185,31 @@ Specific logging functions.
 
 
 extern enum mode started_;
-extern Fd_entity fds_[MAX_FD];
+
+extern Fd_entity  fds_[MAX_FD];
 extern UID_entity uids_[MAX_UID];
+extern ID_entity  ids_[MAX_ID];
+extern IID_entity iids_[MAX_IID];
+
+
 extern int64_t taint_[TAINTMAP_NUM][TAINTMAP_SIZE][2];
-extern taint_t taintReg_[16][8];
+extern int64_t taintReg_[16][8];
+
 extern instrFunc instrFunctions[MAX_OPCODE];
-extern ID_entity ids_[MAX_ID];
+
 extern int nextUID;
 extern int nextID;
+extern int nextIID;
 
-int newUID(int fd);
-int changeID(int id, enum prop_type operation, int64 value, int is_id);
+int nshr_tid_new_id();
+int nshr_tid_new_id_get();
+int nshr_tid_new_iid(int id, int size, int index);
+int nshr_tid_new_iid_get();
+int nshr_tid_new_uid(int fd);
+int nshr_tid_copy_id(int id);
+int nshr_tid_change_id(int id, enum prop_type operation, int64 value, int is_id);
+
+int nshr_reg_fix_size(int index_reg);
 
 //
 // Function declarations.
@@ -200,7 +224,7 @@ bool nshr_syscall_filter(void *drcontext, int sysnum);
 // taint.
 void nshr_taint(reg_t addr, unsigned int size, int fd);
 
-void nshr_taint_mv_2coeffregs2reg(int reg_mask1, int scale, int reg_mask2, int reg_mask3);
+void nshr_taint_mv_2coeffregs2reg(int reg_mask1, int scale, int reg_mask2, int disp, int reg_mask3);
 void nshr_taint_mv_reg2reg(int reg_mask1, int reg_mask2);
 void nshr_taint_mv_mem2reg(int segment, int disp, int scale, int base, int index, int reg_mask); 
 void nshr_taint_mv_mem2regzx(int segment, int disp, int scale, int base, int index, int reg_mask, int srcsize); 

@@ -9,16 +9,6 @@
 const char *reg_mask_names[16] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", 
                                   "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15" };
 
-#define MEMTAINTISEMPTY(index, address)			(taint_[index][(address) % TAINTMAP_SIZE][1] == -1)
-#define MEMTAINTADDR(index, address)			(taint_[index][(address) % TAINTMAP_SIZE][0])
-#define MEMTAINTVAL(index, address)				(taint_[index][(address) % TAINTMAP_SIZE][1])
-#define REGNAME(mask)							(reg_mask_names[(mask & 0xFF0000) >> 16])
-#define REGINDEX(mas)							((mask & 0xFF0000) >> 16);
-#define REGSTART(mask)							((mask & 0xFF00) >> 8)
-#define REGSIZE(mask)							(mask & 0xFF)
-#define REGTAINT(mask, offset)					(taintReg_[(mask & 0xFF0000) >> 16][((mask & 0xFF00) >> 8) + i])
-#define ADDR(address) ((address) % TAINTMAP_SIZE)
-
 #define LIBC_NAME "libc.so.6"
 
 int find_index(reg_t addr, int i)
@@ -301,7 +291,9 @@ void nshr_taint_mv_reg_rm(int mask)
 
 void nshr_taint(reg_t addr, unsigned int size, int fd)
 {
-  LDEBUG_TAINT(true, "Taint:\t\tADD MEM %p size %d mark %d\n", addr, size, nextID);
+  int iid = nshr_tid_new_iid_get();
+
+  LDEBUG_TAINT(true, "Taint:\t\tADD MEM %p size %d mark %d\n", addr, size, iid);
 
   for (int i = 0; i < size; i++)
   {
@@ -319,27 +311,36 @@ void nshr_taint(reg_t addr, unsigned int size, int fd)
     else
     {
       LDUMP_TAINT(i, false, "Taint:\t\t\tADD MEM %p mark %d TAINT #%d INDEX %d TOTAL %d.\n", 
-      	                 ADDR(addr + i), nextID, MEMTAINTVAL(index, addr + i), index, size);
+      	                 ADDR(addr + i), iid, MEMTAINTVAL(index, addr + i), index, size);
 
       MEMTAINTADDR(index, addr + i) = addr + i;
-      MEMTAINTVAL(index, addr + i) = newUID(fd);
+      MEMTAINTVAL(index, addr + i) = nshr_tid_new_uid(fd);
     }
   }
 }
 
-void nshr_taint_mv_2coeffregs2reg(int src_reg1, int scale, int src_reg2, int dst_reg)
+void nshr_taint_mv_2coeffregs2reg(int index_reg, int scale, int base_reg, int disp, int dst_reg)
 {
   LDEBUG_TAINT(false, "Taint:\t\tREG %s*%d start %d + REG %s start %d ->\t\t REG %s start %d size %d.\n", 
-             REGNAME(src_reg1), scale, REGSTART(src_reg1), REGNAME(src_reg2), REGSTART(src_reg2), 
-                 REGNAME(dst_reg), REGSTART(dst_reg), REGSIZE(src_reg1));
+             REGNAME(index_reg), scale, REGSTART(index_reg), REGNAME(base_reg), REGSTART(base_reg), 
+                 REGNAME(dst_reg), REGSTART(dst_reg), REGSIZE(index_reg));
 
-  for (int i = 0; i < REGSIZE(src_reg1); i++)
+
+  if (scale > 1 || disp != 0)  // Make sure index_reg has correct taint size
   {
-    if (REGTAINT(src_reg1, i) > 0 || REGTAINT(src_reg2, i) > 0)
+  	nshr_reg_fix_size(index_reg);
+  }
+
+  for (int i = 0; i < REGSIZE(index_reg); i++)
+  {
+    if (REGTAINT(index_reg, i) > 0 && REGTAINT(base_reg, i) > 0)
     {
     	FAIL();
     }
     
-    REGTAINT(dst_reg, i) = -1;
+    if (REGTAINT(index_reg, i) > 0) // we have dst = index_reg*scale + disp
+    {
+      REGTAINT(dst_reg, i) = nshr_tid_change_id(REGTAINT(index_reg, i), PROP_MULT, scale, 0);
+    }
   } 
 }
