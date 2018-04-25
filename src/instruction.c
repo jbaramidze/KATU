@@ -293,8 +293,6 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       }
       else if (is_binary(type))
       {
-
-
         LDUMP("InsDetail:\tDoing '%s' to taint at %s, to %s, %d bytes\n", PROP_NAMES[type], 
         	             regname, regname2, size);
 

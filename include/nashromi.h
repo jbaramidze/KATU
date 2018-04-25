@@ -143,6 +143,7 @@ static const char *reg_mask_names[16] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp
 #define MEMTAINTINDEX(index, address)       (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].index)
 
 #define IDSIZE(id)                          (ids_[id].size)
+#define IDCONSTRNUM(id)                     (ids_[id].ops_size)
 #define IIDINDEX(iid)                       (iids_[iid].index)
 
 #define LOGMEMTAINT(index, address)         (taint_[index][(address) % TAINTMAP_SIZE][1]), (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].id), (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].size), (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].index)

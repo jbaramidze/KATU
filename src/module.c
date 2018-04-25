@@ -6,6 +6,33 @@
 #include "nashromi.h"
 
 
+static void dump()
+{
+	dr_printf("\n\nStarting dump of IID:\n");
+
+	for (int i = 0; i < nshr_tid_new_iid_get(); i++)
+	{
+		dr_printf("IID #%d\t\t -> id %d index %d\n", i, iids_[i].id, iids_[i].index);
+	}
+
+
+	dr_printf("\n\nStarting dump of IID:\n");
+
+	for (int i = 0; i < nshr_tid_new_id_get(); i++)
+	{
+		dr_printf("ID #%d\t\t -> uid %d size %d ops_size: %d\n", i, ids_[i].uid, ids_[i].size, ids_[i].ops_size);
+
+		if (ids_[i].ops_size > 0)
+		{
+			dr_printf("\tOperations:\n");
+			for (int j = 0; j < ids_[i].ops_size; j++)
+			{
+				dr_printf("\tOperation #%d: '%s' by %lld, is_id=%d\n", j, PROP_NAMES[ids_[i].ops[j].type],
+					ids_[i].ops[j].value, ids_[i].ops[j].is_id);
+			}
+		}
+	}
+}
 
 static void
 event_exit(void)
@@ -20,6 +47,26 @@ event_exit(void)
     }
 
     drmgr_exit();
+
+    dump();
+
+}
+
+static void nshr_handle_dump(long long addr)
+{
+    int index = find_index(addr, 0);
+    int iid = MEMTAINTVAL(index, addr);
+    if (iid == -1)
+    {
+    	dr_printf("Helper:\t\tChecking taint for 0x%llx: TAINT#-1\n");
+
+    	return;
+    }
+
+    int id = IIDTOID(iid);
+
+	dr_printf("Helper:\t\tChecking taint for 0x%llx: TAINT#%d, index %d.\n", 
+		          addr, iid, index);
 
 }
 
@@ -110,6 +157,8 @@ dr_init(client_id_t client_id)
     dr_register_exit_event(event_exit);
     dr_annotation_register_call("dynamorio_annotate_zhani_signal",
                                 (void *) nshr_handle_annotation, false, 1, DR_ANNOTATION_CALL_TYPE_FASTCALL);
+    dr_annotation_register_call("nshr_dump_taint",
+                                (void *) nshr_handle_dump, false, 1, DR_ANNOTATION_CALL_TYPE_FASTCALL);
 
     if (drsym_init(0) != DRSYM_SUCCESS) 
     {

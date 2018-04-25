@@ -310,6 +310,12 @@ void nshr_taint_mix_reg2reg(int dst_reg, int src_reg, int type)
   {
   	// Lazy implementation....
 
+    GET_CONTEXT();
+    reg_t v1  = reg_get_value(dst_reg, &mcontext);
+    reg_t v2  = reg_get_value(src_reg, &mcontext);
+
+    dr_printf("ADDING %lld and %lld.\n\n", v1, v2);
+
   	FAIL();
   }
 
