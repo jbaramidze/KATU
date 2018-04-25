@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 
+// Do additional checks, while testing
+#define CHECKS
+
 //
 // Constants.
 //
@@ -29,6 +32,8 @@ enum prop_type {
   PROP_SBB
 
 };
+
+int is_binary(enum prop_type type );
 
 
 enum mode {
@@ -66,9 +71,8 @@ typedef struct {
   Operations ops[DEFAULT_OPERATIONS];
   int ops_size;
 
-  // this ID can be of 
+  // this ID is of
   int size;
-  int index;
 
 } ID_entity;
 
@@ -79,7 +83,6 @@ operations with all bytes if taint is e.g 4-byte
 
 typedef struct {
   int id;
-  int size;
   int index;
 
 } IID_entity;
@@ -122,6 +125,9 @@ static const char *PROP_NAMES[] = {
     "mov", "movzx", "add", "sub", "and", "or", "xor", "mul", "adc", "sbb"
 };
 
+static const char *reg_mask_names[16] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", 
+                                  "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15" };
+
 #define MEMTAINTISEMPTY(index, address)     (taint_[index][(address) % TAINTMAP_SIZE][1] == -1)
 #define MEMTAINTADDR(index, address)        (taint_[index][(address) % TAINTMAP_SIZE][0])
 #define MEMTAINTVAL(index, address)         (taint_[index][(address) % TAINTMAP_SIZE][1])
@@ -133,10 +139,11 @@ static const char *PROP_NAMES[] = {
 #define ADDR(address) ((address) % TAINTMAP_SIZE)
 
 #define REGTAINTID(mask, offset)            (iids_[(taintReg_[(mask & 0xFF0000) >> 16][((mask & 0xFF00) >> 8) + offset])].id)
-#define REGTAINTSIZE(mask, offset)          (iids_[(taintReg_[(mask & 0xFF0000) >> 16][((mask & 0xFF00) >> 8) + offset])].size)
 #define MEMTAINTID(index, address)          (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].id)
-#define MEMTAINTSIZE(index, address)        (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].size)
 #define MEMTAINTINDEX(index, address)       (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].index)
+
+#define IDSIZE(id)                          (ids_[id].size)
+#define IIDINDEX(iid)                       (iids_[iid].index)
 
 #define LOGMEMTAINT(index, address)         (taint_[index][(address) % TAINTMAP_SIZE][1]), (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].id), (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].size), (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].index)
 #define IIDTOID(iid)                        (iids_[iid].id)
@@ -208,7 +215,7 @@ extern int nextIID;
 
 int nshr_tid_new_id();
 int nshr_tid_new_id_get();
-int nshr_tid_new_iid(int id, int size, int index);
+int nshr_tid_new_iid(int id, int index);
 int nshr_tid_new_iid_get();
 int nshr_tid_new_uid(int fd);
 int nshr_tid_copy_id(int id);
@@ -240,11 +247,13 @@ void nshr_taint_mv_reg_rm(int reg);
 void nshr_taint_mv_baseindexmem_rm(int segment, int disp, int scale, int base, int index, int size);
 void nshr_taint_mv_mem_rm(uint64 addr, int size);
 
-// e.g dst_reg+=val, dst_reg^=val.....
-void nshr_taint_mix_val2reg(int dst_reg, int64 value, int type);
+// e.g dst_reg=src_reg+val, dst_reg=src_reg^val.....
+void nshr_taint_mix_val2reg(int dst_reg, int src_reg, int64 value, int type);
+// e.g dst_reg=src_reg+dst_reg, dst_reg=src_reg^dst_reg.....
+void nshr_taint_mix_reg2reg(int dst_reg, int src_reg, int type);
 
 // dst_reg = src_reg+val
-void nshr_taint_add_val2newreg(int src_reg, int dst_reg, int64 value);
+void nshr_taint_add_val2reg(int src_reg, int dst_reg, int64 value);
 
 
 void nshr_taint_ret();

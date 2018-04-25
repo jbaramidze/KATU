@@ -83,7 +83,7 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
       LDUMP("InsDetail:\tTaint %s + %d to %s, %d bytes.\n", get_register_name(base_reg), disp,
                        get_register_name(dst_reg), size);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_add_val2newreg, false, 3,
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_add_val2reg, false, 3,
                                OPND_CREATE_INT32(ENCODE_REG(base_reg)), OPND_CREATE_INT32(ENCODE_REG(dst_reg)), 
                                    OPND_CREATE_INT64(disp));
     }
@@ -186,9 +186,9 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
         LDUMP("InsDetail:\tDoing '%s' to taint at %s, by 0x%x, %d bytes\n", PROP_NAMES[type], 
         	             regname, value, size);
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_val2reg, false, 3,
-                                 OPND_CREATE_INT32(ENCODE_REG(dst_reg)), OPND_CREATE_INT64(value),
-                                     OPND_CREATE_INT32(type));
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_val2reg, false, 4,
+                                 OPND_CREATE_INT32(ENCODE_REG(dst_reg)), OPND_CREATE_INT32(ENCODE_REG(dst_reg)), 
+                                     OPND_CREATE_INT64(value), OPND_CREATE_INT32(type));
 
       }
     }
@@ -284,10 +284,31 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
 
       UNUSED(regname2);
 
-      LDUMP("InsDetail:\tTaint %s to %s.\n", regname, regname2);
+      if(type == PROP_XOR && src_reg == dst_reg)
+      {
+        LDUMP("InsDetail:\tRemoving taint from %s.\n", regname);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2reg, false, 2,
-                             OPND_CREATE_INT32(ENCODE_REG(src_reg)), OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, 1,
+                             OPND_CREATE_INT32(ENCODE_REG(src_reg)));
+      }
+      else if (is_binary(type))
+      {
+
+
+        LDUMP("InsDetail:\tDoing '%s' to taint at %s, to %s, %d bytes\n", PROP_NAMES[type], 
+        	             regname, regname2, size);
+
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_reg2reg, false, 3,
+                                 OPND_CREATE_INT32(ENCODE_REG(dst_reg)), OPND_CREATE_INT32(ENCODE_REG(src_reg)),
+                                     OPND_CREATE_INT32(type));
+      }
+      else
+      {
+        LDUMP("InsDetail:\tTaint %s to %s.\n", regname, regname2);
+
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2reg, false, 2,
+                               OPND_CREATE_INT32(ENCODE_REG(src_reg)), OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
+      }
     }
     else if (opnd_is_rel_addr(dst))
     {
@@ -402,6 +423,10 @@ static void opcode_add(void *drcontext, instr_t *instr, instrlist_t *ilist)
   else if (opcode == OP_and)
   {
     propagate(drcontext, instr, ilist, src1, dst, PROP_AND);
+  }
+  else if (opcode == OP_xor)
+  {
+    propagate(drcontext, instr, ilist, src1, dst, PROP_XOR);
   }
 
 }
@@ -525,7 +550,11 @@ void nshr_init_opcodes(void)
 
   instrFunctions[OP_add]			= opcode_add;   //4
 
+  instrFunctions[OP_and]			= opcode_add;   //8
+
   instrFunctions[OP_sub]			= opcode_add;   //10
+
+  instrFunctions[OP_xor]			= opcode_add;   //12
 
   instrFunctions[OP_call]			= opcode_call;	// 42
   instrFunctions[OP_call_ind]		= opcode_call;	// 43

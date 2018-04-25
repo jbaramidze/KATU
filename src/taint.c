@@ -1,13 +1,10 @@
 #define LOGTEST
-#undef LOGDEBUG
-#undef  LOGDUMP
+#define LOGDEBUG
+#define  LOGDUMP
 
 #include "dr_api.h"
 #include "core/unix/include/syscall.h"
 #include "nashromi.h"
-
-const char *reg_mask_names[16] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", 
-                                  "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15" };
 
 #define LIBC_NAME "libc.so.6"
 
@@ -260,16 +257,25 @@ void nshr_taint_jmp_reg(int dst_reg)
   reg_t base  = reg_get_value(dst_reg, &mcontext);
 }
 
-
-void nshr_taint_add_val2newreg(int src_reg, int dst_reg, int64 value)
+// dst = src + value
+void nshr_taint_add_val2reg(int src_reg, int dst_reg, int64 value)
 {
-  LDEBUG_TAINT(false, "Taint:\t\tREG %s start %d + 0x%x to\t\t REG %s start %dsize %d\n", REGNAME(src_reg), 
+  LDEBUG_TAINT(false, "Taint:\t\tREG %s start %d + %d to\t\t REG %s start %d size %d\n", REGNAME(src_reg), 
   	              REGSTART(src_reg), value, REGNAME(dst_reg), REGSTART(dst_reg));
 
-  int newid = nshr_reg_fix_size(src_reg); // new id has correct size.
+  int newid = nshr_tid_modify_id(src_reg, PROP_ADD, value, 0);
 
-  int newerid = nshr_tid_modify_id(newid, PROP_ADD, value, 0);
+  if (newid == -1)
+  {
+  	LDUMP("Taint:\t\tNot tainted, ignoring.\n");
 
+  	for (int i = 0; i < REGSIZE(src_reg); i++)
+    {
+      REGTAINT(dst_reg, i) = -1;
+    }
+
+  	return;
+  }
 
   for (int i = 0; i < REGSIZE(src_reg); i++)
   {
@@ -279,25 +285,84 @@ void nshr_taint_add_val2newreg(int src_reg, int dst_reg, int64 value)
                                REGNAME(dst_reg), REGSTART(dst_reg) + i,
                                    REGTAINT(dst_reg, i), REGSIZE(src_reg));
 
-    REGTAINT(dst_reg, i) = nshr_tid_new_iid(newerid, REGSIZE(src_reg), i);
+    REGTAINT(dst_reg, i) = nshr_tid_new_iid(newid, i);
   }
 }
 
-void nshr_taint_mix_val2reg(int dst_reg, int64 value, int type)
+// dst = dst+src_reg (or 1, ^, &, depending on type)
+void nshr_taint_mix_reg2reg(int dst_reg, int src_reg, int type)
 {
-  LDEBUG_TAINT(false, "Taint:\t\tDOING '%s' by 0x%x to\t\t REG %s size %d\n", PROP_NAMES[type], value, 
-  	         REGNAME(dst_reg), REGSIZE(dst_reg));
+  int t1 = nshr_reg_tainted(dst_reg);
+  int t2 = nshr_reg_tainted(src_reg);
 
-  //FAIL();
+  LDEBUG_TAINT(false, "Taint:\t\tDOING '%s' by '%s' TAINT#%d to\t\t REG %s TAIND#%d size %d\n", PROP_NAMES[type], 
+  	               REGNAME(src_reg), t1, REGNAME(dst_reg), t2, REGSIZE(dst_reg));
 
-  for (int i = 0; i < REGSIZE(dst_reg); i++)
+
+  if (t1 == 0 && t2 == 0)
   {
-    LDUMP_TAINT(i, (REGTAINT(dst_reg, i) > 0), "Taint:\t\t\tDOING '%s' by 0x%x to %s byte %d TAINT #%d.\n", 
-                       PROP_NAMES[type], value, REGNAME(dst_reg), REGSTART(dst_reg) + i, REGTAINT(dst_reg, i));
+  	LDUMP("Taint:\t\tNone tainted, ignoring.\n");
 
-    if (REGTAINT(dst_reg, i) > 0)
-    {
+  	return;
+  }
+
+  if (t1 > 0 && t2 > 0)
+  {
+  	// Lazy implementation....
+
+  	FAIL();
+  }
+
+  if (t1 > 0) // just like dst = dst+value
+  {
+    GET_CONTEXT();
+  
+    reg_t value  = reg_get_value(src_reg, &mcontext);
+
+    nshr_taint_mix_val2reg(dst_reg, dst_reg, value, type);
+  }
+  else // dst = src + value
+  {
+    GET_CONTEXT();
+  
+    reg_t value  = reg_get_value(dst_reg, &mcontext);
+
+    nshr_taint_mix_val2reg(dst_reg, src_reg, value, type);
+  }
+}
+
+// dst = src+value (or 1, ^, &, depending on type)
+void nshr_taint_mix_val2reg(int dst_reg, int src_reg, int64 value, int type)
+{
+  LDEBUG_TAINT(false, "Taint:\t\tDOING '%s' by 0x%x on %s to\t\t REG %s size %d\n", PROP_NAMES[type], value, 
+  	         REGNAME(src_reg), REGNAME(dst_reg), REGSIZE(dst_reg));
+
+  int newid = nshr_tid_modify_id(src_reg, type, value, 0);
+
+  if (newid == -1)
+  {
+  	LDUMP("Taint:\t\tNot tainted, ignoring.\n");
+
+  	if (dst_reg != src_reg)
+  	{
+  	  for (int i = 0; i < REGSIZE(dst_reg); i++)
+      {
+        REGTAINT(dst_reg, i) = -1;
+      }
     }
+
+  	return;
+  }
+
+  for (int i = 0; i < REGSIZE(src_reg); i++)
+  {
+    LDUMP_TAINT(i, (REGTAINT(dst_reg, i) > 0 || REGTAINT(src_reg, i) > 0), 
+    	               "Taint:\t\t\tREG %s byte %d '%s' %d TAINT #%d->\t\t\t REG %s byte %d TAINT #%d TOTAL %d.\n", 
+                           REGNAME(src_reg), REGSTART(src_reg) + i, PROP_NAMES[type], value, 
+                               REGTAINT(src_reg, i), REGNAME(dst_reg), REGSTART(dst_reg) + i,
+                                   REGTAINT(dst_reg, i), REGSIZE(src_reg));
+
+    REGTAINT(dst_reg, i) = nshr_tid_new_iid(newid, i);
   }
 }
 
