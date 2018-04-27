@@ -71,9 +71,8 @@ typedef struct {
   Operations ops[DEFAULT_OPERATIONS];
   int ops_size;
 
-  // this ID is of
+  // no absolutely necessary.
   int size;
-
 } ID_entity;
 
 /*
@@ -125,29 +124,98 @@ static const char *PROP_NAMES[] = {
     "mov", "movzx", "add", "sub", "and", "or", "xor", "mul", "adc", "sbb"
 };
 
-static const char *reg_mask_names[16] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", 
+static const char *reg_mask_names[] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", 
                                   "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15" };
 
-#define MEMTAINTISEMPTY(index, address)     (taint_[index][(address) % TAINTMAP_SIZE][1] == -1)
-#define MEMTAINTADDR(index, address)        (taint_[index][(address) % TAINTMAP_SIZE][0])
-#define MEMTAINTVAL(index, address)         (taint_[index][(address) % TAINTMAP_SIZE][1])
+// return 0 on 1, 1 on 2, 2 on 4 and 3 on 8
+static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
+#define SIZE_TO_INDEX(mask)                  (sizes_to_indexes[mask & 0xFF])  
+
+
 #define REGNAME(mask)                       (reg_mask_names[(mask & 0xFF0000) >> 16])
-#define REGINDEX(mas)                       ((mask & 0xFF0000) >> 16);
+#define REGINDEX(mask)                      ((mask & 0xFF0000) >> 16)
 #define REGSTART(mask)                      ((mask & 0xFF00) >> 8)
 #define REGSIZE(mask)                       (mask & 0xFF)
-#define REGTAINT(mask, offset)              (taintReg_[(mask & 0xFF0000) >> 16][((mask & 0xFF00) >> 8) + offset])
+          
+
 #define ADDR(address) ((address) % TAINTMAP_SIZE)
+
+#define MEMTAINTISEMPTY(index, address)              mem_taint_is_empty(index, address)
+#define MEMTAINTADDR(index, address)                 mem_taint_get_addr(index, address)
+#define SETMEMTAINTADDR(index, address, value)       mem_taint_set_addr(index, address, value)
+#define MEMTAINTVAL1(index, address)                 mem_taint_get_value(index, address, 0)
+#define MEMTAINTVAL2(index, address)                 mem_taint_get_value(index, address, 1)
+#define MEMTAINTVAL4(index, address)                 mem_taint_get_value(index, address, 2)
+#define MEMTAINTVAL8(index, address)                 mem_taint_get_value(index, address, 3)
+#define MEMTAINTVAL(index, address, size)            mem_taint_get_value(index, address, size)
+#define SETMEMTAINTVAL1(index, address, value)       mem_taint_set_value(index, address, 0, value)
+#define SETMEMTAINTVAL2(index, address, value)       mem_taint_set_value(index, address, 1, value)
+#define SETMEMTAINTVAL4(index, address, value)       mem_taint_set_value(index, address, 2, value)
+#define SETMEMTAINTVAL8(index, address, value)       mem_taint_set_value(index, address, 3, value)
+#define SETMEMTAINTVAL(index, address, size, value)  mem_taint_set_value(index, address, size, value)
+
+#define REGTAINTVAL1(mask, offset)                   reg_taint_get_value(mask, offset, 0) 
+#define REGTAINTVAL2(mask, offset)                   reg_taint_get_value(mask, offset, 1) 
+#define REGTAINTVAL4(mask, offset)                   reg_taint_get_value(mask, offset, 2) 
+#define REGTAINTVAL8(mask, offset)                   reg_taint_get_value(mask, offset, 3)
+#define REGTAINTVAL(mask, offset, size)              reg_taint_get_value(mask, offset, size)
+#define SETREGTAINTVAL(mask, offset, size, value)    reg_taint_set_value(mask, offset, size, value)
+
+
+#define REGTAINTVALS_LOG(reg, offset)      reg_taint_get_value(reg, i, 0), reg_taint_get_value(reg, i, 1), reg_taint_get_value(reg, i, 2), reg_taint_get_value(reg, i, 3)
+#define MEMTAINTVALS_LOG(index, address)    mem_taint_get_value(index, addr, 0), mem_taint_get_value(index, addr, 1), mem_taint_get_value(index, addr, 2), mem_taint_get_value(index, addr, 3)
+
+#define REGTAINT2MEMTAINT(mask, offset, index, address) mem_taint_set_value(index, address, 0, reg_taint_get_value(mask, offset, 0)); \
+                                                        mem_taint_set_value(index, address, 1, reg_taint_get_value(mask, offset, 1)); \
+                                                        mem_taint_set_value(index, address, 2, reg_taint_get_value(mask, offset, 2)); \
+                                                        mem_taint_set_value(index, address, 3, reg_taint_get_value(mask, offset, 3));
+
+#define MEMTAINT2REGTAINT(mask, offset, index, address) reg_taint_set_value(mask, offset, 0, mem_taint_get_value(index, address, 0)); \
+                                                        reg_taint_set_value(mask, offset, 1, mem_taint_get_value(index, address, 1)); \
+                                                        reg_taint_set_value(mask, offset, 2, mem_taint_get_value(index, address, 2)); \
+                                                        reg_taint_set_value(mask, offset, 3, mem_taint_get_value(index, address, 3));
+
+#define REGTAINT2REGTAINT(mask1, offset1, mask2, offset2) reg_taint_set_value(mask1, offset1, 0, reg_taint_get_value(mask2, offset2, 0)); \
+                                                          reg_taint_set_value(mask1, offset1, 1, reg_taint_get_value(mask2, offset2, 1)); \
+                                                          reg_taint_set_value(mask1, offset1, 2, reg_taint_get_value(mask2, offset2, 2)); \
+                                                          reg_taint_set_value(mask1, offset1, 3, reg_taint_get_value(mask2, offset2, 3));
+
+
+#define REGTAINTRM(mask, offset) reg_taint_set_value(mask, offset, 0, -1); \
+                                 reg_taint_set_value(mask, offset, 1, -1); \
+                                 reg_taint_set_value(mask, offset, 2, -1); \
+                                 reg_taint_set_value(mask, offset, 3, -1);
+
+#define MEMTAINTRM(index, address) mem_taint_set_value(index, address, 0, -1); \
+                                   mem_taint_set_value(index, address, 1, -1); \
+                                   mem_taint_set_value(index, address, 2, -1); \
+                                   mem_taint_set_value(index, address, 3, -1);
+
+
+
+#define MEMTAINTED(index, address)          (mem_taint_get_value(index, address, 0) > 0 || \
+                                             mem_taint_get_value(index, address, 1) > 0 || \
+                                             mem_taint_get_value(index, address, 2) > 0 || \
+                                             mem_taint_get_value(index, address, 3) > 0)
+
+#define REGTAINTED(mask, offset)            (reg_taint_get_value(mask, offset, 0) > 0 || \
+                                             reg_taint_get_value(mask, offset, 1) > 0 || \
+                                             reg_taint_get_value(mask, offset, 2) > 0 || \
+                                             reg_taint_get_value(mask, offset, 3) > 0)
+
+
 
 #define REGTAINTID(mask, offset)            (iids_[(taintReg_[(mask & 0xFF0000) >> 16][((mask & 0xFF00) >> 8) + offset])].id)
 #define MEMTAINTID(index, address)          (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].id)
 #define MEMTAINTINDEX(index, address)       (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].index)
 
-#define IDSIZE(id)                          (ids_[id].size)
-#define IDCONSTRNUM(id)                     (ids_[id].ops_size)
-#define IIDINDEX(iid)                       (iids_[iid].index)
 
-#define LOGMEMTAINT(index, address)         (taint_[index][(address) % TAINTMAP_SIZE][1]), (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].id), (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].size), (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].index)
-#define IIDTOID(iid)                        (iids_[iid].id)
+#define IID2INDEX(iid)                      (iids_[iid].index)
+#define IID2ID(iid)                         (iids_[iid].id)
+#define ID2UID(id)                          (ids_[id].uid)
+#define ID2SIZE(id)                         (ids_[id].size)
+#define ID2OPSIZE(id)                       (ids_[id].ops_size)
+#define ID2OP(id, index)                    (ids_[id].ops[id])
 //
 // Logging definitions.
 //
@@ -204,11 +272,51 @@ extern UID_entity uids_[MAX_UID];
 extern ID_entity  ids_[MAX_ID];
 extern IID_entity iids_[MAX_IID];
 
-
-extern int64_t taint_[TAINTMAP_NUM][TAINTMAP_SIZE][2];
-extern int64_t taintReg_[16][8];
-
 extern instrFunc instrFunctions[MAX_OPCODE];
+
+/****************************************************
+        T A I N T   M E M   S T R U C T U R E
+*****************************************************/
+typedef struct _TaintMemStruct
+{
+  // This one is just used for hash matching.
+  int64_t address[TAINTMAP_NUM][TAINTMAP_SIZE];
+
+  // This one marks taint markings.
+  int64_t value[TAINTMAP_NUM][TAINTMAP_SIZE][4];
+
+} TaintMemStruct;
+
+extern TaintMemStruct taint_mem_;
+
+int mem_taint_is_empty(int index, uint64_t addr);
+int mem_taint_find_index(uint64_t addr, int i);
+int64_t mem_taint_get_addr(int index, uint64_t addr);
+void    mem_taint_set_addr(int index, uint64_t addr, uint64_t value);
+int64_t mem_taint_get_value(int index, uint64_t addr, int size);
+void    mem_taint_set_value(int index, uint64_t addr, int size, uint64_t value);
+
+
+/****************************************************
+        T A I N T   R E G   S T R U C T U R E
+*****************************************************/
+
+typedef struct _TaintRegStruct
+{
+  // [which_reg][which_byte]
+  int64_t value[16][8][4];
+
+}  TaintRegStruct;
+
+extern TaintRegStruct taint_reg_;
+
+int64_t reg_taint_get_value(int reg, int offset, int size);
+void    reg_taint_set_value(int reg, int offset, int size, uint64_t value);
+
+
+/****************************************************
+     U I D / U U I D / I D   H A N D L I N G
+*****************************************************/
 
 extern int nextUID;
 extern int nextID;
@@ -222,7 +330,8 @@ int nshr_tid_new_uid(int fd);
 int nshr_tid_copy_id(int id);
 int nshr_tid_modify_id(int id, enum prop_type operation, int64 value, int is_id);
 
-int nshr_reg_fix_size(int index_reg);
+int nshr_reg_taint_any(int reg);
+int nshr_reg_get_or_fix_sized_taint(int index_reg);
 
 //
 // Function declarations.

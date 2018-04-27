@@ -6,9 +6,9 @@
 #include "core/unix/include/syscall.h"
 #include "nashromi.h"
 
-int64_t			taint_[TAINTMAP_NUM][TAINTMAP_SIZE][2];
+TaintMemStruct	taint_mem_;
+TaintRegStruct  taint_reg_;
 instrFunc		instrFunctions[MAX_OPCODE];
-int64_t 		taintReg_[16][8];
 Fd_entity 		fds_[MAX_FD];
 enum mode 		started_ 						= MODE_IGNORING;
 
@@ -42,8 +42,6 @@ int nshr_tid_new_iid(int id, int index)
 {
   iids_[nextIID].id    = id;
   iids_[nextIID].index = index;
-
-  LDUMP("Utils:\t\tCreated new iid %d from id %d index %d\n", nextIID, id, index);
 
   return nextIID++;
 }
@@ -86,62 +84,128 @@ int nshr_tid_copy_id(int id)
 
 
 // Return if any byte in reg is tainted.
-int nshr_reg_tainted(int reg)
+int nshr_reg_taint_any(int reg)
 {
-  for (int i = 0; i < REGSIZE(reg); i++)
+  int size = REGSIZE(reg);
+
+  if (size == 8)
   {
-    if (REGTAINT(reg, i) > 0)
-    {
-      return REGTAINT(reg, i);
-    }
+  	if (REGTAINTVAL8(reg, 0) > 0) return IID2ID(REGTAINTVAL8(reg, 0));
+
+  	if (REGTAINTVAL4(reg, 0) > 0) return IID2ID(REGTAINTVAL4(reg, 0));
+    if (REGTAINTVAL4(reg, 1) > 0) return IID2ID(REGTAINTVAL4(reg, 1));
+    if (REGTAINTVAL4(reg, 2) > 0) return IID2ID(REGTAINTVAL4(reg, 2));
+    if (REGTAINTVAL4(reg, 3) > 0) return IID2ID(REGTAINTVAL4(reg, 3));
+    if (REGTAINTVAL4(reg, 4) > 0) return IID2ID(REGTAINTVAL4(reg, 4));
+
+    if (REGTAINTVAL2(reg, 0) > 0) return IID2ID(REGTAINTVAL2(reg, 0));
+    if (REGTAINTVAL2(reg, 1) > 0) return IID2ID(REGTAINTVAL2(reg, 1));
+    if (REGTAINTVAL2(reg, 2) > 0) return IID2ID(REGTAINTVAL2(reg, 2));
+    if (REGTAINTVAL2(reg, 3) > 0) return IID2ID(REGTAINTVAL2(reg, 3));
+    if (REGTAINTVAL2(reg, 4) > 0) return IID2ID(REGTAINTVAL2(reg, 4));
+    if (REGTAINTVAL2(reg, 5) > 0) return IID2ID(REGTAINTVAL2(reg, 5));
+    if (REGTAINTVAL2(reg, 6) > 0) return IID2ID(REGTAINTVAL2(reg, 6));
+
+
+    if (REGTAINTVAL1(reg, 0) > 0) return IID2ID(REGTAINTVAL1(reg, 0));
+    if (REGTAINTVAL1(reg, 1) > 0) return IID2ID(REGTAINTVAL1(reg, 1));
+    if (REGTAINTVAL1(reg, 2) > 0) return IID2ID(REGTAINTVAL1(reg, 2));
+    if (REGTAINTVAL1(reg, 3) > 0) return IID2ID(REGTAINTVAL1(reg, 3));
+    if (REGTAINTVAL1(reg, 4) > 0) return IID2ID(REGTAINTVAL1(reg, 4));
+    if (REGTAINTVAL1(reg, 5) > 0) return IID2ID(REGTAINTVAL1(reg, 5));
+    if (REGTAINTVAL1(reg, 6) > 0) return IID2ID(REGTAINTVAL1(reg, 6));
+    if (REGTAINTVAL1(reg, 7) > 0) return IID2ID(REGTAINTVAL1(reg, 7));
+
+    return -1;
   }
+
+  if (size == 4)
+  {
+  	if (REGTAINTVAL4(reg, 0) > 0) return IID2ID(REGTAINTVAL4(reg, 0));
+
+  	if (REGTAINTVAL2(reg, 0) > 0) return IID2ID(REGTAINTVAL2(reg, 0));
+  	if (REGTAINTVAL2(reg, 1) > 0) return IID2ID(REGTAINTVAL2(reg, 1));
+  	if (REGTAINTVAL2(reg, 2) > 0) return IID2ID(REGTAINTVAL2(reg, 2));
+
+
+    if (REGTAINTVAL1(reg, 0) > 0) return IID2ID(REGTAINTVAL1(reg, 0));
+    if (REGTAINTVAL1(reg, 1) > 0) return IID2ID(REGTAINTVAL1(reg, 1));
+    if (REGTAINTVAL1(reg, 2) > 0) return IID2ID(REGTAINTVAL1(reg, 2));
+    if (REGTAINTVAL1(reg, 3) > 0) return IID2ID(REGTAINTVAL1(reg, 3));
+
+    return -1;
+  }
+
+  if (size == 2)
+  {
+  	if (REGTAINTVAL2(reg, 0) > 0) return IID2ID(REGTAINTVAL2(reg, 0));
+
+  	if (REGTAINTVAL1(reg, 0) > 0) return IID2ID(REGTAINTVAL1(reg, 0));
+  	if (REGTAINTVAL1(reg, 1) > 0) return IID2ID(REGTAINTVAL1(reg, 1));
+
+  	return -1;
+  }
+
+  if (size == 1)
+  {
+  	if (REGTAINTVAL1(reg, 0) > 0) return IID2ID(REGTAINTVAL1(reg, 0));
+
+  	return -1;
+  }
+
+  // should never come here.
+  FAIL();
 
   return -1;
 }
 
-
-int nshr_reg_fix_size(int index_reg)
+// If correct sizing tainted - return
+// If none of sizings tainted - return -1
+// If one of the sizings tainted - make new taint id, of correct size and return.
+// !!!! WE IGNORE CASE IF e.g. this int's second half is tainted as first half of another int  !!!!!!
+int nshr_reg_get_or_fix_sized_taint(int reg)
 {
-  int uid     = -1;
+  int index = SIZE_TO_INDEX(REGSIZE(reg));
 
-  if (REGTAINT(index_reg, 0) > 0 && IDSIZE(REGTAINTID(index_reg, 0)) == REGSIZE(index_reg))
+  // case 1. 
+  int iid = REGTAINTVAL(reg, 0, index);
+
+  if (iid > 0)
   {
-  	// Already set the correct size.
-  	return REGTAINTID(index_reg, 0);
+    if (IID2INDEX(iid) != 0)
+    {
+    	FAIL();
+    }
+
+  	return IID2ID(iid);
   }
 
-  int taint = nshr_reg_tainted(index_reg);
+  int id = nshr_reg_taint_any(reg);
 
-  if (taint == -1) return -1;
-
-  uid = ids_[taint].uid;
- 
-  /*
-  FIXME: Make sure no constraints were applied before we change the size.
-         If there are some constratins, things get too complicated -> FAIL();
-  */
+  // case 2.
+  if (id == -1) return -1;
 
   // Make new taint.
 
   int newid = nshr_tid_new_id();
 
-  ids_[newid].uid      = uid;
+  ids_[newid].uid      = ID2UID(id);
   ids_[newid].ops_size = 0;
-  ids_[newid].size     = REGSIZE(index_reg);
+  ids_[newid].size     = REGSIZE(reg);
 
-  LDUMP("Utils:\t\tFIXING SIZE: Created new id %d from uid %d size %d.\n", newid, uid, REGSIZE(index_reg));
+  LDUMP("Utils:\t\tFIXING SIZE: Created new id %d from uid %d size %d.\n", newid, ids_[newid].uid, REGSIZE(reg));
 
-  for (int i = 0; i < REGSIZE(index_reg); i++)
+  for (int i = 0; i < REGSIZE(reg); i++)
   {
     int newiid = nshr_tid_new_iid(newid, i);
 
     if (i == 0)
     {
       LDUMP("Utils:\t\tCreated new iid %d for reg %s byte %d, to id %d size %d index %d\n", 
-              newiid, REGNAME(index_reg), REGSTART(index_reg) + i, newid, IDSIZE(newid), IIDINDEX(newiid));
+              newiid, REGNAME(reg), REGSTART(reg) + i, newid, ID2SIZE(newid), IID2INDEX(newiid));
     }
 
-    REGTAINT(index_reg, i) = newiid;
+    SETREGTAINTVAL(reg, i, index, newiid);
   }
 
   return newid;
@@ -150,7 +214,7 @@ int nshr_reg_fix_size(int index_reg)
 int nshr_tid_modify_id(int reg_index, enum prop_type operation, int64 value, int is_id)
 {
   // will either return -1 (not tainted), same (size correct) or new id.
-  int newid = nshr_reg_fix_size(reg_index);
+  int newid = nshr_reg_get_or_fix_sized_taint(reg_index);
 
   if (newid == -1)
   {
@@ -164,10 +228,10 @@ int nshr_tid_modify_id(int reg_index, enum prop_type operation, int64 value, int
   modify the last operation to include the new one.
   */
 
-  if (ids_[newid].ops_size > 0 &&                                            // we have at least 1 operation
-          ids_[newid].ops[ids_[newid].ops_size - 1].type == operation &&     // last operation is the same
+  if (ID2OPSIZE(newid) > 0 &&                                                // we have at least 1 operation
+        ID2OP(newid, ID2OPSIZE(newid) - 1).type == operation &&              // last operation is the same
+          ID2OP(newid, ID2OPSIZE(newid) - 1).is_id == 0 &&                   // last operation is by constant 
               (operation == PROP_ADD || operation == PROP_SUB) &&            // operation is of specific type
-                  ids_[newid].ops[ids_[newid].ops_size - 1].is_id == 0  &&   // last operation is by constant 
                       is_id == 0)                                            // new operation is also by constant
   {
     if (operation == PROP_ADD)
@@ -184,11 +248,11 @@ int nshr_tid_modify_id(int reg_index, enum prop_type operation, int64 value, int
     /*
     Just add a new operation.
     */
-    ids_[newid].ops[ids_[newid].ops_size].type  = operation;
-    ids_[newid].ops[ids_[newid].ops_size].is_id = is_id;
-    ids_[newid].ops[ids_[newid].ops_size].value = value;
+    ID2OP(newid, ID2OPSIZE(newid)).type  = operation;
+    ID2OP(newid, ID2OPSIZE(newid)).is_id = is_id;
+    ID2OP(newid, ID2OPSIZE(newid)).value = value;
 
-    ids_[newid].ops_size++;
+    ID2OPSIZE(newid)++;
   }
 
   LDUMP("Utils:\t\tAppended operation '%s' to id %d by %d.\n", PROP_NAMES[operation], newid, value);
@@ -225,4 +289,61 @@ void nshr_pre_scanf(void *wrapcxt, OUT void **user_data)
 void nshr_post_scanf(void *wrapcxt, void *user_data)
 {
 
+}
+
+int mem_taint_is_empty(int index, uint64_t addr)
+{
+  return (taint_mem_.value[index][(addr) % TAINTMAP_SIZE][0] == -1 && 
+  	      taint_mem_.value[index][(addr) % TAINTMAP_SIZE][1] == -1 && 
+  	      taint_mem_.value[index][(addr) % TAINTMAP_SIZE][2] == -1 && 
+  	      taint_mem_.value[index][(addr) % TAINTMAP_SIZE][3] == -1);
+}  
+
+int64_t mem_taint_get_addr(int index, uint64_t addr)
+{
+  return taint_mem_.address[index][(addr) % TAINTMAP_SIZE];
+}
+
+void mem_taint_set_addr(int index, uint64_t addr, uint64_t value)
+{
+  taint_mem_.address[index][(addr) % TAINTMAP_SIZE] = value;
+}
+
+int64_t mem_taint_get_value(int index, uint64_t addr, int size)
+{
+  return taint_mem_.value[index][(addr) % TAINTMAP_SIZE][size];
+}
+
+void mem_taint_set_value(int index, uint64_t addr, int size, uint64_t value)
+{
+  taint_mem_.value[index][(addr) % TAINTMAP_SIZE][size] = value;
+}
+
+int mem_taint_find_index(uint64_t addr, int i)
+{
+  int index = 0;
+
+  while(!mem_taint_is_empty(index, addr + i) && 
+            mem_taint_get_addr(index, addr + i) != addr + i &&
+                index < TAINTMAP_NUM)
+  {
+    index++;
+  }
+
+  if (index == TAINTMAP_NUM)
+  {
+    FAIL();
+  }
+
+  return index;
+}
+
+int64_t reg_taint_get_value(int reg, int offset, int size)
+{
+  return taint_reg_.value[REGINDEX(reg)][REGSTART(reg) + offset][size];
+}
+
+void    reg_taint_set_value(int reg, int offset, int size, uint64_t value)
+{
+  taint_reg_.value[REGINDEX(reg)][REGSTART(reg) + offset][size] = value;
 }
