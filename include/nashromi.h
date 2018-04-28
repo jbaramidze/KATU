@@ -215,7 +215,7 @@ static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 #define ID2UID(id)                          (ids_[id].uid)
 #define ID2SIZE(id)                         (ids_[id].size)
 #define ID2OPSIZE(id)                       (ids_[id].ops_size)
-#define ID2OP(id, index)                    (ids_[id].ops[id])
+#define ID2OP(id, index)                    (ids_[id].ops[index])
 //
 // Logging definitions.
 //
@@ -337,6 +337,7 @@ int nshr_reg_get_or_fix_sized_taint(int index_reg);
 // Function declarations.
 //
 
+void dump();
 
 // syscalls.
 void nshr_event_post_syscall(void *drcontext, int id);

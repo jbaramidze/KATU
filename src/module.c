@@ -6,7 +6,7 @@
 #include "nashromi.h"
 
 
-static void dump()
+void dump()
 {
 	dr_printf("\n\nStarting dump of IID:\n");
 
