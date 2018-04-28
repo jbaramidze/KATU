@@ -27,6 +27,13 @@ int 			nextIID							= 1;
 
 
 
+#ifdef DBG_PASS_INSTR
+
+instr_t *instr_pointers[1024*16];
+int instr_next_pointer = 0;
+
+#endif
+
 int is_binary(enum prop_type type )
 {
   return type >= PROP_ADD;
@@ -217,7 +224,31 @@ int nshr_reg_get_or_fix_sized_taint(int reg)
   return newid;
 }
 
-int nshr_tid_modify_id(int reg_index, enum prop_type operation, int64 value, int is_id)
+
+int nshr_tid_modify_id_by_symbol(int dst_reg, enum prop_type operation, int src_reg)
+{
+  int newid_dst = nshr_reg_get_or_fix_sized_taint(dst_reg);
+  int newid_src = nshr_reg_get_or_fix_sized_taint(src_reg);
+
+  if (newid_dst < 0 || newid_src < 0)
+  {
+  	FAIL(); // if this function got called, both are tainted.
+  }
+
+  int newid = nshr_tid_copy_id(newid_dst);
+
+  ID2OP(newid, ID2OPSIZE(newid)).type  = operation;
+  ID2OP(newid, ID2OPSIZE(newid)).is_id = 1;
+  ID2OP(newid, ID2OPSIZE(newid)).value = newid_src;
+
+  ID2OPSIZE(newid)++;
+
+  LDUMP("Utils:\t\tAppended operation '%s' to id %d by ID#%d.\n", PROP_NAMES[operation], newid, newid_src);
+
+  return newid;
+}
+
+int nshr_tid_modify_id_by_val(int reg_index, enum prop_type operation, int64 value)
 {
   // will either return -1 (not tainted), same (size correct) or new id.
   int newid = nshr_reg_get_or_fix_sized_taint(reg_index);
@@ -237,8 +268,7 @@ int nshr_tid_modify_id(int reg_index, enum prop_type operation, int64 value, int
   if (ID2OPSIZE(newid) > 0 &&                                                // we have at least 1 operation
         ID2OP(newid, ID2OPSIZE(newid) - 1).type == operation &&              // last operation is the same
           ID2OP(newid, ID2OPSIZE(newid) - 1).is_id == 0 &&                   // last operation is by constant 
-              (operation == PROP_ADD || operation == PROP_SUB) &&            // operation is of specific type
-                      is_id == 0)                                            // new operation is also by constant
+              (operation == PROP_ADD || operation == PROP_SUB))              // operation is of specific type
   {
     if (operation == PROP_ADD)
     {
@@ -255,7 +285,7 @@ int nshr_tid_modify_id(int reg_index, enum prop_type operation, int64 value, int
     Just add a new operation.
     */
     ID2OP(newid, ID2OPSIZE(newid)).type  = operation;
-    ID2OP(newid, ID2OPSIZE(newid)).is_id = is_id;
+    ID2OP(newid, ID2OPSIZE(newid)).is_id = 0;
     ID2OP(newid, ID2OPSIZE(newid)).value = value;
 
     ID2OPSIZE(newid)++;
@@ -352,4 +382,27 @@ int64_t reg_taint_get_value(int reg, int offset, int size)
 void    reg_taint_set_value(int reg, int offset, int size, uint64_t value)
 {
   taint_reg_.value[REGINDEX(reg)][REGSTART(reg) + offset][size] = value;
+}
+
+
+void log_instr(instr_t *instr)
+{
+  int opcode = instr_get_opcode(instr);
+
+  void *drcontext = dr_get_current_drcontext();
+
+  char str[64];
+
+  instr_disassemble_to_buffer(drcontext, instr, str, 64);
+
+  dr_printf("TAINT! %s: ", str);
+
+  return str;
+}
+
+instr_t *instr_dupl(instr_t *instr)
+{
+  instr_t *copy = instr_clone(dr_get_current_drcontext(), instr);
+
+  return copy;
 }

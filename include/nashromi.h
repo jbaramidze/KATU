@@ -6,6 +6,73 @@
 // Do additional checks, while testing
 #define CHECKS
 
+// Pass instruction among other params when tainting, to debug.
+#define DBG_PASS_INSTR
+
+  #ifdef DBG_PASS_INSTR
+  #define DBG_TAINT_NUM_PARAMS(x) (x+1)
+  #define DGB_END_CALL_ARG , instr
+  #define DBG_END_DR_CLEANCALL , OPND_CREATE_INT64(instr_dupl(instr))
+  #define DBG_END_TAINTING_FUNC , instr_t *instr
+  #define DBG_END_TAINTING_FUNC_ALONE instr_t *instr
+  #define DBG_PARAM_CLEANUP() // DEFINE CLEANUP HERE TO FIX LEAK.
+  
+  extern instr_t *instr_pointers[1024*16];
+  extern int instr_next_pointer;
+  
+  
+  /*
+  Specific logging functions.
+  */
+  
+  #if defined LOGDEBUG
+  #define LDEBUG_TAINT(A, ...) { log_instr(instr); dr_printf(__VA_ARGS__); }
+  #elif defined LOGTEST
+  #define LDEBUG_TAINT(A, ...) if (A) { log_instr(instr); dr_printf(__VA_ARGS__); }
+  #else
+  #define LDEBUG_TAINT(A, ...)
+  #endif
+  
+  #if defined LOGDUMP
+  #define LDUMP_TAINT(i, A, ...) { log_instr(instr); dr_printf(__VA_ARGS__); }
+  #elif defined LOGTEST
+  #define LDUMP_TAINT(i, A, ...) if ((A) && i == 0) { log_instr(instr); dr_printf(__VA_ARGS__); }
+  #else
+  #define LDUMP_TAINT(i, A, ...)
+  #endif
+
+
+#else
+
+  #define DBG_TAINT_NUM_PARAMS(x) (x)
+  #define DGB_END_CALL_ARG 
+  #define DBG_END_DR_CLEANCALL
+  #define DBG_END_TAINTING_FUNC
+  #define DBG_END_TAINTING_FUNC_ALONE
+  
+  /*
+  Specific logging functions.
+  */
+  
+  #if defined LOGDEBUG
+  #define LDEBUG_TAINT(A, ...) dr_printf(__VA_ARGS__)
+  #elif defined LOGTEST
+  #define LDEBUG_TAINT(A, ...) if (A) dr_printf(__VA_ARGS__)
+  #else
+  #define LDEBUG_TAINT(A, ...)
+  #endif
+  
+  #if defined LOGDUMP
+  #define LDUMP_TAINT(i, A, ...) dr_printf(__VA_ARGS__)
+  #elif defined LOGTEST
+  #define LDUMP_TAINT(i, A, ...) if ((A) && i == 0) dr_printf(__VA_ARGS__)        
+  #else
+  #define LDUMP_TAINT(i, A, ...)
+  #endif
+
+
+#endif
+
 //
 // Constants.
 //
@@ -109,10 +176,6 @@ static const char *PROP_NAMES[] = {
     "mov", "movzx", "add", "sub", "and", "or", "xor", "mul", "adc", "sbb"
 };
 
-static const char *reg_mask_names[] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", 
-                                  "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15" };
-
-                             
 //  AX AX
 // [AL AH EAX EAX RAX RAX RAX RAX]
 //   8  7  6   5   4   3   2   1
@@ -139,7 +202,7 @@ static const int reg_mask_index[69] =  {0,
 static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 #define SIZE_TO_INDEX(mask)                  (sizes_to_indexes[mask & 0xFF])  
 
-#define REGNAME(mask)                       (reg_mask_names[reg_mask_index[mask]])
+#define REGNAME(mask)                       (get_register_name(mask))
 #define REGINDEX(mask)                      (reg_mask_index[mask])
 #define REGSTART(mask)                      (reg_mask_start[mask])
 #define REGSIZE(mask)                       (opnd_size_in_bytes(reg_get_size(mask)))
@@ -247,25 +310,6 @@ static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 
 #define LERROR(...) dr_printf(__VA_ARGS__)
 
-/*
-Specific logging functions.
-*/
-
-#if defined LOGDEBUG
-#define LDEBUG_TAINT(A, ...) dr_printf(__VA_ARGS__)
-#elif defined LOGTEST
-#define LDEBUG_TAINT(A, ...) if (A) dr_printf(__VA_ARGS__)
-#else
-#define LDEBUG_TAINT(A, ...)
-#endif
-
-#if defined LOGDUMP
-#define LDUMP_TAINT(i, A, ...) dr_printf(__VA_ARGS__)
-#elif defined LOGTEST
-#define LDUMP_TAINT(i, A, ...) if ((A) && i == 0) dr_printf(__VA_ARGS__)				
-#else
-#define LDUMP_TAINT(i, A, ...)
-#endif
 
 //
 // Global variables.
@@ -320,6 +364,9 @@ extern TaintRegStruct taint_reg_;
 int64_t reg_taint_get_value(int reg, int offset, int size);
 void    reg_taint_set_value(int reg, int offset, int size, uint64_t value);
 
+void log_instr(instr_t *instr);
+instr_t *instr_dupl(instr_t *instr);
+
 
 /****************************************************
      U I D / U U I D / I D   H A N D L I N G
@@ -335,7 +382,8 @@ int nshr_tid_new_iid(int id, int index);
 int nshr_tid_new_iid_get();
 int nshr_tid_new_uid(int fd);
 int nshr_tid_copy_id(int id);
-int nshr_tid_modify_id(int id, enum prop_type operation, int64 value, int is_id);
+int nshr_tid_modify_id_by_val(int reg, enum prop_type operation, int64 value);
+int nshr_tid_modify_id_by_symbol(int dst_reg, enum prop_type operation, int src_reg);
 
 int nshr_reg_taint_any(int reg);
 int nshr_reg_get_or_fix_sized_taint(int index_reg);
@@ -354,28 +402,28 @@ bool nshr_syscall_filter(void *drcontext, int sysnum);
 // taint.
 void nshr_taint(reg_t addr, unsigned int size, int fd);
 
-void nshr_taint_mv_2coeffregs2reg(int reg_mask1, int scale, int reg_mask2, int disp, int reg_mask3);
-void nshr_taint_mv_reg2reg(int reg_mask1, int reg_mask2);
-void nshr_taint_mv_mem2reg(int segment, int disp, int scale, int base, int index, int reg_mask); 
-void nshr_taint_mv_mem2regzx(int segment, int disp, int scale, int base, int index, int reg_mask, int srcsize); 
-void nshr_taint_mv_reg2mem(int segment, int reg_mask, int scale, int base, int index, int disp);
-void nshr_taint_mv_constmem2reg(uint64 addr, int reg_mask); 
-void nshr_taint_mv_reg2constmem(int reg_mask, uint64 addr); 
-void nshr_taint_mv_reg_rm(int reg);
-void nshr_taint_mv_baseindexmem_rm(int segment, int disp, int scale, int base, int index, int size);
-void nshr_taint_mv_mem_rm(uint64 addr, int size);
+void nshr_taint_mv_2coeffregs2reg(int reg_mask1, int scale, int reg_mask2, int disp, int reg_mask3 DBG_END_TAINTING_FUNC);
+void nshr_taint_mv_reg2reg(int reg_mask1, int reg_mask2 DBG_END_TAINTING_FUNC);
+void nshr_taint_mv_mem2reg(int segment, int disp, int scale, int base, int index, int reg_mask DBG_END_TAINTING_FUNC); 
+void nshr_taint_mv_mem2regzx(int segment, int disp, int scale, int base, int index, int reg_mask, int srcsize DBG_END_TAINTING_FUNC);
+void nshr_taint_mv_reg2mem(int segment, int reg_mask, int scale, int base, int index, int disp DBG_END_TAINTING_FUNC);
+void nshr_taint_mv_constmem2reg(uint64 addr, int reg_mask DBG_END_TAINTING_FUNC); 
+void nshr_taint_mv_reg2constmem(int reg_mask, uint64 addr DBG_END_TAINTING_FUNC); 
+void nshr_taint_mv_reg_rm(int reg DBG_END_TAINTING_FUNC);
+void nshr_taint_mv_baseindexmem_rm(int segment, int disp, int scale, int base, int index, int size DBG_END_TAINTING_FUNC);
+void nshr_taint_mv_mem_rm(uint64 addr, int size DBG_END_TAINTING_FUNC);
 
 // e.g dst_reg=src_reg+val, dst_reg=src_reg^val.....
-void nshr_taint_mix_val2reg(int dst_reg, int src_reg, int64 value, int type);
+void nshr_taint_mix_val2reg(int dst_reg, int src_reg, int64 value, int type DBG_END_TAINTING_FUNC);
 // e.g dst_reg=src_reg+dst_reg, dst_reg=src_reg^dst_reg.....
-void nshr_taint_mix_reg2reg(int dst_reg, int src_reg, int type);
+void nshr_taint_mix_reg2reg(int dst_reg, int src_reg, int type DBG_END_TAINTING_FUNC);
 
 // dst_reg = src_reg+val
-void nshr_taint_add_val2reg(int src_reg, int dst_reg, int64 value);
+void nshr_taint_add_val2reg(int src_reg, int dst_reg, int64 value DBG_END_TAINTING_FUNC);
 
 
-void nshr_taint_ret();
-void nshr_taint_jmp_reg(int dst_reg);
+void nshr_taint_ret(DBG_END_TAINTING_FUNC_ALONE);
+void nshr_taint_jmp_reg(int dst_reg DBG_END_TAINTING_FUNC);
 
 // instructions.
 dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr_t *inst, bool for_trace, 

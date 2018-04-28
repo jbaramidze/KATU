@@ -27,7 +27,7 @@ void dump()
 			dr_printf("\tOperations:\n");
 			for (int j = 0; j < ids_[i].ops_size; j++)
 			{
-				dr_printf("\tOperation #%d: '%s' by %lld, is_id=%d\n", j, PROP_NAMES[ids_[i].ops[j].type],
+				dr_printf("\tOperation #%d: '%s' by %lld, ID_entity=%d\n", j, PROP_NAMES[ids_[i].ops[j].type],
 					ids_[i].ops[j].value, ids_[i].ops[j].is_id);
 			}
 		}
