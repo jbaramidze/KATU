@@ -101,21 +101,6 @@ typedef void (*instrFunc)(void *, instr_t *, instrlist_t *);
 #define FAIL() { dr_printf("FAIL! at %s:%d.\n", __FILE__, __LINE__); \
                  				exit(-1); }
 
-// Encode in 3 bytes: index of register, which byte to start from in reg. and how many bytes to taint.
-#define ENCODE_REG(reg)			reg_mask_index[reg] * 0x10000 + \
-					reg_mask_start[reg] * 0x100   + \
-					opnd_size_in_bytes(reg_get_size(reg))
-
-#define DECODE_REG1(mask)		int reg_index1 =  (mask & 0xFF0000) >> 16;  	\
-					int reg_start1 =  (mask & 0xFF00) >> 8;		\
-					int reg_size1  =  mask & 0xFF
-
-#define DECODE_REG2(mask)		int reg_index2 =  (mask & 0xFF0000) >> 16; 	\
-					int reg_start2 = (mask & 0xFF00) >> 8;
-
-#define DECODE_REG3(mask)		int reg_index3 =  (mask & 0xFF0000) >> 16; 	\
-					int reg_start3 = (mask & 0xFF00) >> 8;
-
 #define GET_CONTEXT()			dr_mcontext_t mcontext = {sizeof(mcontext),DR_MC_ALL}; \
 					void *drcontext = dr_get_current_drcontext(); \
 					dr_get_mcontext(drcontext, &mcontext)
@@ -127,15 +112,37 @@ static const char *PROP_NAMES[] = {
 static const char *reg_mask_names[] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", 
                                   "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15" };
 
+                             
+//  AX AX
+// [AL AH EAX EAX RAX RAX RAX RAX]
+//   8  7  6   5   4   3   2   1
+
+// [base + index*scale + disp]
+
+// for each register, specify where to start tainting from, according our table
+static const int reg_mask_start[69] = { 0x0,
+                                 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+                                 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+                                 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+                                 0x0, 0x0, 0x0, 0x0, 0x1, 0x1, 0x1, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+                                 0x0, 0x0, 0x0, 0x0 };
+
+static const int reg_mask_index[69] =  {0,
+                                 0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   10,  11,  12,  13,  14,  15,
+                                 0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   10,  11,  12,  13,  14,  15,
+                                 0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   10,  11,  12,  13,  14,  15,
+                                 0,   1,   2,   3,   0,   1,   2,   3,   8,   9,   10,  11,  12,  13,  14,  15,
+                                 4,   5,   6,   7   };
+
+
 // return 0 on 1, 1 on 2, 2 on 4 and 3 on 8
 static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 #define SIZE_TO_INDEX(mask)                  (sizes_to_indexes[mask & 0xFF])  
 
-
-#define REGNAME(mask)                       (reg_mask_names[(mask & 0xFF0000) >> 16])
-#define REGINDEX(mask)                      ((mask & 0xFF0000) >> 16)
-#define REGSTART(mask)                      ((mask & 0xFF00) >> 8)
-#define REGSIZE(mask)                       (mask & 0xFF)
+#define REGNAME(mask)                       (reg_mask_names[reg_mask_index[mask]])
+#define REGINDEX(mask)                      (reg_mask_index[mask])
+#define REGSTART(mask)                      (reg_mask_start[mask])
+#define REGSIZE(mask)                       (opnd_size_in_bytes(reg_get_size(mask)))
           
 
 #define ADDR(address) ((address) % TAINTMAP_SIZE)
@@ -162,7 +169,7 @@ static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 #define SETREGTAINTVAL(mask, offset, size, value)    reg_taint_set_value(mask, offset, size, value)
 
 
-#define REGTAINTVALS_LOG(reg, offset)      reg_taint_get_value(reg, i, 0), reg_taint_get_value(reg, i, 1), reg_taint_get_value(reg, i, 2), reg_taint_get_value(reg, i, 3)
+#define REGTAINTVALS_LOG(reg, offset)       reg_taint_get_value(reg, offset, 0), reg_taint_get_value(reg, offset, 1), reg_taint_get_value(reg, offset, 2), reg_taint_get_value(reg, offset, 3)
 #define MEMTAINTVALS_LOG(index, address)    mem_taint_get_value(index, addr, 0), mem_taint_get_value(index, addr, 1), mem_taint_get_value(index, addr, 2), mem_taint_get_value(index, addr, 3)
 
 #define REGTAINT2MEMTAINT(mask, offset, index, address) mem_taint_set_value(index, address, 0, reg_taint_get_value(mask, offset, 0)); \

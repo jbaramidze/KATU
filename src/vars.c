@@ -88,6 +88,14 @@ int nshr_reg_taint_any(int reg)
 {
   int size = REGSIZE(reg);
 
+  for (int i = 0; i < size; i++)
+  {
+  	if (REGTAINTVAL8(reg, 0) > 0) return IID2ID(REGTAINTVAL8(reg, 0));
+  	if (REGTAINTVAL4(reg, 0) > 0) return IID2ID(REGTAINTVAL4(reg, 0));
+  	if (REGTAINTVAL2(reg, 0) > 0) return IID2ID(REGTAINTVAL2(reg, 0));
+  	if (REGTAINTVAL1(reg, 0) > 0) return IID2ID(REGTAINTVAL1(reg, 0));
+  }
+/*
   if (size == 8)
   {
   	if (REGTAINTVAL8(reg, 0) > 0) return IID2ID(REGTAINTVAL8(reg, 0));
@@ -152,9 +160,7 @@ int nshr_reg_taint_any(int reg)
 
   	return -1;
   }
-
-  // should never come here.
-  FAIL();
+*/
 
   return -1;
 }

@@ -280,8 +280,9 @@ void nshr_taint_mix_reg2reg(int dst_reg, int src_reg, int type)
   int t1 = nshr_reg_taint_any(dst_reg);
   int t2 = nshr_reg_taint_any(src_reg);
 
-  LDEBUG_TAINT(false, "Taint:\t\tDOING '%s' by '%s' TAINT#[%d %d %d %d] to\t\t REG %s TAIND#%d size %d\n", PROP_NAMES[type], 
-  	               REGNAME(src_reg), t1, REGNAME(dst_reg), t2, REGSIZE(dst_reg));
+  LDEBUG_TAINT(true, "Taint:\t\tDOING '%s' by '%s' TAINT#[%d %d %d %d] to\t\t REG %s TAIND#[%d %d %d %d] size %d\n", PROP_NAMES[type], 
+  	               REGNAME(src_reg), REGTAINTVALS_LOG(src_reg, 0), REGNAME(dst_reg), 
+  	                   REGTAINTVALS_LOG(dst_reg, 0), REGSIZE(dst_reg));
 
 
   if (t1 == 0 && t2 == 0)
@@ -298,8 +299,6 @@ void nshr_taint_mix_reg2reg(int dst_reg, int src_reg, int type)
     GET_CONTEXT();
     reg_t v1  = reg_get_value(dst_reg, &mcontext);
     reg_t v2  = reg_get_value(src_reg, &mcontext);
-
-    dr_printf("ADDING %lld and %lld.\n\n", v1, v2);
 
   	FAIL();
   }

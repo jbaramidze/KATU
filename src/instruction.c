@@ -15,27 +15,6 @@
     typedef uint64 reg_t
 
 */
-//  AX AX
-// [AL AH EAX EAX RAX RAX RAX RAX]
-//   8  7  6   5   4   3   2   1
-
-// [base + index*scale + disp]
-
-// for each register, specify where to start tainting from, according our table
-static const int reg_mask_start[69] = { 0x0,
-                                 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-                                 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-                                 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-                                 0x0, 0x0, 0x0, 0x0, 0x1, 0x1, 0x1, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-                                 0x0, 0x0, 0x0, 0x0 };
-
-static const int reg_mask_index[69] =  {0,
-                                 0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   10,  11,  12,  13,  14,  15,
-                                 0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   10,  11,  12,  13,  14,  15,
-                                 0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   10,  11,  12,  13,  14,  15,
-                                 0,   1,   2,   3,   0,   1,   2,   3,   8,   9,   10,  11,  12,  13,  14,  15,
-                                 4,   5,   6,   7   };
-
 
 static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
@@ -66,9 +45,9 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
                        scale, get_register_name(index_reg), disp, get_register_name(dst_reg), size);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_2coeffregs2reg, false, 5,
-                               OPND_CREATE_INT32(ENCODE_REG(index_reg)), OPND_CREATE_INT32(scale), 
-                                   OPND_CREATE_INT32(ENCODE_REG(base_reg)), OPND_CREATE_INT32(disp), 
-                                       OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
+                               OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), 
+                                   OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(disp), 
+                                       OPND_CREATE_INT32(dst_reg));
     }
     else if (index_reg > 0) 
     {
@@ -84,7 +63,7 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
                        get_register_name(dst_reg), size);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_add_val2reg, false, 3,
-                               OPND_CREATE_INT32(ENCODE_REG(base_reg)), OPND_CREATE_INT32(ENCODE_REG(dst_reg)), 
+                               OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(dst_reg), 
                                    OPND_CREATE_INT64(disp));
     }
   }
@@ -93,7 +72,7 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
     LDUMP("InsDetail:\tRemove taint at %s, %d bytes\n", get_register_name(dst_reg), size);
 
     dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, 1,
-                             OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
+                             OPND_CREATE_INT32(dst_reg));
   }
   else
   {
@@ -134,7 +113,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_mem2reg, false, 6,
                              OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(disp), OPND_CREATE_INT32(scale), 
                                OPND_CREATE_INT32(base_reg),  OPND_CREATE_INT32(index_reg),
-                                 OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
+                                 OPND_CREATE_INT32(dst_reg));
       }
       else if (type == PROP_MOVZX)
       {
@@ -148,7 +127,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_mem2regzx, false, 7,
                              OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(disp), OPND_CREATE_INT32(scale), 
                                OPND_CREATE_INT32(base_reg),  OPND_CREATE_INT32(index_reg),
-                                 OPND_CREATE_INT32(ENCODE_REG(dst_reg)), OPND_CREATE_INT32(srcsize));
+                                 OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(srcsize));
       }
     }
     else
@@ -177,7 +156,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
         LDUMP("InsDetail:\tRemove taint at %s, %d bytes\n", regname, size);
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, 1,
-                                 OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
+                                 OPND_CREATE_INT32(dst_reg));
       }
       else
       {
@@ -187,7 +166,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
         	             regname, value, size);
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_val2reg, false, 4,
-                                 OPND_CREATE_INT32(ENCODE_REG(dst_reg)), OPND_CREATE_INT32(ENCODE_REG(dst_reg)), 
+                                 OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(dst_reg), 
                                      OPND_CREATE_INT64(value), OPND_CREATE_INT32(type));
 
       }
@@ -270,7 +249,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
                                           get_register_name(index_reg), disp, size);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2mem, false, 6, 
-                       OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(ENCODE_REG(src_reg)), OPND_CREATE_INT32(disp), 
+                       OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(disp), 
                             OPND_CREATE_INT32(scale), OPND_CREATE_INT32(base_reg),  OPND_CREATE_INT32(index_reg));
     }
     else if (opnd_is_reg(dst))
@@ -289,7 +268,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
         LDUMP("InsDetail:\tRemoving taint from %s.\n", regname);
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, 1,
-                             OPND_CREATE_INT32(ENCODE_REG(src_reg)));
+                             OPND_CREATE_INT32(src_reg));
       }
       else if (is_binary(type))
       {
@@ -297,7 +276,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
         	             regname, regname2, size);
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_reg2reg, false, 3,
-                                 OPND_CREATE_INT32(ENCODE_REG(dst_reg)), OPND_CREATE_INT32(ENCODE_REG(src_reg)),
+                                 OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(src_reg),
                                      OPND_CREATE_INT32(type));
       }
       else
@@ -305,7 +284,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
         LDUMP("InsDetail:\tTaint %s to %s.\n", regname, regname2);
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2reg, false, 2,
-                               OPND_CREATE_INT32(ENCODE_REG(src_reg)), OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
+                               OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(dst_reg));
       }
     }
     else if (opnd_is_rel_addr(dst))
@@ -321,7 +300,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
                                       regname, addr, size);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2constmem, false, 2, 
-                               OPND_CREATE_INT32(ENCODE_REG(src_reg)), OPND_CREATE_INT64(addr));
+                               OPND_CREATE_INT32(src_reg), OPND_CREATE_INT64(addr));
     }
     else
     {
@@ -351,7 +330,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       LDUMP("InsDetail:\tTaint from pc-relative %llx to %s %d bytes.\n", addr, regname, size);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_constmem2reg, false, 2,
-                               OPND_CREATE_INT64(addr), OPND_CREATE_INT32(ENCODE_REG(dst_reg)));
+                               OPND_CREATE_INT64(addr), OPND_CREATE_INT32(dst_reg));
     }
     else
     {
