@@ -50,6 +50,8 @@ event_exit(void)
 
     dump();
 
+    for (int i = 0; i < instr_next_pointer; i++) 
+    	instr_destroy(dr_get_current_drcontext(), instr_pointers[i]);
 }
 
 static void nshr_handle_dump(long long addr)

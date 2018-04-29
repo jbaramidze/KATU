@@ -36,8 +36,6 @@ void nshr_taint_mv_reg2mem(int segment, int src_reg, int disp, int scale, int ba
 
     REGTAINT2MEMTAINT(src_reg, i, index, addr + i);
   }
-
-  DBG_PARAM_CLEANUP();
 }
 
 void nshr_taint_mv_reg2constmem(int src_reg, uint64 addr DBG_END_TAINTING_FUNC)
@@ -58,8 +56,6 @@ void nshr_taint_mv_reg2constmem(int src_reg, uint64 addr DBG_END_TAINTING_FUNC)
 
     REGTAINT2MEMTAINT(src_reg, i, index, addr + i);
   }
-
-  DBG_PARAM_CLEANUP(); 
 }
 
 void nshr_taint_mv_constmem2reg(uint64 addr, int dst_reg DBG_END_TAINTING_FUNC)
@@ -79,8 +75,6 @@ void nshr_taint_mv_constmem2reg(uint64 addr, int dst_reg DBG_END_TAINTING_FUNC)
 
     MEMTAINT2REGTAINT(dst_reg, i, index, addr + i);
   }
-
-  DBG_PARAM_CLEANUP();
 }
 
 void nshr_taint_mv_mem2regzx(int segment, int disp, int scale, int base_reg, int index_reg, int dst_reg, int srcsize DBG_END_TAINTING_FUNC)
@@ -115,8 +109,6 @@ void nshr_taint_mv_mem2regzx(int segment, int disp, int scale, int base_reg, int
   {
   	REGTAINTRM(dst_reg, i);
   }
-
-  DBG_PARAM_CLEANUP();
 }
 
 void nshr_taint_mv_mem2reg(int segment, int disp, int scale, int base_reg, int index_reg, int dst_reg DBG_END_TAINTING_FUNC)
@@ -145,8 +137,6 @@ void nshr_taint_mv_mem2reg(int segment, int disp, int scale, int base_reg, int i
 
     MEMTAINT2REGTAINT(dst_reg, i, index, addr + i);
   }
-
-  DBG_PARAM_CLEANUP();
 }
 
 void nshr_taint_mv_mem_rm(uint64 addr, int size DBG_END_TAINTING_FUNC)
@@ -163,8 +153,6 @@ void nshr_taint_mv_mem_rm(uint64 addr, int size DBG_END_TAINTING_FUNC)
 
     MEMTAINTRM(index, addr + i);
   }
-
-  DBG_PARAM_CLEANUP();
 }
 
 void nshr_taint_mv_baseindexmem_rm(int segment, int disp, int scale, int base_reg, int index_reg, int size DBG_END_TAINTING_FUNC)
@@ -191,8 +179,6 @@ void nshr_taint_mv_baseindexmem_rm(int segment, int disp, int scale, int base_re
 
     MEMTAINTRM(index, addr + i);
   }
-
-  DBG_PARAM_CLEANUP();
 }
 
 void nshr_taint_mv_reg2reg(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
@@ -212,8 +198,6 @@ void nshr_taint_mv_reg2reg(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
 
     REGTAINT2REGTAINT(dst_reg, i, src_reg, i);
   }
-
-  DBG_PARAM_CLEANUP();
 }
 
 void nshr_taint_ret(DBG_END_TAINTING_FUNC_ALONE)
@@ -245,8 +229,6 @@ void nshr_taint_ret(DBG_END_TAINTING_FUNC_ALONE)
   }
 
   dr_free_module_data(data);
-
-  DBG_PARAM_CLEANUP();
 }
 
 void nshr_taint_jmp_reg(int dst_reg DBG_END_TAINTING_FUNC)
@@ -256,8 +238,6 @@ void nshr_taint_jmp_reg(int dst_reg DBG_END_TAINTING_FUNC)
   GET_CONTEXT();
   
   reg_t base  = reg_get_value(dst_reg, &mcontext);
-
-  DBG_PARAM_CLEANUP();
 }
 
 // dst = src + value
@@ -292,8 +272,6 @@ void nshr_taint_add_val2reg(int src_reg, int dst_reg, int64 value DBG_END_TAINTI
 
     SETREGTAINTVAL(dst_reg, i, ind, nshr_tid_new_iid(newid, i));
   }
-
-  DBG_PARAM_CLEANUP();
 }
 
 // dst = dst+src_reg (or 1, ^, &, depending on type)
@@ -336,8 +314,6 @@ void nshr_taint_mix_reg2reg(int dst_reg, int src_reg, int type DBG_END_TAINTING_
 
       SETREGTAINTVAL(dst_reg, i, ind, nshr_tid_new_iid(newid, i));
     }
-
-    DBG_PARAM_CLEANUP();
   }
   else if (t1 > 0) // just like dst = dst+value
   {
@@ -392,8 +368,6 @@ void nshr_taint_mix_val2reg(int dst_reg, int src_reg, int64 value, int type DBG_
 
     SETREGTAINTVAL(dst_reg, i, ind, nshr_tid_new_iid(newid, i));
   }
-
-  DBG_PARAM_CLEANUP();
 }
 
 void nshr_taint_mv_reg_rm(int mask DBG_END_TAINTING_FUNC)
@@ -408,8 +382,6 @@ void nshr_taint_mv_reg_rm(int mask DBG_END_TAINTING_FUNC)
     REGTAINTRM(mask, i);
 
   }
-
-  DBG_PARAM_CLEANUP();
 }
 
 void nshr_taint(reg_t addr, unsigned int size, int fd)

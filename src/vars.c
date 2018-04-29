@@ -404,5 +404,7 @@ instr_t *instr_dupl(instr_t *instr)
 {
   instr_t *copy = instr_clone(dr_get_current_drcontext(), instr);
 
+  instr_pointers[instr_next_pointer++] = copy;
+
   return copy;
 }

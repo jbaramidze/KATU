@@ -15,7 +15,6 @@
   #define DBG_END_DR_CLEANCALL , OPND_CREATE_INT64(instr_dupl(instr))
   #define DBG_END_TAINTING_FUNC , instr_t *instr
   #define DBG_END_TAINTING_FUNC_ALONE instr_t *instr
-  #define DBG_PARAM_CLEANUP() // DEFINE CLEANUP HERE TO FIX LEAK.
   
   extern instr_t *instr_pointers[1024*16];
   extern int instr_next_pointer;
