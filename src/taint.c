@@ -1,6 +1,6 @@
 #define LOGTEST
 #define LOGDEBUG
-#undef  LOGDUMP
+#define  LOGDUMP
 
 #include "dr_api.h"
 #include "core/unix/include/syscall.h"
@@ -77,6 +77,7 @@ void nshr_taint_mv_constmem2reg(uint64 addr, int dst_reg DBG_END_TAINTING_FUNC)
   }
 }
 
+// temporarily not used, but keep it, maybe needed later.
 void nshr_taint_mv_mem2regzx(int segment, int disp, int scale, int base_reg, int index_reg, int dst_reg, int srcsize DBG_END_TAINTING_FUNC)
 {
   GET_CONTEXT();
@@ -134,6 +135,8 @@ void nshr_taint_mv_mem2reg(int segment, int disp, int scale, int base_reg, int i
                        "\tMEM %p TAINT#[%d %d %d %d]->\t REG %s byte %d TAINT#[%d %d %d %d] INDEX %d TOTAL %d.\n", 
                            ADDR(addr + i), MEMTAINTVALS_LOG(index, addr + i), REGNAME(dst_reg), 
                                REGSTART(dst_reg) + i, REGTAINTVALS_LOG(dst_reg, i), index, REGSIZE(dst_reg));
+
+
 
     MEMTAINT2REGTAINT(dst_reg, i, index, addr + i);
   }
@@ -339,13 +342,29 @@ void nshr_taint_mix_val2reg(int dst_reg, int src_reg, int64 value, int type DBG_
   LDEBUG_TAINT(false, "DOING '%s' by 0x%x on %s to\t\t REG %s size %d\n", PROP_NAMES[type], value, 
   	         REGNAME(src_reg), REGNAME(dst_reg), REGSIZE(dst_reg));
 
+
+  /*
+  Some special cases: multiply by 0.
+  */
+  if (type == PROP_IMUL && value == 0)
+  {
+  	  LDEBUG_TAINT(false, "Multiplication by 0, skipping.\n");
+
+      for (int i = 0; i < REGSIZE(dst_reg); i++)
+      {
+        REGTAINTRM(dst_reg, i);
+      }
+
+      return;
+  }
+
   int newid = nshr_tid_modify_id_by_val(src_reg, type, value);
 
   if (newid == -1)
   {
   	LDUMP("Not tainted, ignoring.\n");
 
-  	if (dst_reg != src_reg)
+  	if (dst_reg != src_reg) // Otherwise already -1, no need.
   	{
   	  for (int i = 0; i < REGSIZE(dst_reg); i++)
       {

@@ -104,7 +104,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       UNUSED(regname);
       UNUSED(size);
 
-      if (type == PROP_MOV)
+      if (is_mov(type))
       {
         LDUMP("InsDetail:\tTaint from base+disp %s:%s + %d*%s + %d to %s %d bytes.\n", 
                                            get_register_name(seg_reg), get_register_name(base_reg), scale, 
@@ -115,6 +115,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
                                OPND_CREATE_INT32(base_reg),  OPND_CREATE_INT32(index_reg),
                                  OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       }
+      /*
       else if (type == PROP_MOVZX)
       {
         int dstsize = size;
@@ -129,6 +130,21 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
                                OPND_CREATE_INT32(base_reg),  OPND_CREATE_INT32(index_reg),
                                  OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(srcsize) DBG_END_DR_CLEANCALL);
       }
+      else if (type == PROP_MOVSX)
+      {
+        int dstsize = size;
+        int srcsize = opnd_size_in_bytes(opnd_get_size(src));
+
+        LDUMP("InsDetail:\tTaint from base+disp %s:%s + %d*%s + %d to %s sign extend %d bytes to %d bytes.\n", 
+                                           get_register_name(seg_reg), get_register_name(base_reg), scale, 
+                                                get_register_name(index_reg), disp, regname, srcsize, dstsize);
+
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_mem2regsx, false, DBG_TAINT_NUM_PARAMS(7),
+                             OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(disp), OPND_CREATE_INT32(scale), 
+                               OPND_CREATE_INT32(base_reg),  OPND_CREATE_INT32(index_reg),
+                                 OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(srcsize) DBG_END_DR_CLEANCALL);
+      }
+      */
     }
     else
     {
@@ -365,6 +381,14 @@ static void opcode_movzx(void *drcontext, instr_t *instr, instrlist_t *ilist)
   propagate(drcontext, instr, ilist, src, dst, PROP_MOVZX);
 }
 
+static void opcode_movsx(void *drcontext, instr_t *instr, instrlist_t *ilist)
+{
+  opnd_t src = instr_get_src(instr, 0);
+  opnd_t dst = instr_get_dst(instr, 0);
+
+  propagate(drcontext, instr, ilist, src, dst, PROP_MOVSX);
+}
+
 
 // src2 == dst
 static void opcode_add(void *drcontext, instr_t *instr, instrlist_t *ilist)
@@ -404,6 +428,10 @@ static void opcode_add(void *drcontext, instr_t *instr, instrlist_t *ilist)
   else if (opcode == OP_xor)
   {
     propagate(drcontext, instr, ilist, src1, dst, PROP_XOR);
+  }
+  else if (opcode == OP_imul)
+  {
+    propagate(drcontext, instr, ilist, src1, dst, PROP_IMUL);
   }
 
 }
@@ -533,6 +561,8 @@ void nshr_init_opcodes(void)
 
   instrFunctions[OP_xor]			= opcode_add;   //12
 
+  instrFunctions[OP_imul]			= opcode_add;
+
   instrFunctions[OP_call]			= opcode_call;	// 42
   instrFunctions[OP_call_ind]		= opcode_call;	// 43
   instrFunctions[OP_call_far]		= opcode_call;	// 44
@@ -556,6 +586,10 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_syscall]		= opcode_ignore;	// 95 syscall processed by dr_register_post_syscall_event.
 
   instrFunctions[OP_movzx]          = opcode_movzx;     // 195
+
+  instrFunctions[OP_movsx]          = opcode_movsx;     // 200
+
+  instrFunctions[OP_movsxd]         = opcode_movsx;     // 597
 }
 
 //

@@ -15,7 +15,6 @@ void dump()
 		dr_printf("IID #%d\t\t -> id %d index %d\n", i, iids_[i].id, iids_[i].index);
 	}
 
-
 	dr_printf("\n\nStarting dump of IID:\n");
 
 	for (int i = 0; i < nshr_tid_new_id_get(); i++)

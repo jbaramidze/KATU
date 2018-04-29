@@ -9,7 +9,8 @@
 // Pass instruction among other params when tainting, to debug.
 #define DBG_PASS_INSTR
 
-  #ifdef DBG_PASS_INSTR
+#ifdef DBG_PASS_INSTR
+
   #define DBG_TAINT_NUM_PARAMS(x) (x+1)
   #define DGB_END_CALL_ARG , instr
   #define DBG_END_DR_CLEANCALL , OPND_CREATE_INT64(instr_dupl(instr))
@@ -69,7 +70,6 @@
   #define LDUMP_TAINT(i, A, ...)
   #endif
 
-
 #endif
 
 //
@@ -88,18 +88,20 @@
 enum prop_type {
   PROP_MOV,
   PROP_MOVZX,
+  PROP_MOVSX,
   PROP_ADD,
   PROP_SUB,
   PROP_AND,
   PROP_OR,
   PROP_XOR,
-  PROP_MULT,
+  PROP_IMUL,
   PROP_ADC,
   PROP_SBB
 
 };
 
 int is_binary(enum prop_type type );
+int is_mov(enum prop_type type );
 
 
 enum mode {
@@ -165,6 +167,7 @@ typedef void (*instrFunc)(void *, instr_t *, instrlist_t *);
 #define UNUSED(expr) 			do { (void)(expr); } while (0)
 
 #define FAIL() { dr_printf("FAIL! at %s:%d.\n", __FILE__, __LINE__); \
+                   dump(); \
                  				exit(-1); }
 
 #define GET_CONTEXT()			dr_mcontext_t mcontext = {sizeof(mcontext),DR_MC_ALL}; \
@@ -172,7 +175,7 @@ typedef void (*instrFunc)(void *, instr_t *, instrlist_t *);
 					dr_get_mcontext(drcontext, &mcontext)
 
 static const char *PROP_NAMES[] = {
-    "mov", "movzx", "add", "sub", "and", "or", "xor", "mul", "adc", "sbb"
+    "mov", "movzx", "movsx", "add", "sub", "and", "or", "xor", "imul", "adc", "sbb"
 };
 
 //  AX AX
@@ -199,12 +202,12 @@ static const int reg_mask_index[69] =  {0,
 
 // return 0 on 1, 1 on 2, 2 on 4 and 3 on 8
 static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
-#define SIZE_TO_INDEX(mask)                  (sizes_to_indexes[mask & 0xFF])  
+#define SIZE_TO_INDEX(size)                  (sizes_to_indexes[size])  
 
-#define REGNAME(mask)                       (get_register_name(mask))
-#define REGINDEX(mask)                      (reg_mask_index[mask])
-#define REGSTART(mask)                      (reg_mask_start[mask])
-#define REGSIZE(mask)                       (opnd_size_in_bytes(reg_get_size(mask)))
+#define REGNAME(reg)                       (get_register_name(reg))
+#define REGINDEX(reg)                      (reg_mask_index[reg])
+#define REGSTART(reg)                      (reg_mask_start[reg])
+#define REGSIZE(reg)                       (opnd_size_in_bytes(reg_get_size(reg)))
           
 
 #define ADDR(address) ((address) % TAINTMAP_SIZE)
@@ -223,12 +226,12 @@ static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 #define SETMEMTAINTVAL8(index, address, value)       mem_taint_set_value(index, address, 3, value)
 #define SETMEMTAINTVAL(index, address, size, value)  mem_taint_set_value(index, address, size, value)
 
-#define REGTAINTVAL1(mask, offset)                   reg_taint_get_value(mask, offset, 0) 
-#define REGTAINTVAL2(mask, offset)                   reg_taint_get_value(mask, offset, 1) 
-#define REGTAINTVAL4(mask, offset)                   reg_taint_get_value(mask, offset, 2) 
-#define REGTAINTVAL8(mask, offset)                   reg_taint_get_value(mask, offset, 3)
-#define REGTAINTVAL(mask, offset, size)              reg_taint_get_value(mask, offset, size)
-#define SETREGTAINTVAL(mask, offset, size, value)    reg_taint_set_value(mask, offset, size, value)
+#define REGTAINTVAL1(reg, offset)                   reg_taint_get_value(reg, offset, 0) 
+#define REGTAINTVAL2(reg, offset)                   reg_taint_get_value(reg, offset, 1) 
+#define REGTAINTVAL4(reg, offset)                   reg_taint_get_value(reg, offset, 2) 
+#define REGTAINTVAL8(reg, offset)                   reg_taint_get_value(reg, offset, 3)
+#define REGTAINTVAL(reg, offset, size)              reg_taint_get_value(reg, offset, size)
+#define SETREGTAINTVAL(reg, offset, size, value)    reg_taint_set_value(reg, offset, size, value)
 
 
 #define REGTAINTVALS_LOG(reg, offset)       reg_taint_get_value(reg, offset, 0), reg_taint_get_value(reg, offset, 1), reg_taint_get_value(reg, offset, 2), reg_taint_get_value(reg, offset, 3)

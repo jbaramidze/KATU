@@ -39,6 +39,10 @@ int is_binary(enum prop_type type )
   return type >= PROP_ADD;
 }
 
+int is_mov(enum prop_type type )
+{
+	return type == PROP_MOV || type == PROP_MOVZX || type == PROP_MOVSX;
+}
 
 int nshr_tid_new_id()
 {
