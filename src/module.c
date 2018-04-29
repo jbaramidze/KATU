@@ -53,6 +53,11 @@ event_exit(void)
     	instr_destroy(dr_get_current_drcontext(), instr_pointers[i]);
 }
 
+static void nshr_handle_taint(long long addr, int size)
+{
+  nshr_taint(addr, size, 900);
+}
+
 static void nshr_handle_dump(long long addr)
 {
     int index = mem_taint_find_index(addr, 0);
@@ -172,6 +177,8 @@ dr_init(client_id_t client_id)
                                 (void *) nshr_handle_annotation, false, 1, DR_ANNOTATION_CALL_TYPE_FASTCALL);
     dr_annotation_register_call("nshr_dump_taint",
                                 (void *) nshr_handle_dump, false, 1, DR_ANNOTATION_CALL_TYPE_FASTCALL);
+    dr_annotation_register_call("nshrtaint",
+                                (void *) nshr_handle_taint, false, 2, DR_ANNOTATION_CALL_TYPE_FASTCALL);
 
     if (drsym_init(0) != DRSYM_SUCCESS) 
     {

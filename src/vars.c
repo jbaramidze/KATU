@@ -212,7 +212,7 @@ int nshr_reg_get_or_fix_sized_taint(int reg)
 
   LDUMP("Utils:\t\tFIXING SIZE: Created new id %d from uid %d size %d.\n", newid, ids_[newid].uid, REGSIZE(reg));
 
-  for (int i = 0; i < REGSIZE(reg); i++)
+  for (unsigned int i = 0; i < REGSIZE(reg); i++)
   {
     int newiid = nshr_tid_new_iid(newid, i);
 
@@ -339,7 +339,7 @@ int mem_taint_is_empty(int index, uint64_t addr)
   	      taint_mem_.value[index][(addr) % TAINTMAP_SIZE][3] == -1);
 }  
 
-int64_t mem_taint_get_addr(int index, uint64_t addr)
+uint64_t mem_taint_get_addr(int index, uint64_t addr)
 {
   return taint_mem_.address[index][(addr) % TAINTMAP_SIZE];
 }
@@ -401,7 +401,7 @@ void log_instr(instr_t *instr)
 
   dr_printf("TAINT! %s: ", str);
 
-  return str;
+  return;
 }
 
 instr_t *instr_dupl(instr_t *instr)

@@ -292,6 +292,13 @@ static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 // Logging definitions.
 //
 
+#ifdef LOGWARNING
+#define LWARNING(...) dr_printf(__VA_ARGS__)
+#else
+#define LWARNING(...) 
+#endif
+
+
 #ifdef LOGTEST
 #define LTEST(...) dr_printf(__VA_ARGS__)
 #else
@@ -344,7 +351,7 @@ extern TaintMemStruct taint_mem_;
 
 int mem_taint_is_empty(int index, uint64_t addr);
 int mem_taint_find_index(uint64_t addr, int i);
-int64_t mem_taint_get_addr(int index, uint64_t addr);
+uint64_t mem_taint_get_addr(int index, uint64_t addr);
 void    mem_taint_set_addr(int index, uint64_t addr, uint64_t value);
 int64_t mem_taint_get_value(int index, uint64_t addr, int size);
 void    mem_taint_set_value(int index, uint64_t addr, int size, uint64_t value);

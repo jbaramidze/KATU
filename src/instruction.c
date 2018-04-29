@@ -1,3 +1,4 @@
+#define LOGWARNING
 #define LOGTEST
 #define LOGDEBUG
 #undef LOGDUMP
@@ -438,18 +439,19 @@ static void opcode_add(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
 static void opcode_ignore(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
-
 }
 
 static void wrong_opcode(void *drcontext, instr_t *instr, instrlist_t *ilist)
 { 
 //  LERROR("ERROR! instruction not implemented.\n");
 
+  LWARNING("Warning! unknown opcode.\n");
 //  FAIL();
 }
 
 static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
+	/*
   if (!instr_is_cti(instr)) FAIL();
 
   app_pc pc;
@@ -495,7 +497,7 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
 
   return;
-
+*/
 /*
   module_data_t *data = dr_lookup_module(pc);
 
@@ -553,13 +555,14 @@ void nshr_init_opcodes(void)
   // Add custom handlers for all known opcodes.
   //
 
-  instrFunctions[OP_add]			= opcode_add;   //4
+  instrFunctions[OP_LABEL]          = opcode_ignore; //3
+  instrFunctions[OP_add]			= opcode_add;    //4
 
-  instrFunctions[OP_and]			= opcode_add;   //8
+  instrFunctions[OP_and]			= opcode_add;    //8
 
-  instrFunctions[OP_sub]			= opcode_add;   //10
+  instrFunctions[OP_sub]			= opcode_add;    //10
 
-  instrFunctions[OP_xor]			= opcode_add;   //12
+  instrFunctions[OP_xor]			= opcode_add;    //12
 
   instrFunctions[OP_imul]			= opcode_add;
 
@@ -581,13 +584,15 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_test]			= opcode_ignore;	// 60 
   instrFunctions[OP_lea]			= opcode_lea;		// 61
 
-  //instrFunctions[OP_ret]			= opcode_call;		// 70
+  instrFunctions[OP_ret]			= opcode_call;		// 70
 
   instrFunctions[OP_syscall]		= opcode_ignore;	// 95 syscall processed by dr_register_post_syscall_event.
 
   instrFunctions[OP_movzx]          = opcode_movzx;     // 195
 
   instrFunctions[OP_movsx]          = opcode_movsx;     // 200
+
+  instrFunctions[OP_nop]            = opcode_ignore;    // 381
 
   instrFunctions[OP_movsxd]         = opcode_movsx;     // 597
 }
