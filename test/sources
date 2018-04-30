@@ -1,0 +1,43 @@
+const char *path = "/home/zhani/Thesis/test/zaza";
+ 
+
+    //a = open("/home/zhani/Thesis/test/build/zaza", O_RDONLY);
+    asm volatile (
+      "mov %1, %%rdi \n\t"
+      "mov %2, %%esi \n\t"
+      "syscall"
+        : "=a" (a)
+        : "r" (path), "r" (O_RDONLY), "a" (2) // SYS_open = 2
+        : "memory"
+    ); 
+
+// EXAMPLE 1
+/*********************************************
+    int rd;
+    char buf1[16];
+    //rd = read(a, buf, 16); 
+    asm volatile (
+      "mov %1, %%edi \n\t"
+      "mov %2, %%rsi \n\t"
+      "syscall"
+        : "=a" (rd)
+        : "r" (0), "r" (&buf1), "a" (0), "d" (10)
+        : "memory"
+    );
+
+
+    int m = atoi(buf1); 
+    nshr_dump_taint((long long int) &m);
+*************************************************/
+
+  
+   asm volatile (
+//      "mov $3, %%rax \n \t"
+//      "mov $9, %%rbx \n \t"
+//      "movq 7(%%rax, %%rbx, 8), %%rax \n \t"
+//      "movw $7, 4(%%rax, %%rbx, 4) \n \t"
+//      "movl %%eax, 4(%%rax, %%rbx, 4) \n \t"
+        "lea  0x00000110(%%rbx, %%rax, 2), %%rsi" 
+//        "movq %%rsi, 0x00000410(%%rbp)"
+        : : "a" (buf1[0]), "b" (buf2[0]) :  
+   ); 
