@@ -1,0 +1,1 @@
+Fix tainting memories where segment register != NULL

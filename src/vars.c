@@ -229,25 +229,17 @@ int nshr_reg_get_or_fix_sized_taint(int reg)
 }
 
 
-int nshr_tid_modify_id_by_symbol(int dst_reg, enum prop_type operation, int src_reg)
+int nshr_tid_modify_id_by_symbol(int dst_taint, int byte, enum prop_type operation, int src_taint)
 {
-  int newid_dst = nshr_reg_get_or_fix_sized_taint(dst_reg);
-  int newid_src = nshr_reg_get_or_fix_sized_taint(src_reg);
-
-  if (newid_dst < 0 || newid_src < 0)
-  {
-  	FAIL(); // if this function got called, both are tainted.
-  }
-
-  int newid = nshr_tid_copy_id(newid_dst);
+  int newid = nshr_tid_copy_id(dst_taint);
 
   ID2OP(newid, ID2OPSIZE(newid)).type  = operation;
   ID2OP(newid, ID2OPSIZE(newid)).is_id = 1;
-  ID2OP(newid, ID2OPSIZE(newid)).value = newid_src;
+  ID2OP(newid, ID2OPSIZE(newid)).value = src_taint;
 
   ID2OPSIZE(newid)++;
 
-  LDUMP("Utils:\t\tAppended operation '%s' to id %d by ID#%d.\n", PROP_NAMES[operation], newid, newid_src);
+  LDUMP("Utils:\t\tAppended operation '%s' to id %d by ID#%d.\n", PROP_NAMES[operation], newid, src_taint);
 
   return newid;
 }

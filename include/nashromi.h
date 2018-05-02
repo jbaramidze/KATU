@@ -162,6 +162,10 @@ typedef void (*instrFunc)(void *, instr_t *, instrlist_t *);
 // Utility definitions.
 //
 
+#ifndef MIN
+# define MIN(x, y) ((x) <= (y) ? (x) : (y))
+#endif
+
 #define STOP_IF_NOT_ACTIVE(retval)    if (started_ != MODE_ACTIVE)  {  return retval;  }
 #define STOP_IF_IGNORING(retval)    if (started_ == MODE_IGNORING)  {  return retval;  }
 #define UNUSED(expr) 			do { (void)(expr); } while (0)
@@ -392,7 +396,7 @@ int nshr_tid_new_iid_get();
 int nshr_tid_new_uid(int fd);
 int nshr_tid_copy_id(int id);
 int nshr_tid_modify_id_by_val(int reg, enum prop_type operation, int64 value);
-int nshr_tid_modify_id_by_symbol(int dst_reg, enum prop_type operation, int src_reg);
+int nshr_tid_modify_id_by_symbol(int dst_taint, int byte, enum prop_type operation, int src_taint);
 
 int nshr_reg_taint_any(int reg);
 int nshr_reg_get_or_fix_sized_taint(int index_reg);
@@ -411,24 +415,22 @@ bool nshr_syscall_filter(void *drcontext, int sysnum);
 // taint.
 void nshr_taint(reg_t addr, unsigned int size, int fd);
 
-void nshr_taint_mv_2coeffregs2reg(int reg_mask1, int scale, int reg_mask2, int disp, int reg_mask3 DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_reg2reg(int reg_mask1, int reg_mask2 DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_mem2reg(int segment, int disp, int scale, int base, int index, int reg_mask DBG_END_TAINTING_FUNC); 
-void nshr_taint_mv_mem2regzx(int segment, int disp, int scale, int base, int index, int reg_mask, int srcsize DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_reg2mem(int segment, int reg_mask, int scale, int base, int index, int disp DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_constmem2reg(uint64 addr, int reg_mask DBG_END_TAINTING_FUNC); 
-void nshr_taint_mv_reg2constmem(int reg_mask, uint64 addr DBG_END_TAINTING_FUNC); 
-void nshr_taint_mv_reg_rm(int reg DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_baseindexmem_rm(int segment, int disp, int scale, int base, int index, int size DBG_END_TAINTING_FUNC);
+void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_END_TAINTING_FUNC);
+void nshr_taint_mv_reg2reg(int src_reg, int dst_reg DBG_END_TAINTING_FUNC);
+void nshr_taint_mv_reg2regzx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC);
+void nshr_taint_mv_reg2regsx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC);
+void nshr_taint_mv_mem2reg(int segment, int base_reg, int index_reg, int scale, int disp, int dest_reg DBG_END_TAINTING_FUNC);
+void nshr_taint_mv_mem2regzx(int segment, int base_reg, int index_reg, int scale, int disp, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC);
+void nshr_taint_mv_mem2regsx(int segment, int base_reg, int index_reg, int scale, int disp, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC);
+void nshr_taint_mv_reg2mem(int src_reg, int segment, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC);
+void nshr_taint_mv_constmem2reg(uint64 addr, int dst_reg DBG_END_TAINTING_FUNC); 
+void nshr_taint_mv_reg2constmem(int src_reg, uint64 addr DBG_END_TAINTING_FUNC); 
+void nshr_taint_mv_reg_rm(int dst_reg DBG_END_TAINTING_FUNC);
+void nshr_taint_mv_baseindexmem_rm(int segment, int base_reg, int index_reg, int scale, int disp, int access_size DBG_END_TAINTING_FUNC);
 void nshr_taint_mv_mem_rm(uint64 addr, int size DBG_END_TAINTING_FUNC);
 
-// e.g dst_reg=src_reg+val, dst_reg=src_reg^val.....
-void nshr_taint_mix_val2reg(int dst_reg, int src_reg, int64 value, int type DBG_END_TAINTING_FUNC);
 // e.g dst_reg=src_reg+dst_reg, dst_reg=src_reg^dst_reg.....
-void nshr_taint_mix_reg2reg(int dst_reg, int src_reg, int type DBG_END_TAINTING_FUNC);
-
-// dst_reg = src_reg+val
-void nshr_taint_add_val2reg(int src_reg, int dst_reg, int64 value DBG_END_TAINTING_FUNC);
+void nshr_taint_mix_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING_FUNC);
 
 
 void nshr_taint_ret(DBG_END_TAINTING_FUNC_ALONE);

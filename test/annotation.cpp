@@ -10,18 +10,16 @@ int main()
 
   nshrtaint((long long int) &a, 4);
 
-
   dynamorio_annotate_zhani_signal(1);
  /////////////////////////////////////////////////////////////////
-  if (a > 3)
+  /*if (a > 3)
   { 
     nshr_dump_taint((long long int) &a); 
   }
+  */
 /////////////////////////////////////////////////////////////////
   dynamorio_annotate_zhani_signal(0);
 
 /*  printf("Opened: %d.\n", a);
   printf("Read %d bytes.\n", rd);*/
-
-
 }

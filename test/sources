@@ -38,6 +38,7 @@ const char *path = "/home/zhani/Thesis/test/zaza";
 //      "movw $7, 4(%%rax, %%rbx, 4) \n \t"
 //      "movl %%eax, 4(%%rax, %%rbx, 4) \n \t"
         "lea  0x00000110(%%rbx, %%rax, 2), %%rsi" 
+        "movzxw  0x00008760(%%rbx, %%rax, 2), %%rsi"
 //        "movq %%rsi, 0x00000410(%%rbp)"
         : : "a" (buf1[0]), "b" (buf2[0]) :  
    ); 
