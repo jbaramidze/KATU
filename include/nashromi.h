@@ -112,6 +112,7 @@ static const char *PROP_NAMES[] = {
 
 int is_binary(enum prop_type type );
 int is_mov(enum prop_type type );
+int is_restrictor(enum prop_type type );
 
 
 enum mode {
@@ -436,7 +437,7 @@ void nshr_taint_mv_reg2constmem(int src_reg, uint64 addr DBG_END_TAINTING_FUNC);
 void nshr_taint_mv_reg_rm(int dst_reg DBG_END_TAINTING_FUNC);
 void nshr_taint_mv_baseindexmem_rm(int segment, int base_reg, int index_reg, int scale, int disp, int access_size DBG_END_TAINTING_FUNC);
 void nshr_taint_mv_mem_rm(uint64 addr, int size DBG_END_TAINTING_FUNC);
-void nshr_taint_tmp(DBG_END_TAINTING_FUNC_ALONE);
+void nshr_taint_jmp(DBG_END_TAINTING_FUNC_ALONE);
 
 // e.g dst_reg=src_reg+dst_reg, dst_reg=src_reg^dst_reg.....
 void nshr_taint_mix_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING_FUNC);

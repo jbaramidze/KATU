@@ -331,6 +331,10 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
                                      OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
         }
       }
+      else if (is_restrictor(type))
+      {
+      	//FIXME: implement it.
+      }
       else
       {
       	FAIL();
@@ -341,12 +345,13 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       /*
           register to relative memory.
       */
+
       app_pc addr;
 
       instr_get_rel_addr_target(instr, &addr);
 
       LDUMP("InsDetail:\tTaint %s to pc-relative %llx, %d bytes.\n", 
-                                      REGSIZE(src_reg), addr, REGSIZE(src_reg));
+                                      REGNAME(src_reg), addr, REGSIZE(src_reg));
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2constmem, false, DBG_TAINT_NUM_PARAMS(2), 
                                OPND_CREATE_INT32(src_reg), OPND_CREATE_INT64(addr) DBG_END_DR_CLEANCALL);
@@ -418,9 +423,15 @@ static void opcode_mov(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
 }
 
+static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
+{
+  opnd_t first  = instr_get_src(instr, 0);
+  opnd_t second = instr_get_src(instr, 1);
+}
+
 static void opcode_jmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
-  dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_tmp, false, DBG_TAINT_NUM_PARAMS(0)
+  dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_jmp, false, DBG_TAINT_NUM_PARAMS(0)
                            DBG_END_DR_CLEANCALL);
 }
 
@@ -431,7 +442,7 @@ static void opcode_add(void *drcontext, instr_t *instr, instrlist_t *ilist)
   opnd_t src2 = instr_get_src(instr, 1);
   opnd_t dst  = instr_get_dst(instr, 0);
 
-  if (memcmp((void *) &src2, (void *) &dst, sizeof(opnd_t)) != 0) {  FAIL(); }
+  if (!opnd_same(src2, dst)) {  FAIL(); }
 
   int opcode = instr_get_opcode(instr);
 
@@ -593,12 +604,20 @@ void nshr_init_opcodes(void)
 
   instrFunctions[OP_LABEL]          = opcode_ignore;	//3
   instrFunctions[OP_add]			= opcode_add;		//4
-
+  instrFunctions[OP_or]				= opcode_add;		//5
+  instrFunctions[OP_adc]			= opcode_add;		//6
+  instrFunctions[OP_sbb]			= opcode_add;		//7
   instrFunctions[OP_and]			= opcode_add;		//8
-
+  instrFunctions[OP_daa]			= wrong_opcode;		//9 (BCD)
   instrFunctions[OP_sub]			= opcode_add;		//10
-
+  instrFunctions[OP_das]			= wrong_opcode;		//11 (BCD)
   instrFunctions[OP_xor]			= opcode_add;		//12
+  instrFunctions[OP_aaa]			= wrong_opcode;		//13 (BCD)
+  instrFunctions[OP_cmp]			= opcode_cmp;		//14
+  instrFunctions[OP_aas]			= wrong_opcode;		//15 (BCD)
+  instrFunctions[OP_inc]			= opcode_ignore;	//16
+  instrFunctions[OP_dec]			= opcode_ignore;	//17
+
 
   instrFunctions[OP_imul]			= opcode_add;		// 25
 

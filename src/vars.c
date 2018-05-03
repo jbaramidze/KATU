@@ -10,7 +10,7 @@ TaintMemStruct	taint_mem_;
 TaintRegStruct  taint_reg_;
 instrFunc		instrFunctions[MAX_OPCODE];
 Fd_entity 		fds_[MAX_FD];
-enum mode 		started_ 						= MODE_IGNORING;
+enum mode 		started_ 						= MODE_ACTIVE;
 
 UID_entity		uids_[MAX_UID];
 ID_entity		ids_[MAX_ID];
@@ -42,6 +42,11 @@ int is_binary(enum prop_type type )
 int is_mov(enum prop_type type )
 {
 	return type == PROP_MOV || type == PROP_MOVZX || type == PROP_MOVSX;
+}
+
+int is_restrictor(enum prop_type type )
+{
+	return type >= PROP_OR;
 }
 
 int nshr_tid_new_id()

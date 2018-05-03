@@ -371,6 +371,7 @@ void nshr_taint_mix_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING_
   	FAIL();
   }
 
+  // Make sure no such case leaks from instrumentation phase.
   if (src_reg == dst_reg)
   {
   	FAIL();
@@ -402,58 +403,11 @@ void nshr_taint_mix_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING_
     {
       nshr_taint_mv_reg2reg(src_reg, dst_reg DGB_END_CALL_ARG);
     }
-  }
-/*
-  int t1 = nshr_reg_taint_any(dst_reg);
-  int t2 = nshr_reg_taint_any(src_reg);
-
-  LDEBUG_TAINT(false, "DOING '%s' by '%s' TAINT#[%d %d %d %d] to REG %s TAIND#[%d %d %d %d] size %d\n", PROP_NAMES[type], 
-  	               REGNAME(src_reg), REGTAINTVALS_LOG(src_reg, 0), REGNAME(dst_reg), 
-  	                   REGTAINTVALS_LOG(dst_reg, 0), REGSIZE(dst_reg));
-
-
-  if (t1 == 0 && t2 == 0)
-  {
-  	LDUMP("None tainted, ignoring.\n");
-
-  	return;
-  }
-
-  if (t1 > 0 && t2 > 0)
-  {
-
-//    int ind = SIZE_TO_INDEX(REGSIZE(src_reg));
-
-    for (unsigned int i = 0; i < REGSIZE(src_reg); i++)
+    else if (dst_taint > 0)
     {
-      int newid = nshr_tid_modify_id_by_symbol(dst_reg, type, src_reg);
-
-      LDUMP_TAINT(i, (REGTAINTED(dst_reg, i) || REGTAINTED(src_reg, i)), 
-    	                 "  REG %s byte %d TAINT#[%d %d %d %d] '%s' REG %s byte %d TAINT#[%d %d %d %d] -> REG %s TOTAL %d.\n", 
-                             REGNAME(src_reg), REGSTART(src_reg) + i, REGTAINTVALS_LOG(src_reg, i), PROP_NAMES[type],
-                                REGNAME(dst_reg), REGSTART(dst_reg) + i, REGTAINTVALS_LOG(dst_reg, i),
-                                  REGNAME(dst_reg), REGSIZE(src_reg));
-
-      SETREGTAINTVAL1(dst_reg, i, newid);
+      // nothing to do: dst_taint stays whatever it was.
     }
   }
-  else if (t1 > 0) // just like dst = dst+value
-  {
-    GET_CONTEXT();
-  
-    reg_t value  = reg_get_value(src_reg, &mcontext);
-
-    nshr_taint_mix_val2reg(dst_reg, dst_reg, value, type DGB_END_CALL_ARG);
-  }
-  else // dst = src + value
-  {
-    GET_CONTEXT();
-  
-    reg_t value  = reg_get_value(dst_reg, &mcontext);
-
-    nshr_taint_mix_val2reg(dst_reg, src_reg, value, type DGB_END_CALL_ARG);
-  }
-  */
 }
 
 void nshr_taint_mv_reg_rm(int mask DBG_END_TAINTING_FUNC)
@@ -497,32 +451,67 @@ void nshr_taint(reg_t addr, unsigned int size, int fd)
     }
   }
 }
-
+//dst = index + base
 void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_END_TAINTING_FUNC)
 {
-  FAIL();
-	/*
-  LDEBUG_TAINT(false, "REG %s*%d start %d + REG %s start %d ->\t REG %s start %d size %d.\n", 
-             REGNAME(index_reg), scale, REGSTART(index_reg), REGNAME(base_reg), REGSTART(base_reg), 
+  LDEBUG_TAINT(false, "REG %s start %d + REG %s start %d size %d -> REG %s start %d size %d.\n", 
+             REGNAME(index_reg), REGSTART(index_reg), REGNAME(base_reg), REGSTART(base_reg), REGSIZE(base_reg),
                  REGNAME(dst_reg), REGSTART(dst_reg), REGSIZE(index_reg));
 
-  FAIL();
-
-  if (scale > 1 || disp != 0)  // Make sure index_reg has correct taint size
+  if (REGSIZE(base_reg) != REGSIZE(index_reg))
   {
-  	//nshr_reg_get_or_fix_sized_taint(index_reg);
+  	FAIL();
   }
 
-  for (unsigned int i = 0; i < REGSIZE(index_reg); i++)
+  int size = MIN(REGSIZE(base_reg), REGSIZE(dst_reg));
+
+  for (int i = 0; i < size; i++)
   {
-    if (REGTAINT(index_reg, i) > 0 && REGTAINT(base_reg, i) > 0)
+    int t1 = REGTAINTVAL1(base_reg, i);
+    int t2 = REGTAINTVAL1(index_reg, i);
+
+    if (t1 > 0 && t2 > 0)
     {
-    	FAIL();
+      int newid;
+
+      // else SPECIALCASE: taintID + taintID = taintID (taint stays the same)
+      if (t1 != t2)
+      {
+        newid = nshr_tid_modify_id_by_symbol(t1, i, PROP_ADD, t2);
+      }
+      else
+      {
+      	newid = t1;
+      }
+
+      LDUMP_TAINT(i, (REGTAINTED(mask, i)), "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
+                       newid, REGNAME(dst_reg), REGSTART(dst_reg) + i, size);
+
+      SETREGTAINTVAL(dst_reg, i, 0, newid);
     }
-    
-    if (REGTAINT(index_reg, i) > 0) // we have dst = index_reg*scale + disp
+    else if (t1 > 0)
     {
+      nshr_taint_mv_reg2reg(base_reg, dst_reg DGB_END_CALL_ARG);
     }
-  } 
-  */
+    else if (t2 > 0)
+    {
+      nshr_taint_mv_reg2reg(index_reg, dst_reg DGB_END_CALL_ARG);
+    }
+    else
+    {
+      REGTAINTRM(dst_reg, i);
+    }
+
+  }
+
+
+  for (unsigned int i = REGSIZE(base_reg); i < REGSIZE(dst_reg); i++)
+  {
+    LDUMP_TAINT(i - REGSIZE(src_reg), REGTAINTED(dst_reg, i), 
+    	              "  REMOVE REG %s byte %d TAINT#[%d %d %d %d] TOTAL %d.\n", 
+                         REGNAME(dst_reg), REGSTART(dst_reg) + i, REGTAINTVALS_LOG(dst_reg, i),
+                             REGSIZE(dst_reg) - REGSIZE(base_reg));
+
+    REGTAINTRM(dst_reg, i);
+  }
 }
