@@ -6,8 +6,7 @@ const char *path = "/home/zhani/Thesis/test/zaza";
 
 int main()
 {
-  int a;
-  scanf("%d", &a);
+  int a = -10;
   int b = 3;
 
   nshrtaint((long long int) &a, 4);
@@ -15,8 +14,10 @@ int main()
 
   dynamorio_annotate_zhani_signal(1);
  /////////////////////////////////////////////////////////////////
-  int c = a*b;
-  nshr_dump_taint((long long int) &c); 
+  if (a > 10)
+  {
+    nshr_dump_taint((long long int) &a); 
+  }
 /////////////////////////////////////////////////////////////////
   dynamorio_annotate_zhani_signal(0);
 

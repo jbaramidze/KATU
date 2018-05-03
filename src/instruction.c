@@ -418,6 +418,12 @@ static void opcode_mov(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
 }
 
+static void opcode_jmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
+{
+  dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_tmp, false, DBG_TAINT_NUM_PARAMS(0)
+                           DBG_END_DR_CLEANCALL);
+}
+
 // src2 == dst
 static void opcode_add(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
@@ -585,26 +591,43 @@ void nshr_init_opcodes(void)
   // Add custom handlers for all known opcodes.
   //
 
-  instrFunctions[OP_LABEL]          = opcode_ignore; //3
-  instrFunctions[OP_add]			= opcode_add;    //4
+  instrFunctions[OP_LABEL]          = opcode_ignore;	//3
+  instrFunctions[OP_add]			= opcode_add;		//4
 
-  instrFunctions[OP_and]			= opcode_add;    //8
+  instrFunctions[OP_and]			= opcode_add;		//8
 
-  instrFunctions[OP_sub]			= opcode_add;    //10
+  instrFunctions[OP_sub]			= opcode_add;		//10
 
-  instrFunctions[OP_xor]			= opcode_add;    //12
+  instrFunctions[OP_xor]			= opcode_add;		//12
 
-  instrFunctions[OP_imul]			= opcode_add;
+  instrFunctions[OP_imul]			= opcode_add;		// 25
 
-  instrFunctions[OP_call]			= opcode_call;	// 42
-  instrFunctions[OP_call_ind]		= opcode_call;	// 43
-  instrFunctions[OP_call_far]		= opcode_call;	// 44
-  instrFunctions[OP_call_far_ind]	= opcode_call;	// 45
-  instrFunctions[OP_jmp]			= opcode_call;  // 46
-  instrFunctions[OP_jmp_short]		= opcode_call;  // 47
-  instrFunctions[OP_jmp_ind]		= opcode_call;  // 48
-  instrFunctions[OP_jmp_far]		= opcode_call;  // 49
-  instrFunctions[OP_jmp_far_ind]	= opcode_call;  // 50
+  instrFunctions[OP_jo_short]		= opcode_jmp;		// 26
+  instrFunctions[OP_jno_short]		= opcode_jmp;		// 27
+  instrFunctions[OP_jb_short]		= opcode_jmp;		// 28
+  instrFunctions[OP_jnb_short]		= opcode_jmp;		// 29
+  instrFunctions[OP_jz_short]		= opcode_jmp;		// 30
+  instrFunctions[OP_jnz_short]		= opcode_jmp;		// 31
+  instrFunctions[OP_jbe_short]		= opcode_jmp;		// 32
+  instrFunctions[OP_jnbe_short]		= opcode_jmp;		// 33
+  instrFunctions[OP_js_short]		= opcode_jmp;		// 34
+  instrFunctions[OP_jns_short]		= opcode_jmp;		// 35
+  instrFunctions[OP_jp_short]		= opcode_jmp;		// 36
+  instrFunctions[OP_jnp_short]		= opcode_jmp;		// 37
+  instrFunctions[OP_jl_short]		= opcode_jmp;		// 38
+  instrFunctions[OP_jnl_short]		= opcode_jmp;		// 39
+  instrFunctions[OP_jle_short]		= opcode_jmp;		// 40
+  instrFunctions[OP_jnle_short]		= opcode_jmp;		// 41
+
+  instrFunctions[OP_call]			= opcode_call;		// 42
+  instrFunctions[OP_call_ind]		= opcode_call;		// 43
+  instrFunctions[OP_call_far]		= opcode_call;		// 44
+  instrFunctions[OP_call_far_ind]	= opcode_call;		// 45
+  instrFunctions[OP_jmp]			= opcode_call;		// 46
+  instrFunctions[OP_jmp_short]		= opcode_call;		// 47
+  instrFunctions[OP_jmp_ind]		= opcode_call;		// 48
+  instrFunctions[OP_jmp_far]		= opcode_call;		// 49
+  instrFunctions[OP_jmp_far_ind]	= opcode_call;		// 50
 
   instrFunctions[OP_mov_ld]			= opcode_mov;		// 55	Can be: mem2reg
   instrFunctions[OP_mov_st]			= opcode_mov;		// 56	Can be: imm2mem, reg2mem, reg2reg.
@@ -618,13 +641,31 @@ void nshr_init_opcodes(void)
 
   instrFunctions[OP_syscall]		= opcode_ignore;	// 95 syscall processed by dr_register_post_syscall_event.
 
-  instrFunctions[OP_movzx]          = opcode_mov;       // 195
 
-  instrFunctions[OP_movsx]          = opcode_mov;       // 200
+  instrFunctions[OP_jo]				= opcode_jmp;		// 152
+  instrFunctions[OP_jno]			= opcode_jmp;		// 153
+  instrFunctions[OP_jb]				= opcode_jmp;		// 154
+  instrFunctions[OP_jnb]			= opcode_jmp;		// 155
+  instrFunctions[OP_jz]				= opcode_jmp;		// 156
+  instrFunctions[OP_jnz]			= opcode_jmp;		// 157
+  instrFunctions[OP_jbe]			= opcode_jmp;		// 158
+  instrFunctions[OP_jnbe]			= opcode_jmp;		// 159
+  instrFunctions[OP_js]				= opcode_jmp;		// 160
+  instrFunctions[OP_jns]			= opcode_jmp;		// 161
+  instrFunctions[OP_jp]				= opcode_jmp;		// 162
+  instrFunctions[OP_jnp]			= opcode_jmp;		// 163
+  instrFunctions[OP_jl]				= opcode_jmp;		// 164
+  instrFunctions[OP_jnl]			= opcode_jmp;		// 165
+  instrFunctions[OP_jle]			= opcode_jmp;		// 166
+  instrFunctions[OP_jnle]			= opcode_jmp;		// 167
 
-  instrFunctions[OP_nop]            = opcode_ignore;    // 381
+  instrFunctions[OP_movzx]          = opcode_mov;		// 195
 
-  instrFunctions[OP_movsxd]         = opcode_mov;       // 597
+  instrFunctions[OP_movsx]          = opcode_mov;		// 200
+
+  instrFunctions[OP_nop]            = opcode_ignore;	// 381
+
+  instrFunctions[OP_movsxd]         = opcode_mov;		// 597
 }
 
 //

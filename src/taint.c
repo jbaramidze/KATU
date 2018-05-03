@@ -182,6 +182,15 @@ void nshr_taint_mv_mem2reg(int segment, int base_reg, int index_reg, int scale, 
   }
 }
 
+void nshr_taint_jmp(DBG_END_TAINTING_FUNC_ALONE)
+{
+  GET_CONTEXT();
+
+  int res = instr_jcc_taken(instr, mcontext.xflags);
+
+  dr_printf("Will???????? %d.\n", res);
+}
+
 void nshr_taint_mv_mem_rm(uint64 addr, int access_size DBG_END_TAINTING_FUNC)
 {
   LDEBUG_TAINT(false, "REMOVE MEM %p size %d\n", addr, access_size);
