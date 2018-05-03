@@ -86,18 +86,28 @@
 #define TAINTMAP_SIZE         65536
 
 enum prop_type {
+  // MOV's
   PROP_MOV,
   PROP_MOVZX,
   PROP_MOVSX,
+  // Binaries
   PROP_ADD,
   PROP_SUB,
-  PROP_AND,
+  PROP_ADC,
+  PROP_SBB,
+  PROP_IMUL,
+  // Restrictors
   PROP_OR,
   PROP_XOR,
-  PROP_IMUL,
-  PROP_ADC,
-  PROP_SBB
+  PROP_AND,
 
+};
+
+
+static const char *PROP_NAMES[] = {
+    "mov", "movzx", "movsx", 
+    "add", "sub", "add with carry", "sub with borrow", "imul", 
+    "or", "and", "xor"
 };
 
 int is_binary(enum prop_type type );
@@ -178,9 +188,6 @@ typedef void (*instrFunc)(void *, instr_t *, instrlist_t *);
 					void *drcontext = dr_get_current_drcontext(); \
 					dr_get_mcontext(drcontext, &mcontext)
 
-static const char *PROP_NAMES[] = {
-    "mov", "movzx", "movsx", "add", "sub", "and", "or", "xor", "imul", "adc", "sbb"
-};
 
 //  AX AX
 // [AL AH EAX EAX RAX RAX RAX RAX]
@@ -239,8 +246,8 @@ static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 
 
 #define REGTAINTVALS_LOG(reg, offset)       reg_taint_get_value(reg, offset, 0), reg_taint_get_value(reg, offset, 1), reg_taint_get_value(reg, offset, 2), reg_taint_get_value(reg, offset, 3)
-#define MEMTAINTVALS_LOG(index, address)    mem_taint_get_value(index, addr, 0), mem_taint_get_value(index, addr, 1), mem_taint_get_value(index, addr, 2), mem_taint_get_value(index, addr, 3)
-
+#define MEMTAINTVALS_LOG(index, address)    mem_taint_get_value(index, address, 0), mem_taint_get_value(index, address, 1), mem_taint_get_value(index, address, 2), mem_taint_get_value(index, address, 3)
+ 
 #define REGTAINT2MEMTAINT(mask, offset, index, address) mem_taint_set_value(index, address, 0, reg_taint_get_value(mask, offset, 0)); \
                                                         mem_taint_set_value(index, address, 1, reg_taint_get_value(mask, offset, 1)); \
                                                         mem_taint_set_value(index, address, 2, reg_taint_get_value(mask, offset, 2)); \
@@ -395,7 +402,6 @@ int nshr_tid_new_iid(int id, int index);
 int nshr_tid_new_iid_get();
 int nshr_tid_new_uid(int fd);
 int nshr_tid_copy_id(int id);
-int nshr_tid_modify_id_by_val(int reg, enum prop_type operation, int64 value);
 int nshr_tid_modify_id_by_symbol(int dst_taint, int byte, enum prop_type operation, int src_taint);
 
 int nshr_reg_taint_any(int reg);
@@ -417,6 +423,8 @@ void nshr_taint(reg_t addr, unsigned int size, int fd);
 
 void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_END_TAINTING_FUNC);
 void nshr_taint_mv_reg2reg(int src_reg, int dst_reg DBG_END_TAINTING_FUNC);
+
+// Works also if size of source is bigger, just copies necessary part.
 void nshr_taint_mv_reg2regzx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC);
 void nshr_taint_mv_reg2regsx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC);
 void nshr_taint_mv_mem2reg(int segment, int base_reg, int index_reg, int scale, int disp, int dest_reg DBG_END_TAINTING_FUNC);

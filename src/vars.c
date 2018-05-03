@@ -36,7 +36,7 @@ int instr_next_pointer = 0;
 
 int is_binary(enum prop_type type )
 {
-  return type >= PROP_ADD;
+  return type >= PROP_ADD && type <= PROP_IMUL;
 }
 
 int is_mov(enum prop_type type )
@@ -241,55 +241,7 @@ int nshr_tid_modify_id_by_symbol(int dst_taint, int byte, enum prop_type operati
 
   LDUMP("Utils:\t\tAppended operation '%s' to id %d by ID#%d.\n", PROP_NAMES[operation], newid, src_taint);
 
-  return newid;
-}
-
-int nshr_tid_modify_id_by_val(int reg_index, enum prop_type operation, int64 value)
-{
-  // will either return -1 (not tainted), same (size correct) or new id.
-  int newid = nshr_reg_get_or_fix_sized_taint(reg_index);
-
-  if (newid == -1)
-  {
-  	return -1;
-  }
-
-  newid = nshr_tid_copy_id(newid);
-
-  /*
-  Now append the new one. For some cases we can just
-  modify the last operation to include the new one.
-  */
-
-  if (ID2OPSIZE(newid) > 0 &&                                                // we have at least 1 operation
-        ID2OP(newid, ID2OPSIZE(newid) - 1).type == operation &&              // last operation is the same
-          ID2OP(newid, ID2OPSIZE(newid) - 1).is_id == 0 &&                   // last operation is by constant 
-              (operation == PROP_ADD || operation == PROP_SUB))              // operation is of specific type
-  {
-    if (operation == PROP_ADD)
-    {
-      ids_[newid].ops[ids_[newid].ops_size - 1].value += value;
-    }
-    else if (operation == PROP_SUB)
-    {
-      ids_[newid].ops[ids_[newid].ops_size - 1].value -= value;
-    }
-  }
-  else
-  {
-    /*
-    Just add a new operation.
-    */
-    ID2OP(newid, ID2OPSIZE(newid)).type  = operation;
-    ID2OP(newid, ID2OPSIZE(newid)).is_id = 0;
-    ID2OP(newid, ID2OPSIZE(newid)).value = value;
-
-    ID2OPSIZE(newid)++;
-  }
-
-  LDUMP("Utils:\t\tAppended operation '%s' to id %d by %d.\n", PROP_NAMES[operation], newid, value);
-
-  return newid;
+  return nshr_tid_new_iid(newid, 0);
 }
 
 int nshr_tid_new_uid(int fd)

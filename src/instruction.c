@@ -28,7 +28,6 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
 
   reg_id_t dst_reg   = opnd_get_reg(dst);
-  int size            = opnd_size_in_bytes(reg_get_size(dst_reg));
 
   if (opnd_is_base_disp(src))
   {
@@ -36,36 +35,42 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
     reg_id_t index_reg = opnd_get_index(src);
     int scale          = opnd_get_scale(src);
     int disp           = opnd_get_disp(src);
-    
-
-    UNUSED(size);
 
     if (base_reg > 0 && index_reg > 0)
     {
       LDUMP("InsDetail:\tTaint %s + %d*%s + %d to %s, %d bytes.\n", REGNAME(base_reg), 
-                       scale, REGNAME(index_reg), disp, REGNAME(dst_reg), size);
+                       scale, REGNAME(index_reg), disp, REGNAME(dst_reg), REGSIZE(dst_reg));
 
       if (scale == 0)
       {
       	FAIL();
       }
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_2coeffregs2reg, false, DBG_TAINT_NUM_PARAMS(3),
-                               OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(base_reg),
-                                      OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
+      if (base_reg == index_reg)
+      {
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regzx, false, DBG_TAINT_NUM_PARAMS(2),
+                               OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
+      }
+      else
+      {
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_2coeffregs2reg, false, DBG_TAINT_NUM_PARAMS(3),
+                                 OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(base_reg),
+                                        OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
+      }
     }
     else if (index_reg > 0 && scale > 0) 
     {
 
       LDUMP("InsDetail:\tTaint %s to %s, %d bytes.\n", REGNAME(index_reg), 
-                       REGNAME(dst_reg), size);
+                       REGNAME(dst_reg), REGSIZE(dst_reg));
 
-      FAIL();
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regzx, false, DBG_TAINT_NUM_PARAMS(2),
+                             OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
     }
     else if (base_reg > 0) // dst = base + disp
     {
       LDUMP("InsDetail:\tTaint %s + %d to %s, %d bytes.\n", REGNAME(base_reg), disp,
-                       REGNAME(dst_reg), size);
+                       REGNAME(dst_reg), REGSIZE(dst_reg));
 
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regzx, false, DBG_TAINT_NUM_PARAMS(2),
@@ -78,7 +83,7 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
   else if (opnd_is_rel_addr(src))
   {
-    LDUMP("InsDetail:\tRemove taint at %s, %d bytes\n", REGNAME(dst_reg), size);
+    LDUMP("InsDetail:\tRemove taint at %s, %d bytes\n", REGNAME(dst_reg), REGSIZE(dst_reg));
 
     dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, DBG_TAINT_NUM_PARAMS(1),
                              OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
@@ -264,6 +269,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       */
       reg_id_t dst_reg = opnd_get_reg(dst);
 
+      // SPECIALCASE: a xor a = 0 (taint removed)
       if(type == PROP_XOR && src_reg == dst_reg)
       {
         LDUMP("InsDetail:\tRemoving taint from %s.\n", REGNAME(dst_reg));
@@ -293,6 +299,37 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2reg, false, DBG_TAINT_NUM_PARAMS(2),
                                OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
+      }
+      else if (is_binary(type))
+      {
+      	if (src_reg == dst_reg)
+      	{
+          // SPECIALCASE: a + a = 2*a (taint stays the same)
+      	  if (type == PROP_ADD || type == PROP_ADC || type == PROP_IMUL)
+      	  {
+      	    return;
+      	  }
+      	  // SPECIALCASE: a - a = 0 (taint removed)
+      	  else if (type == PROP_SUB || type == PROP_SBB)
+      	  {
+            LDUMP("InsDetail:\tRemoving taint from %s.\n", REGNAME(dst_reg));
+
+            dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, DBG_TAINT_NUM_PARAMS(1),
+                                 OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
+      	  }
+      	  else
+      	  {
+      	  	FAIL();
+      	  }
+      	}
+      	else
+      	{
+          LDUMP("InsDetail:\tDoing '%s' to taint from %s to %s.\n", PROP_NAMES[type], REGNAME(src_reg), REGNAME(dst_reg));
+
+          dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_reg2reg, false, DBG_TAINT_NUM_PARAMS(3),
+                                 OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(dst_reg),
+                                     OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
+        }
       }
       else
       {
