@@ -11,6 +11,7 @@ TaintRegStruct  taint_reg_;
 instrFunc		instrFunctions[MAX_OPCODE];
 Fd_entity 		fds_[MAX_FD];
 enum mode 		started_ 						= MODE_ACTIVE;
+Eflags          eflags_;
 
 UID_entity		uids_[MAX_UID];
 ID_entity		ids_[MAX_ID];
@@ -46,7 +47,7 @@ int is_mov(enum prop_type type )
 
 int is_restrictor(enum prop_type type )
 {
-	return type >= PROP_OR;
+	return type >= PROP_OR && type <= PROP_AND;
 }
 
 int nshr_tid_new_id()
@@ -111,72 +112,6 @@ int nshr_reg_taint_any(int reg)
   	if (REGTAINTVAL2(reg, 0) > 0) return IID2ID(REGTAINTVAL2(reg, 0));
   	if (REGTAINTVAL1(reg, 0) > 0) return IID2ID(REGTAINTVAL1(reg, 0));
   }
-/*
-  if (size == 8)
-  {
-  	if (REGTAINTVAL8(reg, 0) > 0) return IID2ID(REGTAINTVAL8(reg, 0));
-
-  	if (REGTAINTVAL4(reg, 0) > 0) return IID2ID(REGTAINTVAL4(reg, 0));
-    if (REGTAINTVAL4(reg, 1) > 0) return IID2ID(REGTAINTVAL4(reg, 1));
-    if (REGTAINTVAL4(reg, 2) > 0) return IID2ID(REGTAINTVAL4(reg, 2));
-    if (REGTAINTVAL4(reg, 3) > 0) return IID2ID(REGTAINTVAL4(reg, 3));
-    if (REGTAINTVAL4(reg, 4) > 0) return IID2ID(REGTAINTVAL4(reg, 4));
-
-    if (REGTAINTVAL2(reg, 0) > 0) return IID2ID(REGTAINTVAL2(reg, 0));
-    if (REGTAINTVAL2(reg, 1) > 0) return IID2ID(REGTAINTVAL2(reg, 1));
-    if (REGTAINTVAL2(reg, 2) > 0) return IID2ID(REGTAINTVAL2(reg, 2));
-    if (REGTAINTVAL2(reg, 3) > 0) return IID2ID(REGTAINTVAL2(reg, 3));
-    if (REGTAINTVAL2(reg, 4) > 0) return IID2ID(REGTAINTVAL2(reg, 4));
-    if (REGTAINTVAL2(reg, 5) > 0) return IID2ID(REGTAINTVAL2(reg, 5));
-    if (REGTAINTVAL2(reg, 6) > 0) return IID2ID(REGTAINTVAL2(reg, 6));
-
-
-    if (REGTAINTVAL1(reg, 0) > 0) return IID2ID(REGTAINTVAL1(reg, 0));
-    if (REGTAINTVAL1(reg, 1) > 0) return IID2ID(REGTAINTVAL1(reg, 1));
-    if (REGTAINTVAL1(reg, 2) > 0) return IID2ID(REGTAINTVAL1(reg, 2));
-    if (REGTAINTVAL1(reg, 3) > 0) return IID2ID(REGTAINTVAL1(reg, 3));
-    if (REGTAINTVAL1(reg, 4) > 0) return IID2ID(REGTAINTVAL1(reg, 4));
-    if (REGTAINTVAL1(reg, 5) > 0) return IID2ID(REGTAINTVAL1(reg, 5));
-    if (REGTAINTVAL1(reg, 6) > 0) return IID2ID(REGTAINTVAL1(reg, 6));
-    if (REGTAINTVAL1(reg, 7) > 0) return IID2ID(REGTAINTVAL1(reg, 7));
-
-    return -1;
-  }
-
-  if (size == 4)
-  {
-  	if (REGTAINTVAL4(reg, 0) > 0) return IID2ID(REGTAINTVAL4(reg, 0));
-
-  	if (REGTAINTVAL2(reg, 0) > 0) return IID2ID(REGTAINTVAL2(reg, 0));
-  	if (REGTAINTVAL2(reg, 1) > 0) return IID2ID(REGTAINTVAL2(reg, 1));
-  	if (REGTAINTVAL2(reg, 2) > 0) return IID2ID(REGTAINTVAL2(reg, 2));
-
-
-    if (REGTAINTVAL1(reg, 0) > 0) return IID2ID(REGTAINTVAL1(reg, 0));
-    if (REGTAINTVAL1(reg, 1) > 0) return IID2ID(REGTAINTVAL1(reg, 1));
-    if (REGTAINTVAL1(reg, 2) > 0) return IID2ID(REGTAINTVAL1(reg, 2));
-    if (REGTAINTVAL1(reg, 3) > 0) return IID2ID(REGTAINTVAL1(reg, 3));
-
-    return -1;
-  }
-
-  if (size == 2)
-  {
-  	if (REGTAINTVAL2(reg, 0) > 0) return IID2ID(REGTAINTVAL2(reg, 0));
-
-  	if (REGTAINTVAL1(reg, 0) > 0) return IID2ID(REGTAINTVAL1(reg, 0));
-  	if (REGTAINTVAL1(reg, 1) > 0) return IID2ID(REGTAINTVAL1(reg, 1));
-
-  	return -1;
-  }
-
-  if (size == 1)
-  {
-  	if (REGTAINTVAL1(reg, 0) > 0) return IID2ID(REGTAINTVAL1(reg, 0));
-
-  	return -1;
-  }
-*/
 
   return -1;
 }
@@ -360,4 +295,9 @@ instr_t *instr_dupl(instr_t *instr)
   instr_pointers[instr_next_pointer++] = copy;
 
   return copy;
+}
+
+void update_eflags(int opcode)
+{
+	eflags_.last_affecting_opcode = opcode;
 }

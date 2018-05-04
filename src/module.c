@@ -133,6 +133,8 @@ void init(void)
   }
 
   nshr_init_opcodes();
+
+  eflags_.last_affecting_opcode = -1;
 }
 
 void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)

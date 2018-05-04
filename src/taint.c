@@ -148,7 +148,7 @@ void nshr_taint_mv_mem2regsx(int segment, int base_reg, int index_reg, int scale
   	       This just puts 0th byte's taint ID to all 'extended' bytes. 
   	*/
 
-  	MEMTAINT2REGTAINT(dst_reg, i, index, addr);
+  	MEMTAINT2REGTAINT(dst_reg, i, index, addr + extended_from_size - 1);
   }
 }
 
@@ -188,7 +188,17 @@ void nshr_taint_jmp(DBG_END_TAINTING_FUNC_ALONE)
 
   int res = instr_jcc_taken(instr, mcontext.xflags);
 
-  dr_printf("Will???????? %d.\n", res);
+  if (eflags_.last_affecting_opcode != PROP_CMP)
+  {
+  	FAIL();
+  }
+}
+
+void nshr_taint_cmp(DBG_END_TAINTING_FUNC_ALONE)
+{
+  GET_CONTEXT();
+
+  update_eflags(PROP_CMP);
 }
 
 void nshr_taint_mv_mem_rm(uint64 addr, int access_size DBG_END_TAINTING_FUNC)
@@ -364,8 +374,25 @@ void nshr_taint_jmp_reg(int dst_reg DBG_END_TAINTING_FUNC)
 }
 
 
-// dst = dst+src_reg (or 1, ^, &, depending on type)
+void nshr_taint_mix_reg2mem(int src_reg, int segment, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC)
+{
+  GET_CONTEXT();
+  
+  reg_t base  = reg_get_value(base_reg, &mcontext);
+  reg_t index = reg_get_value(index_reg, &mcontext);
 
+  reg_t addr = base + index*scale + disp;
+
+  LDUMP_TAINT(0, false, "DECODED: base %p index %d scale %d disp %d.\n", 
+                     base, index, scale, disp);
+
+  LDEBUG_TAINT(false, "DOING '%s' by REG %s start %d -> MEM %p size %d.\n", PROP_NAMES[type], 
+  	               REGNAME(src_reg), REGSTART(src_reg), addr, REGSIZE(src_reg));
+
+  FAIL();
+}
+
+// dst = dst+src_reg (or 1, ^, &, depending on type)
 void nshr_taint_mix_mem2reg(int segment, int base_reg, int index_reg, int scale, int disp, int dst_reg, int type DBG_END_TAINTING_FUNC)
 {
   GET_CONTEXT();
@@ -563,7 +590,6 @@ void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_E
       REGTAINTRM(dst_reg, i);
     }
   }
-
 
   for (unsigned int i = REGSIZE(base_reg); i < REGSIZE(dst_reg); i++)
   {

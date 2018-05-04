@@ -191,7 +191,11 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, DBG_TAINT_NUM_PARAMS(1),
                                  OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       }
-      else
+      else if (is_binary(type))
+      {
+        // Nothing to do in this case.
+      }
+      else if (is_restrictor(type))
       {
       	/*
       	FIXME: what if e.g AND 00000011000 was done? it can be limiting. Fix later.
@@ -215,19 +219,41 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
 
       int access_size = opnd_size_in_bytes(opnd_get_size(src));
 
-      if (seg_reg == DR_REG_NULL)
+      if (is_mov(type))
       {
-        LDUMP("InsDetail:\tRemove taint at base+disp %s: %s + %d*%s + %d, %d bytes.\n",
-                                   REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, access_size);
+        if (seg_reg == DR_REG_NULL)
+        {
+          LDUMP("InsDetail:\tRemove taint at base+disp %s: %s + %d*%s + %d, %d bytes.\n",
+                                     REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, access_size);
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_baseindexmem_rm, false, DBG_TAINT_NUM_PARAMS(6),
-        	                     OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
-                                     OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), 
-                                         OPND_CREATE_INT32(access_size) DBG_END_DR_CLEANCALL);
+          dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_baseindexmem_rm, false, DBG_TAINT_NUM_PARAMS(6),
+        	                       OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
+                                       OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), 
+                                           OPND_CREATE_INT32(access_size) DBG_END_DR_CLEANCALL);
+        }
+        else if (seg_reg != DR_SEG_FS && seg_reg != DR_SEG_GS)
+        {
+          // Temporarily ignore all memory accesses in FS and GS segments.
+        	FAIL();
+        }
       }
-      else if (seg_reg != DR_SEG_FS && seg_reg != DR_SEG_GS)
+      else if (is_binary(type))
       {
-        // Temporarily ignore all memory accesses in FS and GS segments.
+        // Nothing to do in this case.
+      }
+      else if (is_restrictor(type))
+      {
+      	/*
+      	FIXME: what if e.g AND 00000011000 was done? it can be limiting. Fix later.
+      	*/
+        int64 value = opnd_get_immed_int(src);
+
+        LDUMP("InsDetail:\tDoing '%s' to taint at base+disp %s: %s + %d*%s + %d, by 0x%x, %d bytes\n", 
+                  PROP_NAMES[type], REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp,
+                         value, access_size);
+      }
+      else
+      {
       	FAIL();
       }
     }
@@ -242,10 +268,31 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
 
       int access_size = opnd_size_in_bytes(opnd_get_size(src));
 
-      LDUMP("InsDetail:\tRemove taint at pc-relative %llx, %d bytes.\n", addr, access_size);
+      if (is_mov(type))
+      {
+        LDUMP("InsDetail:\tRemove taint at pc-relative %llx, %d bytes.\n", addr, access_size);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_mem_rm, false, DBG_TAINT_NUM_PARAMS(2), 
-                               OPND_CREATE_INT64(addr), OPND_CREATE_INT32(access_size) DBG_END_DR_CLEANCALL);
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_mem_rm, false, DBG_TAINT_NUM_PARAMS(2), 
+                                 OPND_CREATE_INT64(addr), OPND_CREATE_INT32(access_size) DBG_END_DR_CLEANCALL);
+      }
+      else if (is_binary(type))
+      {
+      	// Nothing to do in this case.
+      }
+      else if (is_restrictor(type))
+      {      	
+        /*
+      	FIXME: what if e.g AND 00000011000 was done? it can be limiting. Fix later.
+      	*/
+        int64 value = opnd_get_immed_int(src);
+
+        LDUMP("InsDetail:\tDoing '%s' to taint at pc-relative %llx, by 0x%x, %d bytes\n", 
+                  PROP_NAMES[type], addr, value, access_size);
+      }
+      else
+      {
+      	FAIL();
+      }
     }
     else
     {
@@ -268,14 +315,32 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       int scale          = opnd_get_scale(dst);
       int disp           = opnd_get_disp(dst);
 
-      LDUMP("InsDetail:\tTaint from %s to base+disp %s: %s + %d*%s + %d, %d bytes.\n", 
-                                      REGNAME(src_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, 
-                                          REGNAME(index_reg), disp, REGSIZE(src_reg));
+      if (type == PROP_MOV)
+      {
+        LDUMP("InsDetail:\tTaint from %s to base+disp %s: %s + %d*%s + %d, %d bytes.\n", 
+                                        REGNAME(src_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, 
+                                            REGNAME(index_reg), disp, REGSIZE(src_reg));
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2mem, false, DBG_TAINT_NUM_PARAMS(6), 
-                               OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
-                                   OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), 
-                                       OPND_CREATE_INT32(disp) DBG_END_DR_CLEANCALL);
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2mem, false, DBG_TAINT_NUM_PARAMS(6), 
+                                 OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
+                                     OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), 
+                                         OPND_CREATE_INT32(disp) DBG_END_DR_CLEANCALL);
+      }
+      else if (is_binary(type))
+      {
+      	LDUMP("InsDetail:\tDoing '%s' to taint from %s to base+disp %s:%s + %d*%s + %d, %d bytes.\n", PROP_NAMES[type], 
+        	                      REGNAME(src_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), 
+        	                           disp, REGSIZE(src_reg));
+
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_reg2mem, false, DBG_TAINT_NUM_PARAMS(7),
+                                 OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
+                                     OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), 
+                                         OPND_CREATE_INT32(disp), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
+      }
+      else
+      {
+      	FAIL();
+      }
     }
     else if (opnd_is_reg(dst))
     {
@@ -442,6 +507,10 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
   opnd_t first  = instr_get_src(instr, 0);
   opnd_t second = instr_get_src(instr, 1);
+
+
+  dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp, false, DBG_TAINT_NUM_PARAMS(0)
+                           DBG_END_DR_CLEANCALL);
 }
 
 static void opcode_jmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
@@ -668,7 +737,7 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_mov_imm]		= opcode_mov;		// 57   Can be: imm2reg.
 // instrFunctions[OP_mov_seg]							// 58
 // instrFunctions[OP_mov_priv]							// 59
-  instrFunctions[OP_test]			= opcode_ignore;	// 60 
+  instrFunctions[OP_test]			= opcode_cmp;		// 60 
   instrFunctions[OP_lea]			= opcode_lea;		// 61
 
   instrFunctions[OP_ret]			= opcode_call;		// 70

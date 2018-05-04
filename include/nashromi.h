@@ -100,6 +100,8 @@ enum prop_type {
   PROP_OR,
   PROP_XOR,
   PROP_AND,
+  // Others
+  PROP_CMP
 
 };
 
@@ -113,6 +115,8 @@ static const char *PROP_NAMES[] = {
 int is_binary(enum prop_type type );
 int is_mov(enum prop_type type );
 int is_restrictor(enum prop_type type );
+
+void update_eflags(int opcode);
 
 
 enum mode {
@@ -166,6 +170,11 @@ typedef struct {
 } IID_entity;
 
 typedef void (*instrFunc)(void *, instr_t *, instrlist_t *);
+
+typedef struct {
+  int last_affecting_opcode;
+
+} Eflags;
 
 
 
@@ -339,12 +348,15 @@ static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 
 extern enum mode started_;
 
+extern Eflags eflags_;
+
 extern Fd_entity  fds_[MAX_FD];
 extern UID_entity uids_[MAX_UID];
 extern ID_entity  ids_[MAX_ID];
 extern IID_entity iids_[MAX_IID];
 
 extern instrFunc instrFunctions[MAX_OPCODE];
+
 
 /****************************************************
         T A I N T   M E M   S T R U C T U R E
@@ -437,10 +449,13 @@ void nshr_taint_mv_reg2constmem(int src_reg, uint64 addr DBG_END_TAINTING_FUNC);
 void nshr_taint_mv_reg_rm(int dst_reg DBG_END_TAINTING_FUNC);
 void nshr_taint_mv_baseindexmem_rm(int segment, int base_reg, int index_reg, int scale, int disp, int access_size DBG_END_TAINTING_FUNC);
 void nshr_taint_mv_mem_rm(uint64 addr, int size DBG_END_TAINTING_FUNC);
+
 void nshr_taint_jmp(DBG_END_TAINTING_FUNC_ALONE);
+void nshr_taint_cmp(DBG_END_TAINTING_FUNC_ALONE);
 
 // e.g dst_reg=src_reg+dst_reg, dst_reg=src_reg^dst_reg.....
 void nshr_taint_mix_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING_FUNC);
+void nshr_taint_mix_reg2mem(int src_reg, int segment, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_mix_mem2reg(int segment, int base_reg, int index_reg, int scale, int disp, int dest_reg, int type DBG_END_TAINTING_FUNC);
 
 
