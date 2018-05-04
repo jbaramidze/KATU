@@ -1,6 +1,6 @@
 #define LOGTEST
 #define LOGDEBUG
-#define  LOGDUMP
+#undef  LOGDUMP
 
 #include "dr_api.h"
 #include "core/unix/include/syscall.h"
@@ -395,7 +395,7 @@ void nshr_taint_mix_mem2reg(int segment, int base_reg, int index_reg, int scale,
       {
         int newid = nshr_tid_modify_id_by_symbol(dst_taint, i, type, src_taint);
 
-        LDUMP_TAINT(i, (REGTAINTED(mask, i)), "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
+        LDUMP_TAINT(i, (REGTAINTED(dst_reg, i)), "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
                          newid, REGNAME(dst_reg), REGSTART(dst_reg) + i, REGSIZE(dst_reg));
 
         SETREGTAINTVAL(dst_reg, i, 0, newid);
@@ -447,7 +447,7 @@ void nshr_taint_mix_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING_
       {
         int newid = nshr_tid_modify_id_by_symbol(dst_taint, i, type, src_taint);
 
-        LDUMP_TAINT(i, (REGTAINTED(mask, i)), "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
+        LDUMP_TAINT(i, (REGTAINTED(dst_reg, i)), "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
                          newid, REGNAME(dst_reg), REGSTART(dst_reg) + i, REGSIZE(src_reg));
 
         SETREGTAINTVAL(dst_reg, i, 0, newid);
@@ -545,7 +545,7 @@ void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_E
       	newid = t1;
       }
 
-      LDUMP_TAINT(i, (REGTAINTED(mask, i)), "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
+      LDUMP_TAINT(i, (REGTAINTED(dst_reg, i)), "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
                        newid, REGNAME(dst_reg), REGSTART(dst_reg) + i, size);
 
       SETREGTAINTVAL(dst_reg, i, 0, newid);
@@ -562,13 +562,12 @@ void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_E
     {
       REGTAINTRM(dst_reg, i);
     }
-
   }
 
 
   for (unsigned int i = REGSIZE(base_reg); i < REGSIZE(dst_reg); i++)
   {
-    LDUMP_TAINT(i - REGSIZE(src_reg), REGTAINTED(dst_reg, i), 
+    LDUMP_TAINT(i - REGSIZE(base_reg), REGTAINTED(dst_reg, i), 
     	              "  REMOVE REG %s byte %d TAINT#[%d %d %d %d] TOTAL %d.\n", 
                          REGNAME(dst_reg), REGSTART(dst_reg) + i, REGTAINTVALS_LOG(dst_reg, i),
                              REGSIZE(dst_reg) - REGSIZE(base_reg));

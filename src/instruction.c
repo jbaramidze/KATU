@@ -159,6 +159,10 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
                                      OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(dst_reg),
                                          OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
       }
+      else if (is_restrictor(type))
+      {
+      	//FIXME: implement it.
+      }
       else
       {
       	FAIL();
