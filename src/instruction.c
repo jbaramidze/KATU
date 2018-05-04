@@ -148,6 +148,17 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
                                      OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), OPND_CREATE_INT32(dst_reg), 
                                          OPND_CREATE_INT32(extend_from) DBG_END_DR_CLEANCALL);
       }
+      else if (is_binary(type))
+      {
+        LDUMP("InsDetail:\tDoing '%s' to taint from base+disp %s:%s + %d*%s + %d to %s %d bytes.\n", PROP_NAMES[type], 
+        	      REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, 
+                      REGNAME(dst_reg), REGSIZE(dst_reg));
+
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_mem2reg, false, DBG_TAINT_NUM_PARAMS(7),
+                               OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
+                                     OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(dst_reg),
+                                         OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
+      }
       else
       {
       	FAIL();

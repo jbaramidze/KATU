@@ -207,7 +207,7 @@ void nshr_taint_mv_mem_rm(uint64 addr, int access_size DBG_END_TAINTING_FUNC)
   }
 }
 
-void nshr_taint_mv_baseindexmem_rm(int segment, int disp, int scale, int base_reg, int index_reg, int access_size DBG_END_TAINTING_FUNC)
+void nshr_taint_mv_baseindexmem_rm(int segment, int base_reg, int index_reg, int scale, int disp, int access_size  DBG_END_TAINTING_FUNC)
 {
   GET_CONTEXT();
   
@@ -269,7 +269,7 @@ void nshr_taint_mv_reg2regzx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
 
   int size = MIN(REGSIZE(src_reg), REGSIZE(dst_reg));
 
-  for (unsigned int i = 0; i < size; i++)
+  for (int i = 0; i < size; i++)
   {
     LDUMP_TAINT(i, (REGTAINTED(dst_reg, i) || REGTAINTED(src_reg, i)), 
     	               "  REG %s byte %d TAINT#[%d %d %d %d] -> REG %s byte %d TAINT#[%d %d %d %d] TOTAL %d.\n", 
@@ -363,6 +363,60 @@ void nshr_taint_jmp_reg(int dst_reg DBG_END_TAINTING_FUNC)
   reg_t base  = reg_get_value(dst_reg, &mcontext);
 }
 
+
+// dst = dst+src_reg (or 1, ^, &, depending on type)
+
+void nshr_taint_mix_mem2reg(int segment, int base_reg, int index_reg, int scale, int disp, int dst_reg, int type DBG_END_TAINTING_FUNC)
+{
+  GET_CONTEXT();
+
+  reg_t base  = reg_get_value(base_reg, &mcontext);
+  reg_t index = reg_get_value(index_reg, &mcontext);
+
+  reg_t addr = base + index*scale + disp;
+
+  LDUMP_TAINT(0, false, "DECODED: base %p index %d scale %d disp %d.\n", 
+                     base, index, scale, disp);
+
+  LDEBUG_TAINT(false, "DOING '%s' by MEM %p to REG %s start %d size %d\n", PROP_NAMES[type], 
+  	                addr, REGNAME(dst_reg), REGSTART(dst_reg), REGSIZE(dst_reg));
+
+  for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
+  {
+    int index = mem_taint_find_index(addr, i);
+
+    int src_taint = MEMTAINTVAL1(index, addr + i);
+    int dst_taint = REGTAINTVAL1(dst_reg, i);
+
+    if (src_taint > 0 && dst_taint > 0)
+    {
+      // else SPECIALCASE: taintID + taintID = taintID (taint stays the same)
+      if (src_taint != dst_taint)
+      {
+        int newid = nshr_tid_modify_id_by_symbol(dst_taint, i, type, src_taint);
+
+        LDUMP_TAINT(i, (REGTAINTED(mask, i)), "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
+                         newid, REGNAME(dst_reg), REGSTART(dst_reg) + i, REGSIZE(dst_reg));
+
+        SETREGTAINTVAL(dst_reg, i, 0, newid);
+      }
+    }
+    else if (src_taint > 0)  // dst_reg to src_reg
+    {
+      LDUMP_TAINT(i, (REGTAINTED(dst_reg, i) || MEMTAINTED(index, addr + i)), 
+                         "  MEM %p TAINT#[%d %d %d %d] -> REG %s byte %d TAINT#[%d %d %d %d] INDEX %d TOTAL %d.\n", 
+                             ADDR(addr + i), MEMTAINTVALS_LOG(index, addr + i), REGNAME(dst_reg), 
+                                 REGSTART(dst_reg) + i, REGTAINTVALS_LOG(dst_reg, i), index, REGSIZE(dst_reg));
+
+      MEMTAINT2REGTAINT(dst_reg, i, index, addr + i);
+    }
+    else if (dst_taint > 0)
+    {
+      // nothing to do: dst_taint stays whatever it was.
+    }
+  }
+}
+
 // dst = dst+src_reg (or 1, ^, &, depending on type)
 void nshr_taint_mix_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING_FUNC)
 { 
@@ -401,7 +455,13 @@ void nshr_taint_mix_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING_
     }
     else if (src_taint > 0)  // dst_reg to src_reg
     {
-      nshr_taint_mv_reg2reg(src_reg, dst_reg DGB_END_CALL_ARG);
+      LDUMP_TAINT(i, (REGTAINTED(dst_reg, i) || REGTAINTED(src_reg, i)), 
+    	                 "  REG %s byte %d TAINT#[%d %d %d %d] -> REG %s byte %d TAINT#[%d %d %d %d] TOTAL %d.\n", 
+                             REGNAME(src_reg), REGSTART(src_reg) + i, REGTAINTVALS_LOG(src_reg, i),
+                                 REGNAME(dst_reg), REGSTART(dst_reg) + i,
+                                     REGTAINTVALS_LOG(dst_reg, i), REGSIZE(dst_reg));
+
+      REGTAINT2REGTAINT(dst_reg, i, src_reg, i);
     }
     else if (dst_taint > 0)
     {
@@ -451,7 +511,8 @@ void nshr_taint(reg_t addr, unsigned int size, int fd)
     }
   }
 }
-//dst = index + base
+
+//dst_reg = index_reg + base_reg
 void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_END_TAINTING_FUNC)
 {
   LDEBUG_TAINT(false, "REG %s start %d + REG %s start %d size %d -> REG %s start %d size %d.\n", 
