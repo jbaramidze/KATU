@@ -49,8 +49,13 @@ event_exit(void)
 
     dump();
 
+    dr_printf("Info:\t\tGenerated instr pointers: %d.\n", instr_next_pointer);
+
     for (int i = 0; i < instr_next_pointer; i++) 
+    {
+        // FIXME: we have a crash here sometimes.
     	instr_destroy(dr_get_current_drcontext(), instr_pointers[i]);
+    }
 }
 
 static void nshr_handle_taint(long long addr, int size)

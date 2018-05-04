@@ -240,6 +240,7 @@ int64_t mem_taint_get_value(int index, uint64_t addr, int size)
 
 void mem_taint_set_value(int index, uint64_t addr, int size, uint64_t value)
 {
+  taint_mem_.address[index][(addr) % TAINTMAP_SIZE]     = addr;
   taint_mem_.value[index][(addr) % TAINTMAP_SIZE][size] = value;
 }
 

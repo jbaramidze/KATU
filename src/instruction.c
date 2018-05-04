@@ -430,11 +430,18 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
 
       instr_get_rel_addr_target(instr, &addr);
 
-      LDUMP("InsDetail:\tTaint %s to pc-relative %llx, %d bytes.\n", 
-                                      REGNAME(src_reg), addr, REGSIZE(src_reg));
+      if (type == PROP_MOV)
+      {
+        LDUMP("InsDetail:\tTaint %s to pc-relative %llx, %d bytes.\n", 
+                                        REGNAME(src_reg), addr, REGSIZE(src_reg));
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2constmem, false, DBG_TAINT_NUM_PARAMS(2), 
-                               OPND_CREATE_INT32(src_reg), OPND_CREATE_INT64(addr) DBG_END_DR_CLEANCALL);
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2constmem, false, DBG_TAINT_NUM_PARAMS(2), 
+                                 OPND_CREATE_INT32(src_reg), OPND_CREATE_INT64(addr) DBG_END_DR_CLEANCALL);
+      }
+      else
+      {
+      	FAIL();
+      }
     }
     else
     {
@@ -448,6 +455,8 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
 
     instr_get_rel_addr_target(instr, &addr);
 
+    int extend_from = opnd_size_in_bytes(opnd_get_size(src));
+
     if (opnd_is_reg(dst))
     {
       /*
@@ -455,10 +464,48 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       */
       reg_id_t dst_reg = opnd_get_reg(dst);
 
-      LDUMP("InsDetail:\tTaint from pc-relative %llx to %s %d bytes.\n", addr, REGNAME(dst_reg), REGSIZE(dst_reg));
+      if (type == PROP_MOV)
+      {
+        LDUMP("InsDetail:\tTaint from pc-relative %llx to %s %d bytes.\n", addr, REGNAME(dst_reg), REGSIZE(dst_reg));
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_constmem2reg, false, DBG_TAINT_NUM_PARAMS(2),
-                               OPND_CREATE_INT64(addr), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_constmem2reg, false, DBG_TAINT_NUM_PARAMS(2),
+                                 OPND_CREATE_INT64(addr), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
+      }
+      else if (is_binary(type))
+      {
+      	LDUMP("InsDetail:\tDoing '%s' to taint from pc-relative %llx to %s %d bytes.\n", PROP_NAMES[type], 
+                  addr, REGNAME(dst_reg), REGSIZE(dst_reg));
+
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_constmem2reg, false, DBG_TAINT_NUM_PARAMS(3),
+                                OPND_CREATE_INT64(addr), OPND_CREATE_INT32(dst_reg),
+                                   OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
+      }
+      else if (type == PROP_MOVZX)
+      {
+      	LDUMP("InsDetail:\tTaint from pc-relative %llx to %s %d bytes zero extended to %d bytes.\n", 
+      		      addr, REGNAME(dst_reg), extend_from, REGSIZE(dst_reg));
+
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_constmem2regzx, false, DBG_TAINT_NUM_PARAMS(3),
+                                 OPND_CREATE_INT64(addr), OPND_CREATE_INT32(dst_reg),
+                                   OPND_CREATE_INT32(extend_from) DBG_END_DR_CLEANCALL);
+      }
+      else if (type == PROP_MOVSX)
+      {
+      	LDUMP("InsDetail:\tTaint from pc-relative %llx to %s %d bytes sign extended to %d bytes.\n", 
+      		      addr, REGNAME(dst_reg), extend_from, REGSIZE(dst_reg));
+
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_constmem2regsx, false, DBG_TAINT_NUM_PARAMS(3),
+                                 OPND_CREATE_INT64(addr), OPND_CREATE_INT32(dst_reg),
+                                   OPND_CREATE_INT32(extend_from) DBG_END_DR_CLEANCALL);
+      }
+      else if (is_restrictor(type))
+      {
+      	//FIXME: implement it.
+      }
+      else
+      {
+      	FAIL();
+      }
     }
     else
     {
