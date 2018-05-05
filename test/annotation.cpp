@@ -14,6 +14,10 @@ int main()
 
   dynamorio_annotate_zhani_signal(1);
  /////////////////////////////////////////////////////////////////
+  asm volatile (
+  "imul  $2, %%ebx, %%eax"
+  	: : :  
+   ); 
   if (10 >= a)
   {
     nshr_dump_taint((long long int) &a); 

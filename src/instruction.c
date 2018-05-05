@@ -94,18 +94,19 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
 }
 
-static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_t src, opnd_t dst, enum prop_type type)
+static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, 
+	                      opnd_t src1, opnd_t src2, opnd_t dst, enum prop_type type)
 {
   // src: base+index
-  if (opnd_is_base_disp(src))
+  if (opnd_is_base_disp(src1))
   {
-    reg_id_t base_reg  = opnd_get_base(src);
-    reg_id_t index_reg = opnd_get_index(src);
-    reg_id_t seg_reg   = opnd_get_segment(src);
-    int scale          = opnd_get_scale(src);
-    int disp           = opnd_get_disp(src);
+    reg_id_t base_reg  = opnd_get_base(src1);
+    reg_id_t index_reg = opnd_get_index(src1);
+    reg_id_t seg_reg   = opnd_get_segment(src1);
+    int scale          = opnd_get_scale(src1);
+    int disp           = opnd_get_disp(src1);
 
-    int extend_from = opnd_size_in_bytes(opnd_get_size(src));
+    int extend_from = opnd_size_in_bytes(opnd_get_size(src1));
 
     if (opnd_is_reg(dst))
     {
@@ -117,6 +118,8 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
 
       if (type == PROP_MOV)
       {
+      	if (!opnd_same(src2, dst)) {  FAIL(); }
+
         LDUMP("InsDetail:\tTaint from base+disp %s:%s + %d*%s + %d to %s %d bytes.\n", 
                                            REGNAME(seg_reg), REGNAME(base_reg), scale, 
                                                 REGNAME(index_reg), disp, REGNAME(dst_reg), REGSIZE(dst_reg));
@@ -127,6 +130,8 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       }
       else if (type == PROP_MOVZX)
       {
+      	if (!opnd_same(src2, dst)) {  FAIL(); }
+
         LDUMP("InsDetail:\tTaint from base+disp %s:%s + %d*%s + %d to %s zero extend %d bytes to %d bytes.\n", 
                                            REGNAME(seg_reg), REGNAME(base_reg), scale, 
                                                 REGNAME(index_reg), disp, REGNAME(dst_reg), extend_from, REGSIZE(dst_reg));
@@ -138,6 +143,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       }
       else if (type == PROP_MOVSX)
       {
+      	if (!opnd_same(src2, dst)) {  FAIL(); }
 
         LDUMP("InsDetail:\tTaint from base+disp %s:%s + %d*%s + %d to %s sign extend %d bytes to %d bytes.\n", 
                                            REGNAME(seg_reg), REGNAME(base_reg), scale, 
@@ -150,14 +156,23 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       }
       else if (is_binary(type))
       {
-        LDUMP("InsDetail:\tDoing '%s' to taint from base+disp %s:%s + %d*%s + %d to %s %d bytes.\n", PROP_NAMES[type], 
-        	      REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, 
-                      REGNAME(dst_reg), REGSIZE(dst_reg));
+      	if (opnd_is_reg(src2))
+      	{
+          reg_id_t src2_reg = opnd_get_reg(src2);
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_mem2reg, false, DBG_TAINT_NUM_PARAMS(7),
-                               OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
-                                     OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(dst_reg),
-                                         OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
+          LDUMP("InsDetail:\tDoing '%s' to taint from base+disp %s:%s + %d*%s + %d and %s -> %s %d bytes.\n", PROP_NAMES[type], 
+        	        REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, 
+                        REGNAME(src2_reg), REGNAME(dst_reg), REGSIZE(dst_reg));
+
+          dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_memNreg2reg, false, DBG_TAINT_NUM_PARAMS(8),
+                                 OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
+                                        OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(src2_reg),
+                                            OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
+        }
+        else
+        {
+          FAIL(); // FIXME: fix for imul 3-operand, third will be immediate, will fail here.
+        }
       }
       else if (is_restrictor(type))
       {
@@ -174,7 +189,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
     }
   }
   // src: immediate.
-  else if (opnd_is_immed(src))
+  else if (opnd_is_immed(src1))
   {
     if (opnd_is_reg(dst))
     {
@@ -186,6 +201,8 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
 
       if (is_mov(type))
       {
+      	if (!opnd_same(src2, dst)) {  FAIL(); }
+
         LDUMP("InsDetail:\tRemove taint at %s, %d bytes\n", REGNAME(dst_reg), REGSIZE(dst_reg));
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, DBG_TAINT_NUM_PARAMS(1),
@@ -193,6 +210,14 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       }
       else if (is_binary(type))
       {
+      	if (opnd_is_reg(src2))
+      	{
+      	  if (!opnd_same(src2, dst)) {  FAIL(); } // if it fails implement, but hope it's never used.
+      	}
+      	else
+      	{
+      		FAIL();
+      	}
         // Nothing to do in this case.
       }
       else if (is_restrictor(type))
@@ -200,7 +225,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       	/*
       	FIXME: what if e.g AND 00000011000 was done? it can be limiting. Fix later.
       	*/
-        int64 value = opnd_get_immed_int(src);
+        int64 value = opnd_get_immed_int(src1);
 
         LDUMP("InsDetail:\tDoing '%s' to taint at %s, by 0x%x, %d bytes\n", PROP_NAMES[type], 
         	             REGNAME(dst_reg), value, REGSIZE(dst_reg));
@@ -217,10 +242,12 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       int scale          = opnd_get_scale(dst);
       int disp           = opnd_get_disp(dst);
 
-      int access_size = opnd_size_in_bytes(opnd_get_size(src));
+      int access_size = opnd_size_in_bytes(opnd_get_size(src1));
 
       if (is_mov(type))
-      {
+      { 
+      	if (!opnd_same(src2, dst)) {  FAIL(); }
+
         if (seg_reg == DR_REG_NULL)
         {
           LDUMP("InsDetail:\tRemove taint at base+disp %s: %s + %d*%s + %d, %d bytes.\n",
@@ -239,6 +266,8 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       }
       else if (is_binary(type))
       {
+      	if (!opnd_same(src2, dst)) {  FAIL(); }
+
         // Nothing to do in this case.
       }
       else if (is_restrictor(type))
@@ -246,7 +275,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       	/*
       	FIXME: what if e.g AND 00000011000 was done? it can be limiting. Fix later.
       	*/
-        int64 value = opnd_get_immed_int(src);
+        int64 value = opnd_get_immed_int(src1);
 
         LDUMP("InsDetail:\tDoing '%s' to taint at base+disp %s: %s + %d*%s + %d, by 0x%x, %d bytes\n", 
                   PROP_NAMES[type], REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp,
@@ -266,10 +295,12 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
 
       instr_get_rel_addr_target(instr, &addr);
 
-      int access_size = opnd_size_in_bytes(opnd_get_size(src));
+      int access_size = opnd_size_in_bytes(opnd_get_size(src1));
 
       if (is_mov(type))
       {
+      	if (!opnd_same(src2, dst)) {  FAIL(); }
+
         LDUMP("InsDetail:\tRemove taint at pc-relative %llx, %d bytes.\n", addr, access_size);
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_mem_rm, false, DBG_TAINT_NUM_PARAMS(2), 
@@ -277,6 +308,8 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       }
       else if (is_binary(type))
       {
+      	if (!opnd_same(src2, dst)) {  FAIL(); }
+
       	// Nothing to do in this case.
       }
       else if (is_restrictor(type))
@@ -284,7 +317,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
         /*
       	FIXME: what if e.g AND 00000011000 was done? it can be limiting. Fix later.
       	*/
-        int64 value = opnd_get_immed_int(src);
+        int64 value = opnd_get_immed_int(src1);
 
         LDUMP("InsDetail:\tDoing '%s' to taint at pc-relative %llx, by 0x%x, %d bytes\n", 
                   PROP_NAMES[type], addr, value, access_size);
@@ -300,9 +333,9 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
     }
   }
   // src: reg.
-  else if (opnd_is_reg(src))
+  else if (opnd_is_reg(src1))
   {
-    reg_id_t src_reg = opnd_get_reg(src);
+    reg_id_t src1_reg = opnd_get_reg(src1);
 
     if (opnd_is_base_disp(dst))
     {
@@ -317,25 +350,45 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
 
       if (type == PROP_MOV)
       {
+      	if (!opnd_same(src2, dst)) {  FAIL(); }
+
         LDUMP("InsDetail:\tTaint from %s to base+disp %s: %s + %d*%s + %d, %d bytes.\n", 
-                                        REGNAME(src_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, 
-                                            REGNAME(index_reg), disp, REGSIZE(src_reg));
+                                        REGNAME(src1_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, 
+                                            REGNAME(index_reg), disp, REGSIZE(src1_reg));
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2mem, false, DBG_TAINT_NUM_PARAMS(6), 
-                                 OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
+                                 OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
                                      OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), 
                                          OPND_CREATE_INT32(disp) DBG_END_DR_CLEANCALL);
       }
       else if (is_binary(type))
-      {
-      	LDUMP("InsDetail:\tDoing '%s' to taint from %s to base+disp %s:%s + %d*%s + %d, %d bytes.\n", PROP_NAMES[type], 
-        	                      REGNAME(src_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), 
-        	                           disp, REGSIZE(src_reg));
+      { 
+      	if (opnd_is_base_disp(src2))
+      	{
+      	  // make sure it's the same:
+          if (opnd_get_base(src2)    != base_reg) FAIL();
+          if (opnd_get_index(src2)   != index_reg) FAIL();
+          if (opnd_get_segment(src2) != seg_reg) FAIL();
+          if (opnd_get_scale(src2)   != scale) FAIL();
+          if (opnd_get_disp(src2)    != disp) FAIL();
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_reg2mem, false, DBG_TAINT_NUM_PARAMS(7),
-                                 OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
-                                     OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), 
-                                         OPND_CREATE_INT32(disp), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
+      	  LDUMP("InsDetail:\tDoing '%s' to taint from %s and base+disp %s:%s + %d*%s + %d to same mem., %d bytes.\n", PROP_NAMES[type], 
+          	                      REGNAME(src1_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), 
+          	                           disp, REGSIZE(src1_reg));
+
+          dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_reg2mem, false, DBG_TAINT_NUM_PARAMS(7),
+                                   OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
+                                       OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), 
+                                           OPND_CREATE_INT32(disp), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
+        }
+        else
+        {
+          FAIL();
+        }
+      }
+      else if (is_restrictor(type))
+      {
+      	//FIXME: implement it.
       }
       else
       {
@@ -350,7 +403,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       reg_id_t dst_reg = opnd_get_reg(dst);
 
       // SPECIALCASE: a xor a = 0 (taint removed)
-      if(type == PROP_XOR && src_reg == dst_reg)
+      if(type == PROP_XOR && opnd_is_reg(src2) && src1_reg == opnd_get_reg(src2))
       {
         LDUMP("InsDetail:\tRemoving taint from %s.\n", REGNAME(dst_reg));
 
@@ -359,56 +412,84 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
       }
       else if (type == PROP_MOVZX)
       {
-        LDUMP("InsDetail:\tTaint from %s to %s zero extend %d bytes to %d bytes.\n", REGNAME(src_reg), 
-        	             REGNAME(dst_reg), REGSIZE(src_reg), REGSIZE(dst_reg));
+      	if (!opnd_same(src2, dst)) {  FAIL(); }
+
+        LDUMP("InsDetail:\tTaint from %s to %s zero extend %d bytes to %d bytes.\n", REGNAME(src1_reg), 
+        	             REGNAME(dst_reg), REGSIZE(src1_reg), REGSIZE(dst_reg));
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regzx, false, DBG_TAINT_NUM_PARAMS(2),
-                               OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
+                               OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       }
       else if (type == PROP_MOVSX)
       {
-        LDUMP("InsDetail:\tTaint from %s to %s sign extend %d bytes to %d bytes.\n", REGNAME(src_reg), 
-        	             REGNAME(dst_reg), REGSIZE(src_reg), REGSIZE(dst_reg));
+      	if (!opnd_same(src2, dst)) {  FAIL(); }
+
+        LDUMP("InsDetail:\tTaint from %s to %s sign extend %d bytes to %d bytes.\n", REGNAME(src1_reg), 
+        	             REGNAME(dst_reg), REGSIZE(src1_reg), REGSIZE(dst_reg));
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regsx, false, DBG_TAINT_NUM_PARAMS(2),
-                               OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
+                               OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       }
       else if (type == PROP_MOV)
       {
-        LDUMP("InsDetail:\tTaint from %s to %s.\n", REGNAME(src_reg), REGNAME(dst_reg));
+      	if (!opnd_same(src2, dst)) {  FAIL(); }
+
+        LDUMP("InsDetail:\tTaint from %s to %s.\n", REGNAME(src1_reg), REGNAME(dst_reg));
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2reg, false, DBG_TAINT_NUM_PARAMS(2),
-                               OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
+                               OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       }
       else if (is_binary(type))
       {
-      	if (src_reg == dst_reg)
+      	if (opnd_is_reg(src2))
       	{
-          // SPECIALCASE: a + a = 2*a (taint stays the same)
-      	  if (type == PROP_ADD || type == PROP_ADC || type == PROP_IMUL)
-      	  {
-      	    return;
-      	  }
-      	  // SPECIALCASE: a - a = 0 (taint removed)
-      	  else if (type == PROP_SUB || type == PROP_SBB)
-      	  {
-            LDUMP("InsDetail:\tRemoving taint from %s.\n", REGNAME(dst_reg));
+      	  int src2_reg = opnd_get_reg(src2);
 
-            dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, DBG_TAINT_NUM_PARAMS(1),
-                                 OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
+      	  if (src1_reg == src2_reg) // a = a + a
+      	  {
+            // SPECIALCASE: a + a = 2*a (taint stays the same)
+      	    if (type == PROP_ADD || type == PROP_ADC || type == PROP_IMUL)
+      	    {
+      	      if (!opnd_same(src2, dst))
+      	      {
+                  dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2reg, false, DBG_TAINT_NUM_PARAMS(2),
+                               OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
+      	      }
+      	      else
+      	      {
+      	      	// Nothing to do.
+      	      }
+      	    }
+      	    // SPECIALCASE: a - a = 0 (taint removed)
+      	    else if (type == PROP_SUB || type == PROP_SBB)
+      	    {
+              LDUMP("InsDetail:\tRemoving taint from %s.\n", REGNAME(dst_reg));
+
+              dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, DBG_TAINT_NUM_PARAMS(1),
+                                   OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
+      	    }
+      	    else
+      	    {
+      	      FAIL();
+      	    }
       	  }
       	  else
       	  {
-      	  	FAIL();
-      	  }
-      	}
-      	else
-      	{
-          LDUMP("InsDetail:\tDoing '%s' to taint from %s to %s.\n", PROP_NAMES[type], REGNAME(src_reg), REGNAME(dst_reg));
+            LDUMP("InsDetail:\tDoing '%s' to taint from %s and %s -> %s.\n", PROP_NAMES[type], REGNAME(src1_reg), REGNAME(src2_reg), REGNAME(dst_reg));
 
-          dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_reg2reg, false, DBG_TAINT_NUM_PARAMS(3),
-                                 OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(dst_reg),
-                                     OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
+            dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_regNreg2reg, false, DBG_TAINT_NUM_PARAMS(4),
+                                   OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(src2_reg), OPND_CREATE_INT32(dst_reg),
+                                       OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
+          }
+        }
+        else if (opnd_is_immed(src2))
+        {
+            dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2reg, false, DBG_TAINT_NUM_PARAMS(2),
+                            OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
+        }
+        else
+        {
+           FAIL();
         }
       }
       else if (is_restrictor(type))
@@ -432,11 +513,17 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
 
       if (type == PROP_MOV)
       {
+      	if (!opnd_same(src2, dst)) {  FAIL(); }
+
         LDUMP("InsDetail:\tTaint %s to pc-relative %llx, %d bytes.\n", 
-                                        REGNAME(src_reg), addr, REGSIZE(src_reg));
+                                        REGNAME(src1_reg), addr, REGSIZE(src1_reg));
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2constmem, false, DBG_TAINT_NUM_PARAMS(2), 
-                                 OPND_CREATE_INT32(src_reg), OPND_CREATE_INT64(addr) DBG_END_DR_CLEANCALL);
+                                 OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT64(addr) DBG_END_DR_CLEANCALL);
+      }
+      else if (is_restrictor(type))
+      {
+      	//FIXME: implement it.
       }
       else
       {
@@ -449,20 +536,23 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, opnd_
     }
   }
   // src: rel addr.
-  else if (opnd_is_rel_addr(src))
+  else if (opnd_is_rel_addr(src1))
   {
     app_pc addr;
 
     instr_get_rel_addr_target(instr, &addr);
 
-    int extend_from = opnd_size_in_bytes(opnd_get_size(src));
+    int extend_from = opnd_size_in_bytes(opnd_get_size(src1));
 
     if (opnd_is_reg(dst))
     {
       /*
           relative memory to register.
       */
+
       reg_id_t dst_reg = opnd_get_reg(dst);
+
+      if (!opnd_is_reg(src2) || dst_reg != opnd_get_reg(src2)) FAIL();
 
       if (type == PROP_MOV)
       {
@@ -534,15 +624,15 @@ static void opcode_mov(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
   if (opcode == OP_movsx || opcode == OP_movsxd)
   {
-    propagate(drcontext, instr, ilist, src, dst, PROP_MOVSX);
+    propagate(drcontext, instr, ilist, src, dst, dst, PROP_MOVSX);
   }
   else if (opcode == OP_mov_ld || opcode == OP_mov_st || opcode == OP_mov_imm)
   {
-    propagate(drcontext, instr, ilist, src, dst, PROP_MOV);
+    propagate(drcontext, instr, ilist, src, dst, dst, PROP_MOV);
   }
   else if (opcode == OP_movzx)
   {
-    propagate(drcontext, instr, ilist, src, dst, PROP_MOVZX);
+    propagate(drcontext, instr, ilist, src, dst, dst, PROP_MOVZX);
   }
   else
   {
@@ -573,47 +663,76 @@ static void opcode_add(void *drcontext, instr_t *instr, instrlist_t *ilist)
   opnd_t src2 = instr_get_src(instr, 1);
   opnd_t dst  = instr_get_dst(instr, 0);
 
-  if (!opnd_same(src2, dst)) {  FAIL(); }
-
   int opcode = instr_get_opcode(instr);
 
-  if (opcode == OP_sub)
+  // Needs a bit different treatment.
+  if (opcode == OP_imul)
   {
-    propagate(drcontext, instr, ilist, src1, dst, PROP_SUB);
-  }
-  else if (opcode == OP_add)
-  {
-    propagate(drcontext, instr, ilist, src1, dst, PROP_ADD);
-  }
-  else if (opcode == OP_or)
-  {
-    propagate(drcontext, instr, ilist, src1, dst, PROP_OR);
-  }
-  else if (opcode == OP_adc)
-  {
-    propagate(drcontext, instr, ilist, src1, dst, PROP_ADC);
-  }
-  else if (opcode == OP_sbb)
-  {
-    propagate(drcontext, instr, ilist, src1, dst, PROP_SBB);
-  }
-  else if (opcode == OP_and)
-  {
-    propagate(drcontext, instr, ilist, src1, dst, PROP_AND);
-  }
-  else if (opcode == OP_xor)
-  {
-    propagate(drcontext, instr, ilist, src1, dst, PROP_XOR);
-  }
-  else if (opcode == OP_imul)
-  {
-    propagate(drcontext, instr, ilist, src1, dst, PROP_IMUL);
+    if (instr_num_srcs(instr) == 2 && instr_num_dsts(instr) == 2)
+    {
+      opnd_t dst2  = instr_get_dst(instr, 1);
+              dr_printf("AAAAAAAA srcs: %s %s, \n",
+        	     REGNAME(opnd_get_reg(dst)),  REGNAME(opnd_get_reg(dst2))
+
+      	       );
+      /*
+      Since effectively it becomes an 'or' of src1 and src2, de don't care about order
+      */
+
+      propagate(drcontext, instr, ilist, src1, src2, dst, PROP_IMUL);
+      propagate(drcontext, instr, ilist, src1, src2, dst2, PROP_IMUL);
+    }
+    else if (instr_num_srcs(instr) == 2 && instr_num_dsts(instr) == 1)
+    {
+      propagate(drcontext, instr, ilist, src1, src2, dst, PROP_IMUL);
+    }
+    else
+    {
+      FAIL();
+    }
   }
   else
   {
-  	FAIL();
-  }
+    if (!opnd_same(src2, dst)) FAIL();
+    if (instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 1) FAIL();
 
+    if (opcode == OP_sub)
+    {
+      propagate(drcontext, instr, ilist, src1, src2, dst, PROP_SUB);
+    }
+    else if (opcode == OP_add)
+    {
+      propagate(drcontext, instr, ilist, src1, src2, dst, PROP_ADD);
+    }
+    else if (opcode == OP_or)
+    {
+      propagate(drcontext, instr, ilist, src1, src2, dst, PROP_OR);
+    }
+    else if (opcode == OP_adc)
+    {
+      propagate(drcontext, instr, ilist, src1, src2, dst, PROP_ADC);
+    }
+    else if (opcode == OP_sbb)
+    {
+      propagate(drcontext, instr, ilist, src1, src2, dst, PROP_SBB);
+    }
+    else if (opcode == OP_and)
+    {
+      propagate(drcontext, instr, ilist, src1, src2, dst, PROP_AND);
+    }
+    else if (opcode == OP_xor)
+    {
+      propagate(drcontext, instr, ilist, src1, src2, dst, PROP_XOR);
+    }
+    else if (opcode == OP_imul)
+    {
+      propagate(drcontext, instr, ilist, src1, src2, dst, PROP_IMUL);
+    }
+    else
+    {
+    	FAIL();
+    }
+  }
 }
 
 static void opcode_ignore(void *drcontext, instr_t *instr, instrlist_t *ilist)

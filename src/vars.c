@@ -10,7 +10,7 @@ TaintMemStruct	taint_mem_;
 TaintRegStruct  taint_reg_;
 instrFunc		instrFunctions[MAX_OPCODE];
 Fd_entity 		fds_[MAX_FD];
-enum mode 		started_ 						= MODE_ACTIVE;
+enum mode 		started_ 						= MODE_ACTIVE; //MODE_ACTIVE; //MODE_IGNORING;
 Eflags          eflags_;
 
 UID_entity		uids_[MAX_UID];
@@ -294,6 +294,11 @@ instr_t *instr_dupl(instr_t *instr)
   instr_t *copy = instr_clone(dr_get_current_drcontext(), instr);
 
   instr_pointers[instr_next_pointer++] = copy;
+
+  if (instr_next_pointer >= 1024*16)
+  {
+  	FAIL();
+  }
 
   return copy;
 }

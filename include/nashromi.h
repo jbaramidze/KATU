@@ -456,9 +456,9 @@ void nshr_taint_jmp(DBG_END_TAINTING_FUNC_ALONE);
 void nshr_taint_cmp(DBG_END_TAINTING_FUNC_ALONE);
 
 // e.g dst_reg=src_reg+dst_reg, dst_reg=src_reg^dst_reg.....
-void nshr_taint_mix_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING_FUNC);
+void nshr_taint_mix_regNreg2reg(int src1_reg, int src2_reg, int dst_reg, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_mix_reg2mem(int src_reg, int segment, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_mix_mem2reg(int segment, int base_reg, int index_reg, int scale, int disp, int dest_reg, int type DBG_END_TAINTING_FUNC);
+void nshr_taint_mix_memNreg2reg(int segment, int base_reg, int index_reg, int scale, int disp, int src2_reg, int dst_reg, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_mix_constmem2reg(uint64 addr, int dst_reg, int type DBG_END_TAINTING_FUNC); 
 
 void nshr_taint_ret(DBG_END_TAINTING_FUNC_ALONE);
