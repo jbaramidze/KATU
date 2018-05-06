@@ -13,7 +13,7 @@ int main()
   dynamorio_annotate_zhani_signal(1);
  /////////////////////////////////////////////////////////////////
 
-  if (a < 10)
+  if (a < 30)
   {
     int b = A[a];
   }

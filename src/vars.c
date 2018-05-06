@@ -304,7 +304,6 @@ instr_t *instr_dupl(instr_t *instr)
   return copy;
 }
 
-
 reg_t decode_addr(int seg_reg, int base_reg, int index_reg, int scale, int disp)
 {
   GET_CONTEXT();
@@ -378,7 +377,7 @@ void bound_high(int *ids)
       {
       	int uid = ID2UID(ids[i]);
 
-  		LTEST("Bounder:\t\tBounding Taint ID#%d (UID#%d) Ffom top.\n", ids[i], uid);
+  		LTEST("Bounder:\t\tBounding Taint ID#%d (UID#%d) from top.\n", ids[i], uid);
 
 	    uids_[uid].bounded |= TAINT_BOUND_HIGH;
       }

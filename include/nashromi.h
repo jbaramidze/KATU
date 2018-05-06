@@ -143,8 +143,6 @@ typedef struct {
   // TAINT_BOUND_*
   int bounded;
 
-
-
 } UID_entity;
 
 typedef struct {
@@ -187,7 +185,6 @@ typedef struct {
   int valid;
 
 } Eflags;
-
 
 
 //
@@ -480,7 +477,7 @@ void nshr_taint_cmp_reg2reg(int reg1, int reg2 DBG_END_TAINTING_FUNC);
 void nshr_taint_cmp_reg2imm(int reg1, int64 val2 DBG_END_TAINTING_FUNC);
 void nshr_taint_cmp_reg2mem(int reg1, int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC);
 
-void nshr_taint_jmp_signed(int type DBG_END_TAINTING_FUNC);
+void nshr_taint_cond_jmp_signed(int type DBG_END_TAINTING_FUNC);
 
 // e.g dst_reg=src_reg+dst_reg, dst_reg=src_reg^dst_reg.....
 void nshr_taint_mix_regNreg2reg(int src1_reg, int src2_reg, int dst_reg, int type DBG_END_TAINTING_FUNC);
@@ -488,6 +485,9 @@ void nshr_taint_mix_reg2mem(int src_reg, int seg_reg, int base_reg, int index_re
 void nshr_taint_mix_memNreg2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int src2_reg, int dst_reg, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_mix_constmem2reg(uint64 addr, int dst_reg, int type DBG_END_TAINTING_FUNC); 
 
+void nshr_taint_check_jmp_reg(int reg DBG_END_TAINTING_FUNC);
+void nshr_taint_check_jmp_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC);
+void nshr_taint_check_jmp_immed(uint64_t pc DBG_END_TAINTING_FUNC);
 void nshr_taint_ret(DBG_END_TAINTING_FUNC_ALONE);
 
 // instructions.

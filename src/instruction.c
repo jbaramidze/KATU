@@ -1,12 +1,11 @@
 #define LOGWARNING
 #define LOGTEST
 #define LOGDEBUG
-#define LOGDUMP
+#undef LOGDUMP
 
 #include "dr_api.h"
 #include "core/unix/include/syscall.h"
 #include "nashromi.h"
-#include "drsyms.h"
 
 #include <string.h>
 
@@ -688,18 +687,18 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
 }
 
-static void opcode_jmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
+static void process_conditional_jmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
   int opcode = instr_get_opcode(instr);
 
   if (opcode == OP_jle_short || opcode == OP_jle || opcode == OP_jl_short || opcode == OP_jl)
   {
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_jmp_signed, false, DBG_TAINT_NUM_PARAMS(1),
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cond_jmp_signed, false, DBG_TAINT_NUM_PARAMS(1),
                            OPND_CREATE_INT32(0)  DBG_END_DR_CLEANCALL);
   }
   else if (opcode == OP_jnl_short || opcode == OP_jnl || opcode == OP_jnle_short || opcode == OP_jnle)
   {
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_jmp_signed, false, DBG_TAINT_NUM_PARAMS(1),
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cond_jmp_signed, false, DBG_TAINT_NUM_PARAMS(1),
                             OPND_CREATE_INT32(1) DBG_END_DR_CLEANCALL);
   }
 }
@@ -719,10 +718,7 @@ static void opcode_add(void *drcontext, instr_t *instr, instrlist_t *ilist)
     if (instr_num_srcs(instr) == 2 && instr_num_dsts(instr) == 2)
     {
       opnd_t dst2  = instr_get_dst(instr, 1);
-              dr_printf("AAAAAAAA srcs: %s %s, \n",
-        	     REGNAME(opnd_get_reg(dst)),  REGNAME(opnd_get_reg(dst2))
 
-      	       );
       /*
       Since effectively it becomes an 'or' of src1 and src2, de don't care about order
       */
@@ -797,18 +793,45 @@ static void wrong_opcode(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
 static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
-	/*
+  /*
+  Process boundedness updates.
+  */
+  process_conditional_jmp(drcontext, instr, ilist);
+
   if (!instr_is_cti(instr)) FAIL();
 
-  app_pc pc;
-
   opnd_t t = instr_get_target(instr);
+
+  // opnd_get_reg(t) == DR_REG_RSP for 'ret'.
+  if (opnd_is_reg(t))
+  {
+    int reg = opnd_get_reg(t);
+
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_check_jmp_reg, false, DBG_TAINT_NUM_PARAMS(1),
+                            OPND_CREATE_INT32(reg) DBG_END_DR_CLEANCALL);
+
+    return;
+  }
+  else if (opnd_is_base_disp(t))
+  {
+    reg_id_t base_reg  = opnd_get_base(t);
+    reg_id_t index_reg = opnd_get_index(t);
+    reg_id_t seg_reg   = opnd_get_segment(t);
+    int scale          = opnd_get_scale(t);
+    int disp           = opnd_get_disp(t);
+
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_check_jmp_mem, false, DBG_TAINT_NUM_PARAMS(5),
+                            OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
+                                     OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp) DBG_END_DR_CLEANCALL);
+
+    return;
+  }
+
+  app_pc pc;
 
   if (opnd_is_pc(t))
   {
      pc = opnd_get_pc(t);
-
-     return;
   }
   else if (opnd_is_rel_addr(t))
   {
@@ -817,75 +840,14 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
     instr_get_rel_addr_target(instr, &tmp);
 
     pc = (app_pc) (*(uint64 *) tmp);
-
-    return;
-  }
-  else if (opnd_is_reg(t))
-  {
-  	if (opnd_get_reg(t) == DR_REG_RSP)
-  	{
-      //dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_ret, false, 0);
-  	}
-  	else
-  	{
-  	  return;
-      //dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_ret, false, 1,
-      //                       OPND_CREATE_INT32(ENCODE_REG(opnd_get_reg(t))));
-  	}
-  }
-  else if (opnd_is_base_disp(t))
-  {
-  	return;
   }
   else
   {
   	FAIL();
   }
 
-  return;
-
-  module_data_t *data = dr_lookup_module(pc);
-
-  if (data == NULL)
-  {
-     LDUMP("InsDetail:\tIgnoring jump to %llx.\n", pc);
-
-     dr_free_module_data(data);
-
-     return;
-  }
-
-  const char *modname = dr_module_preferred_name(data);
-
-  dr_printf("Performing jump to %s.\n", modname);
-
-  // DON'T FORGET IT!
-  dr_free_module_data(data);
-
-  drsym_info_t sym;
-
-  char name_buf[1024];
-  char file_buf[1024];
-
-  sym.struct_size = sizeof(sym);
-  sym.name = name_buf;
-  sym.name_size = 1024;
-  sym.file = file_buf;
-  sym.file_size = 0;
-
-  drsym_error_t symres;
-
-  symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
-
-  if (symres == DRSYM_SUCCESS)
-  {
-  	LDUMP("InsDetail:\tDetected call to %s[%s] at %s.\n", sym.name, modname, data -> full_path);
-  }
-  else
-  {
-  	LDUMP("InsDetail:\tMissing symbols for call to [%s] at %s.\n", modname, data -> full_path);
-  }
-  */
+  dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_check_jmp_immed, false, DBG_TAINT_NUM_PARAMS(1),
+                            OPND_CREATE_INT64(pc) DBG_END_DR_CLEANCALL);
 }
 
 
@@ -918,24 +880,22 @@ void nshr_init_opcodes(void)
 
 
   instrFunctions[OP_imul]			= opcode_add;		// 25
-
-  instrFunctions[OP_jo_short]		= opcode_jmp;		// 26
-  instrFunctions[OP_jno_short]		= opcode_jmp;		// 27
-  instrFunctions[OP_jb_short]		= opcode_jmp;		// 28
-  instrFunctions[OP_jnb_short]		= opcode_jmp;		// 29
-  instrFunctions[OP_jz_short]		= opcode_jmp;		// 30
-  instrFunctions[OP_jnz_short]		= opcode_jmp;		// 31
-  instrFunctions[OP_jbe_short]		= opcode_jmp;		// 32
-  instrFunctions[OP_jnbe_short]		= opcode_jmp;		// 33
-  instrFunctions[OP_js_short]		= opcode_jmp;		// 34
-  instrFunctions[OP_jns_short]		= opcode_jmp;		// 35
-  instrFunctions[OP_jp_short]		= opcode_jmp;		// 36
-  instrFunctions[OP_jnp_short]		= opcode_jmp;		// 37
-  instrFunctions[OP_jl_short]		= opcode_jmp;		// 38
-  instrFunctions[OP_jnl_short]		= opcode_jmp;		// 39
-  instrFunctions[OP_jle_short]		= opcode_jmp;		// 40
-  instrFunctions[OP_jnle_short]		= opcode_jmp;		// 41
-
+  instrFunctions[OP_jo_short]		= opcode_call;		// 26
+  instrFunctions[OP_jno_short]		= opcode_call;		// 27
+  instrFunctions[OP_jb_short]		= opcode_call;		// 28
+  instrFunctions[OP_jnb_short]		= opcode_call;		// 29
+  instrFunctions[OP_jz_short]		= opcode_call;		// 30
+  instrFunctions[OP_jnz_short]		= opcode_call;		// 31
+  instrFunctions[OP_jbe_short]		= opcode_call;		// 32
+  instrFunctions[OP_jnbe_short]		= opcode_call;		// 33
+  instrFunctions[OP_js_short]		= opcode_call;		// 34
+  instrFunctions[OP_jns_short]		= opcode_call;		// 35
+  instrFunctions[OP_jp_short]		= opcode_call;		// 36
+  instrFunctions[OP_jnp_short]		= opcode_call;		// 37
+  instrFunctions[OP_jl_short]		= opcode_call;		// 38
+  instrFunctions[OP_jnl_short]		= opcode_call;		// 39
+  instrFunctions[OP_jle_short]		= opcode_call;		// 40
+  instrFunctions[OP_jnle_short]		= opcode_call;		// 41
   instrFunctions[OP_call]			= opcode_call;		// 42
   instrFunctions[OP_call_ind]		= opcode_call;		// 43
   instrFunctions[OP_call_far]		= opcode_call;		// 44
@@ -949,8 +909,8 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_mov_ld]			= opcode_mov;		// 55	Can be: mem2reg
   instrFunctions[OP_mov_st]			= opcode_mov;		// 56	Can be: imm2mem, reg2mem, reg2reg.
   instrFunctions[OP_mov_imm]		= opcode_mov;		// 57   Can be: imm2reg.
-// instrFunctions[OP_mov_seg]							// 58
-// instrFunctions[OP_mov_priv]							// 59
+  instrFunctions[OP_mov_seg]	    = wrong_opcode;   	// 58
+  instrFunctions[OP_mov_priv]		= wrong_opcode;		// 59
   instrFunctions[OP_test]			= opcode_cmp;		// 60 
   instrFunctions[OP_lea]			= opcode_lea;		// 61
 
@@ -959,22 +919,22 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_syscall]		= opcode_ignore;	// 95 syscall processed by dr_register_post_syscall_event.
 
 
-  instrFunctions[OP_jo]				= opcode_jmp;		// 152
-  instrFunctions[OP_jno]			= opcode_jmp;		// 153
-  instrFunctions[OP_jb]				= opcode_jmp;		// 154
-  instrFunctions[OP_jnb]			= opcode_jmp;		// 155
-  instrFunctions[OP_jz]				= opcode_jmp;		// 156
-  instrFunctions[OP_jnz]			= opcode_jmp;		// 157
-  instrFunctions[OP_jbe]			= opcode_jmp;		// 158
-  instrFunctions[OP_jnbe]			= opcode_jmp;		// 159
-  instrFunctions[OP_js]				= opcode_jmp;		// 160
-  instrFunctions[OP_jns]			= opcode_jmp;		// 161
-  instrFunctions[OP_jp]				= opcode_jmp;		// 162
-  instrFunctions[OP_jnp]			= opcode_jmp;		// 163
-  instrFunctions[OP_jl]				= opcode_jmp;		// 164
-  instrFunctions[OP_jnl]			= opcode_jmp;		// 165
-  instrFunctions[OP_jle]			= opcode_jmp;		// 166
-  instrFunctions[OP_jnle]			= opcode_jmp;		// 167
+  instrFunctions[OP_jo]				= opcode_call; 		// 152
+  instrFunctions[OP_jno]			= opcode_call; 		// 153
+  instrFunctions[OP_jb]				= opcode_call; 		// 154
+  instrFunctions[OP_jnb]			= opcode_call; 		// 155
+  instrFunctions[OP_jz]				= opcode_call; 		// 156
+  instrFunctions[OP_jnz]			= opcode_call; 		// 157
+  instrFunctions[OP_jbe]			= opcode_call; 		// 158
+  instrFunctions[OP_jnbe]			= opcode_call; 		// 159
+  instrFunctions[OP_js]				= opcode_call; 		// 160
+  instrFunctions[OP_jns]			= opcode_call; 		// 161
+  instrFunctions[OP_jp]				= opcode_call; 		// 162
+  instrFunctions[OP_jnp]			= opcode_call; 		// 163
+  instrFunctions[OP_jl]				= opcode_call; 		// 164
+  instrFunctions[OP_jnl]			= opcode_call; 		// 165
+  instrFunctions[OP_jle]			= opcode_call; 		// 166
+  instrFunctions[OP_jnle]			= opcode_call; 		// 167
 
   instrFunctions[OP_movzx]          = opcode_mov;		// 195
 

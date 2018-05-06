@@ -5,6 +5,7 @@
 #include "dr_api.h"
 #include "core/unix/include/syscall.h"
 #include "nashromi.h"
+#include "drsyms.h"
 
 #define LIBC_NAME "libc.so.6"
 
@@ -240,7 +241,7 @@ void nshr_taint_mv_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, 
   }
 }
 
-void nshr_taint_jmp_signed(int type DBG_END_TAINTING_FUNC)
+void nshr_taint_cond_jmp_signed(int type DBG_END_TAINTING_FUNC)
 {
   if (!is_valid_eflags())
   {
@@ -843,4 +844,71 @@ void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_E
 
     REGTAINTRM(dst_reg, i);
   }
+}
+
+static void process_jump(app_pc pc DBG_END_TAINTING_FUNC)
+{
+  module_data_t *data = dr_lookup_module(pc);
+
+  if (data == NULL)
+  {
+     LDUMP_TAINT(0, false, "InsDetail:\tIgnoring jump to %llx.\n", pc);
+
+     dr_free_module_data(data);
+
+     return;
+  }
+
+  const char *modname = dr_module_preferred_name(data);
+
+  LDUMP_TAINT(0, false, "Performing jump to %s (%llx).\n", modname, (uint64_t) pc);
+
+  drsym_info_t sym;
+
+  char name_buf[1024];
+  char file_buf[1024];
+
+  sym.struct_size = sizeof(sym);
+  sym.name = name_buf;
+  sym.name_size = 1024;
+  sym.file = file_buf;
+  sym.file_size = 1024;
+
+  drsym_error_t symres;
+
+  symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
+
+  if (symres == DRSYM_SUCCESS)
+  {
+  	LDUMP_TAINT(0, false, "InsDetail:\tDetected call to %s[%s] at %s.\n", sym.name, modname, data -> full_path);
+  }
+  else
+  {
+  	LDUMP_TAINT(0, false, "InsDetail:\tMissing symbols for call to [%s] at %s.\n", modname, data -> full_path);
+  }
+
+  // DON'T FORGET IT!
+  dr_free_module_data(data);
+}
+
+void nshr_taint_check_jmp_reg(int reg DBG_END_TAINTING_FUNC)
+{
+  GET_CONTEXT();
+  
+  reg_t pc = reg_get_value(reg, &mcontext);
+
+  process_jump((unsigned char *) pc DGB_END_CALL_ARG);
+}
+
+
+void nshr_taint_check_jmp_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC)
+{
+  reg_t pc = decode_addr(seg_reg, base_reg, index_reg, scale, disp);
+
+  process_jump((unsigned char *) pc DGB_END_CALL_ARG);
+}
+
+void nshr_taint_check_jmp_immed(uint64_t pc DBG_END_TAINTING_FUNC)
+{
+  process_jump((unsigned char *) pc DGB_END_CALL_ARG);
 }
