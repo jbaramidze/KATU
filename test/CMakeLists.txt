@@ -16,3 +16,15 @@ add_executable(annotation ${srcs} )
 
 target_link_libraries(annotation "c" "/custobuilds/lib/crtn.o")
 
+
+file( GLOB TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/testcases/vuln*.cpp )
+
+foreach( testsourcefile ${TEST_SOURCES} )
+    get_filename_component(barename ${testsourcefile} NAME)
+    string( REPLACE ".cpp" "" testname ${barename} )
+    set(test_srcs "${testsourcefile}")
+    use_ZHANI_annotations(${testname}, test_srcs)
+    add_executable( ${testname} ${test_srcs} )
+    target_link_libraries(${testname} "c" "/custobuilds/lib/crtn.o")
+    set_target_properties( ${testname} PROPERTIES RUNTIME_OUTPUT_DIRECTORY testcases )
+endforeach( testsourcefile ${APP_SOURCES} )
