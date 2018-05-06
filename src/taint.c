@@ -1,6 +1,6 @@
 #define LOGTEST
 #define LOGDEBUG
-#define  LOGDUMP
+#undef  LOGDUMP
 
 #include "dr_api.h"
 #include "core/unix/include/syscall.h"
@@ -8,7 +8,7 @@
 
 #define LIBC_NAME "libc.so.6"
 
-void nshr_taint_mv_reg2mem(int src_reg, int segment, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC)
+void nshr_taint_mv_reg2mem(int src_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC)
 {
   GET_CONTEXT();
   
@@ -128,7 +128,7 @@ void nshr_taint_mv_constmem2reg(uint64 addr, int dst_reg DBG_END_TAINTING_FUNC)
   }
 }
 
-void nshr_taint_mv_mem2regzx(int segment, int base_reg, int index_reg, int scale, int disp, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC)
+void nshr_taint_mv_mem2regzx(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC)
 {
   GET_CONTEXT();
   
@@ -162,7 +162,7 @@ void nshr_taint_mv_mem2regzx(int segment, int base_reg, int index_reg, int scale
   }
 }
 
-void nshr_taint_mv_mem2regsx(int segment, int base_reg, int index_reg, int scale, int disp, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC)
+void nshr_taint_mv_mem2regsx(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC)
 {
   GET_CONTEXT();
   
@@ -203,7 +203,7 @@ void nshr_taint_mv_mem2regsx(int segment, int base_reg, int index_reg, int scale
   }
 }
 
-void nshr_taint_mv_mem2reg(int segment, int base_reg, int index_reg, int scale, int disp, int dst_reg DBG_END_TAINTING_FUNC)
+void nshr_taint_mv_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg DBG_END_TAINTING_FUNC)
 {
   GET_CONTEXT();
   
@@ -227,30 +227,119 @@ void nshr_taint_mv_mem2reg(int segment, int base_reg, int index_reg, int scale, 
                            ADDR(addr + i), MEMTAINTVALS_LOG(index, addr + i), REGNAME(dst_reg), 
                                i, REGTAINTVALS_LOG(dst_reg, i), index, REGSIZE(dst_reg));
 
-
-
     MEMTAINT2REGTAINT(dst_reg, i, index, addr + i);
   }
 }
 
-void nshr_taint_jmp(DBG_END_TAINTING_FUNC_ALONE)
+void nshr_taint_jmp_less(DBG_END_TAINTING_FUNC_ALONE)
 {
+  if (!is_valid_eflags())
+  {
+  	return;
+  }
+
   GET_CONTEXT();
 
-  int res = instr_jcc_taken(instr, mcontext.xflags);
+  int taken = instr_jcc_taken(instr, mcontext.xflags);
 
-  if (eflags_.last_affecting_opcode != PROP_CMP)
+  int *t2 = get_taint2_eflags(); // array of 16
+  int *t1 = get_taint1_eflags(); // array of 16
+
+  if (taken) // taken.
   {
-  	dr_printf("WARNING!!!!\n\n");
-  	//FAIL();
+    if (t2 == NULL)
+    {
+      bound_low(t1);
+    }
+    else
+    {
+      FAIL();
+    }
+  }
+  else
+  {
+    if (t2 == NULL)
+    {
+      bound_high(t1);
+    }
+    else
+    {
+      FAIL();
+    }
   }
 }
 
-void nshr_taint_cmp(DBG_END_TAINTING_FUNC_ALONE)
-{
-  GET_CONTEXT();
 
-  update_eflags(PROP_CMP);
+void nshr_taint_cmp_reg2mem(int reg1, int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC)
+{
+  reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp);
+
+  int found = 0;
+
+  for (unsigned int i = 0; i < REGSIZE(reg1); i++)
+  {
+    int index = mem_taint_find_index(addr, i);
+
+  	int t1 = REGTAINTVAL1(reg1, i);
+  	int t2 = MEMTAINTVAL1(index, addr + i);
+
+  	if (t1 > 0 || t2 > 0)
+  	{
+  	  found = 1;
+
+      update_eflags(PROP_CMP, i, t1, t2);
+  	}
+  }
+
+  if (!found)
+  {
+  	invalidate_eflags();
+  }
+}
+
+void nshr_taint_cmp_reg2reg(int reg1, int reg2 DBG_END_TAINTING_FUNC)
+{
+  int found = 0;
+
+  for (unsigned int i = 0; i < REGSIZE(reg1); i++)
+  {
+  	int t1 = REGTAINTVAL1(reg1, i);
+  	int t2 = REGTAINTVAL1(reg2, i);
+
+  	if (t1 > 0 || t2 > 0)
+  	{
+  	  found = 1;
+
+      update_eflags(PROP_CMP, i, t1, t2);
+  	}
+  }
+
+  if (!found)
+  {
+  	invalidate_eflags();
+  }
+}
+
+void nshr_taint_cmp_reg2imm(int reg1, int64 val2 DBG_END_TAINTING_FUNC)
+{
+  int found = 0;
+
+  for (unsigned int i = 0; i < REGSIZE(reg1); i++)
+  {
+  	int t1 = REGTAINTVAL1(reg1, i);
+
+  	if (t1 > 0)
+  	{
+  	  found = 1;
+
+      update_eflags(PROP_CMP, i, t1, -1);
+  	}
+  }
+
+  if (!found)
+  {
+  	invalidate_eflags();
+  }
 }
 
 void nshr_taint_mv_mem_rm(uint64 addr, int access_size DBG_END_TAINTING_FUNC)
@@ -269,17 +358,9 @@ void nshr_taint_mv_mem_rm(uint64 addr, int access_size DBG_END_TAINTING_FUNC)
   }
 }
 
-void nshr_taint_mv_baseindexmem_rm(int segment, int base_reg, int index_reg, int scale, int disp, int access_size  DBG_END_TAINTING_FUNC)
+void nshr_taint_mv_baseindexmem_rm(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size  DBG_END_TAINTING_FUNC)
 {
-  GET_CONTEXT();
-  
-  reg_t base  = reg_get_value(base_reg, &mcontext);
-  reg_t index = reg_get_value(index_reg, &mcontext);
-
-  reg_t addr = base + index*scale + disp;
-
-  LDUMP_TAINT(0, false, "DECODED: base %p index %d scale %d disp %d.\n", 
-  	                 base, index, scale, disp);
+  reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp);
 
   LDEBUG_TAINT(false, "REMOVE MEM %p size %d\n", addr, access_size);
 
@@ -430,15 +511,6 @@ void nshr_taint_ret(DBG_END_TAINTING_FUNC_ALONE)
   dr_free_module_data(data);
 }
 
-void nshr_taint_jmp_reg(int dst_reg DBG_END_TAINTING_FUNC)
-{
-  LDEBUG_TAINT(true, "JUMPING to '%s'\n", REGNAME(dst_reg));
-
-  GET_CONTEXT();
-  
-  reg_t base  = reg_get_value(dst_reg, &mcontext);
-}
-
 // dst_reg = dst_reg+src (or 1, ^, &, depending on type)
 void nshr_taint_mix_constmem2reg(uint64 addr, int dst_reg, int type DBG_END_TAINTING_FUNC)
 {
@@ -481,7 +553,7 @@ void nshr_taint_mix_constmem2reg(uint64 addr, int dst_reg, int type DBG_END_TAIN
 }
 
 // dst = dst+src_reg (or 1, ^, &, depending on type)
-void nshr_taint_mix_reg2mem(int src_reg, int segment, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC)
+void nshr_taint_mix_reg2mem(int src_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC)
 {
   GET_CONTEXT();
   
@@ -530,7 +602,7 @@ void nshr_taint_mix_reg2mem(int src_reg, int segment, int base_reg, int index_re
 }
 
 // dst_reg = dst_reg+src (or 1, ^, &, depending on type)
-void nshr_taint_mix_memNreg2reg(int segment, int base_reg, int index_reg, int scale, int disp, int src2_reg, int dst_reg, int type DBG_END_TAINTING_FUNC)
+void nshr_taint_mix_memNreg2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int src2_reg, int dst_reg, int type DBG_END_TAINTING_FUNC)
 {
   GET_CONTEXT();
 
@@ -578,8 +650,6 @@ void nshr_taint_mix_memNreg2reg(int segment, int base_reg, int index_reg, int sc
       // nothing to do: dst_taint stays whatever it was.
     }
   }
-
-  update_eflags(PROP_ADD);
 }
 
 // dst = src1_reg+src2_reg (or 1, ^, &, depending on type)

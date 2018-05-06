@@ -10,7 +10,7 @@ TaintMemStruct	taint_mem_;
 TaintRegStruct  taint_reg_;
 instrFunc		instrFunctions[MAX_OPCODE];
 Fd_entity 		fds_[MAX_FD];
-enum mode 		started_ 						= MODE_ACTIVE; //MODE_ACTIVE; //MODE_IGNORING;
+enum mode 		started_ 						= MODE_IGNORING; //MODE_ACTIVE; //MODE_IGNORING;
 Eflags          eflags_;
 
 UID_entity		uids_[MAX_UID];
@@ -187,10 +187,10 @@ int nshr_tid_modify_id_by_symbol(int dst_taint, int byte, enum prop_type operati
 int nshr_tid_new_uid(int fd)
 {
   uids_[nextUID].fd       = fd;
+  uids_[nextUID].bounded  = 0;
 
-  int newid = nshr_tid_new_id();
+  int newid  = nshr_tid_new_id();
   int newiid = nshr_tid_new_iid(newid, 0);
-
 
   ids_[newid].uid          = nextUID;
   ids_[newid].ops_size     = 0;
@@ -303,7 +303,98 @@ instr_t *instr_dupl(instr_t *instr)
   return copy;
 }
 
-void update_eflags(int opcode)
+
+reg_t decode_addr(int seg_reg, int base_reg, int index_reg, int scale, int disp)
+{
+  GET_CONTEXT();
+  
+  reg_t base  = reg_get_value(base_reg, &mcontext);
+  reg_t index = reg_get_value(index_reg, &mcontext);
+
+  reg_t addr = base + index*scale + disp;
+
+  LDUMP("DECODED: base %p index %d scale %d disp %d.\n", 
+  	                 base, index, scale, disp);
+
+  return addr;
+}
+
+void update_eflags(int opcode, int index, int t1, int t2)
 {
 	eflags_.last_affecting_opcode = opcode;
+
+	eflags_.taint1[index] = t1;
+	eflags_.taint2[index] = t2;
+
+	eflags_.valid = 1;
+}
+
+void invalidate_eflags()
+{
+    eflags_.valid = 0;
+}
+
+int is_valid_eflags()
+{
+	return eflags_.valid;
+}
+
+int *get_taint1_eflags()
+{
+	if (!is_valid_eflags()) return NULL;
+
+	for (int i = 0; i < 8; i++)
+	{
+	  if (eflags_.taint1[i] > 0)
+	  {
+	  	return eflags_.taint1;
+	  }
+	}
+
+	return NULL;
+}
+
+int *get_taint2_eflags()
+{
+	if (!is_valid_eflags()) return NULL;
+
+	for (int i = 0; i < 8; i++)
+	{
+	  if (eflags_.taint2[i] > 0)
+	  {
+	  	return eflags_.taint2;
+	  }
+	}
+
+	return NULL;
+}
+
+void bound_high(int *ids)
+{
+	dr_printf("bounding high.\n");
+
+	for (int i = 0; i < 8; i++)
+    {
+      if (ids[i] != -1)
+      {
+      	int uid = ID2UID(ids[i]);
+
+	    uids_[uid].bounded |= TAINT_BOUND_HIGH;
+      }
+    }
+}
+
+void bound_low(int *ids)
+{	
+	dr_printf("bounding high.\n");
+
+	for (int i = 0; i < 8; i++)
+    {
+      if (ids[i] != -1)
+      {
+      	int uid = ID2UID(ids[i]);
+
+	    uids_[uid].bounded |= TAINT_BOUND_LOW;
+      }
+    }
 }

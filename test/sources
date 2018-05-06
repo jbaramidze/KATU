@@ -42,3 +42,9 @@ const char *path = "/home/zhani/Thesis/test/zaza";
 //        "movq %%rsi, 0x00000410(%%rbp)"
         : : "a" (buf1[0]), "b" (buf2[0]) :  
    ); 
+
+
+   asm volatile (
+    "cmp $0xa,%%eax  \n \t"
+    "jne func"
+    : : "a"(a) : );

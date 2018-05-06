@@ -260,7 +260,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
         }
         else if (seg_reg != DR_SEG_FS && seg_reg != DR_SEG_GS)
         {
-          // Temporarily ignore all memory accesses in FS and GS segments.
+          // Temporarily ignore all memory accesses in FS and GS seg_regs.
         	FAIL();
         }
       }
@@ -645,15 +645,58 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
   opnd_t first  = instr_get_src(instr, 0);
   opnd_t second = instr_get_src(instr, 1);
 
+  if (opnd_is_reg(first))
+  {
+    int reg1 = opnd_get_reg(first);
 
-  dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp, false, DBG_TAINT_NUM_PARAMS(0)
-                           DBG_END_DR_CLEANCALL);
+  	if (opnd_is_reg(second))
+  	{
+      int reg2 = opnd_get_reg(second);
+
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_reg2reg, false, DBG_TAINT_NUM_PARAMS(2),
+                                 OPND_CREATE_INT32(reg1), OPND_CREATE_INT32(reg2) DBG_END_DR_CLEANCALL);
+  	}
+  	else if (opnd_is_immed(second))
+  	{
+       int64 immed2 = opnd_get_immed_int(second);
+
+       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_reg2imm, false, DBG_TAINT_NUM_PARAMS(2),
+                                 OPND_CREATE_INT32(reg1), OPND_CREATE_INT64(immed2) DBG_END_DR_CLEANCALL);
+  	}
+    else if (opnd_is_base_disp(second))
+    {
+      reg_id_t base_reg  = opnd_get_base(second);
+      reg_id_t index_reg = opnd_get_index(second);
+      reg_id_t seg_reg   = opnd_get_segment(second);
+      int scale          = opnd_get_scale(second);
+      int disp           = opnd_get_disp(second);
+
+       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_reg2mem, false, DBG_TAINT_NUM_PARAMS(6),
+                                 OPND_CREATE_INT32(reg1), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
+                                     OPND_CREATE_INT32(index_reg),  OPND_CREATE_INT32(scale),  
+                                          OPND_CREATE_INT32(disp) DBG_END_DR_CLEANCALL);
+    }
+  	else
+  	{
+  	  FAIL();
+  	}
+  }
+  else
+  {
+  	FAIL();
+  }
+
 }
 
 static void opcode_jmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
-  dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_jmp, false, DBG_TAINT_NUM_PARAMS(0)
-                           DBG_END_DR_CLEANCALL);
+  int opcode = instr_get_opcode(instr);
+
+  if (opcode == OP_jle_short || opcode == OP_jle)
+  {
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_jmp_less, false, DBG_TAINT_NUM_PARAMS(0)
+                             DBG_END_DR_CLEANCALL);
+  }
 }
 
 // src2 == dst

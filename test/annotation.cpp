@@ -4,9 +4,17 @@
 
 const char *path = "/home/zhani/Thesis/test/zaza";
 
+extern "C"
+{
+  void func()
+  {
+    
+  }
+}
+
 int main()
 {
-  int a = -10;
+  int a = 15;
   int b = 3;
 
   nshrtaint((long long int) &a, 4);
@@ -14,14 +22,20 @@ int main()
 
   dynamorio_annotate_zhani_signal(1);
  /////////////////////////////////////////////////////////////////
-  asm volatile (
-  "imul  $2, %%ebx, %%eax"
-  	: : :  
-   ); 
-  if (10 >= a)
+/*
+   asm volatile (
+   	//"cmp $10, %%eax \n \t"
+   	"cmp $10, %%eax \n \t"
+   	"ja func"
+   	: : "a"(a) : );
+*/
+
+  if (a > 10)
   {
     nshr_dump_taint((long long int) &a); 
   }
+  
+
 /////////////////////////////////////////////////////////////////
   dynamorio_annotate_zhani_signal(0);
 
