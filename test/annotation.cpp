@@ -12,6 +12,8 @@ extern "C"
   }
 }
 
+int A[20];
+
 int main()
 {
   int a = 15;
@@ -32,6 +34,8 @@ int main()
 
   if (a > 10)
   {
+  	int b = A[a];
+  	b = b + 9;
     nshr_dump_taint((long long int) &a); 
   }
   

@@ -692,10 +692,15 @@ static void opcode_jmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
   int opcode = instr_get_opcode(instr);
 
-  if (opcode == OP_jle_short || opcode == OP_jle)
+  if (opcode == OP_jle_short || opcode == OP_jle || opcode == OP_jl_short || opcode == OP_jl)
   {
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_jmp_less, false, DBG_TAINT_NUM_PARAMS(0)
-                             DBG_END_DR_CLEANCALL);
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_jmp_signed, false, DBG_TAINT_NUM_PARAMS(1),
+                           OPND_CREATE_INT32(0)  DBG_END_DR_CLEANCALL);
+  }
+  else if (opcode == OP_jnl_short || opcode == OP_jnl || opcode == OP_jnle_short || opcode == OP_jnle)
+  {
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_jmp_signed, false, DBG_TAINT_NUM_PARAMS(1),
+                            OPND_CREATE_INT32(1) DBG_END_DR_CLEANCALL);
   }
 }
 

@@ -1,3 +1,4 @@
+#define LOGWARNING
 #define LOGTEST
 #define LOGDEBUG
 #define LOGDUMP
@@ -371,13 +372,13 @@ int *get_taint2_eflags()
 
 void bound_high(int *ids)
 {
-	dr_printf("bounding high.\n");
-
 	for (int i = 0; i < 8; i++)
     {
       if (ids[i] != -1)
       {
       	int uid = ID2UID(ids[i]);
+
+  		LTEST("Bounder:\t\tBounding Taint ID#%d (UID#%d) Ffom top.\n", ids[i], uid);
 
 	    uids_[uid].bounded |= TAINT_BOUND_HIGH;
       }
@@ -386,15 +387,43 @@ void bound_high(int *ids)
 
 void bound_low(int *ids)
 {	
-	dr_printf("bounding high.\n");
-
 	for (int i = 0; i < 8; i++)
     {
       if (ids[i] != -1)
       {
       	int uid = ID2UID(ids[i]);
 
+  		LTEST("Bounder:\t\tBounding Taint ID#%d (UID#%d) from below.\n", ids[i], uid);
+
 	    uids_[uid].bounded |= TAINT_BOUND_LOW;
       }
     }
+}
+
+void check_bounds(int reg)
+{
+  if (reg == DR_REG_NULL)
+  {
+  	return;
+  }
+
+  for (unsigned int i = 0; i < REGSIZE(reg); i++)
+  {
+  	int t = REGTAINTVAL1(reg, i);
+
+  	if (t > 0)
+  	{
+      int uid = ID2UID(t);
+
+      if ((uids_[uid].bounded & TAINT_BOUND_LOW) == 0)
+      {
+        LWARNING("!!!WARNING!!! ID#%d (UID#%d) is not bound from below!!\n", t, uid);
+      }
+
+      if ((uids_[uid].bounded & TAINT_BOUND_HIGH) == 0)
+      {
+        LWARNING("!!!WARNING!!! ID#%d (UID#%d) is not bound from up!!\n", t, uid);
+      }
+  	}
+  }
 }

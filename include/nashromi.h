@@ -422,6 +422,8 @@ int *get_taint2_eflags();
 void bound_high(int *ids);
 void bound_low(int *ids);
 
+void check_bounds(int reg);
+
 
 /****************************************************
      U I D / U U I D / I D   H A N D L I N G
@@ -478,7 +480,7 @@ void nshr_taint_cmp_reg2reg(int reg1, int reg2 DBG_END_TAINTING_FUNC);
 void nshr_taint_cmp_reg2imm(int reg1, int64 val2 DBG_END_TAINTING_FUNC);
 void nshr_taint_cmp_reg2mem(int reg1, int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC);
 
-void nshr_taint_jmp_less(DBG_END_TAINTING_FUNC_ALONE);
+void nshr_taint_jmp_signed(int type DBG_END_TAINTING_FUNC);
 
 // e.g dst_reg=src_reg+dst_reg, dst_reg=src_reg^dst_reg.....
 void nshr_taint_mix_regNreg2reg(int src1_reg, int src2_reg, int dst_reg, int type DBG_END_TAINTING_FUNC);

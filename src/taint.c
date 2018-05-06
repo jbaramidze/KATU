@@ -131,6 +131,9 @@ void nshr_taint_mv_constmem2reg(uint64 addr, int dst_reg DBG_END_TAINTING_FUNC)
 void nshr_taint_mv_mem2regzx(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC)
 {
   GET_CONTEXT();
+
+  check_bounds(base_reg);
+  check_bounds(index_reg);
   
   reg_t base  = reg_get_value(base_reg, &mcontext);
   reg_t index = reg_get_value(index_reg, &mcontext);
@@ -165,6 +168,9 @@ void nshr_taint_mv_mem2regzx(int seg_reg, int base_reg, int index_reg, int scale
 void nshr_taint_mv_mem2regsx(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC)
 {
   GET_CONTEXT();
+
+  check_bounds(base_reg);
+  check_bounds(index_reg);
   
   reg_t base  = reg_get_value(base_reg, &mcontext);
   reg_t index = reg_get_value(index_reg, &mcontext);
@@ -206,6 +212,9 @@ void nshr_taint_mv_mem2regsx(int seg_reg, int base_reg, int index_reg, int scale
 void nshr_taint_mv_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg DBG_END_TAINTING_FUNC)
 {
   GET_CONTEXT();
+
+  check_bounds(base_reg);
+  check_bounds(index_reg);
   
   reg_t base  = reg_get_value(base_reg, &mcontext);
   reg_t index = reg_get_value(index_reg, &mcontext);
@@ -231,7 +240,7 @@ void nshr_taint_mv_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, 
   }
 }
 
-void nshr_taint_jmp_less(DBG_END_TAINTING_FUNC_ALONE)
+void nshr_taint_jmp_signed(int type DBG_END_TAINTING_FUNC)
 {
   if (!is_valid_eflags())
   {
@@ -249,7 +258,9 @@ void nshr_taint_jmp_less(DBG_END_TAINTING_FUNC_ALONE)
   {
     if (t2 == NULL)
     {
-      bound_low(t1);
+      if (type == 0)      bound_low(t1);
+      else if (type == 1) bound_high(t1);
+      else                FAIL();
     }
     else
     {
@@ -260,7 +271,9 @@ void nshr_taint_jmp_less(DBG_END_TAINTING_FUNC_ALONE)
   {
     if (t2 == NULL)
     {
-      bound_high(t1);
+      if (type == 0)      bound_high(t1);
+      else if (type == 1) bound_low(t1);
+      else                FAIL();
     }
     else
     {
