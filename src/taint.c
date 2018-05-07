@@ -8,18 +8,11 @@
 #include "drsyms.h"
 
 #define LIBC_NAME "libc.so.6"
+#define LD_LINUX  "ld-linux-x86-64.so.2"
 
 void nshr_taint_mv_reg2mem(int src_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC)
 {
-  GET_CONTEXT();
-  
-  reg_t base  = reg_get_value(base_reg, &mcontext);
-  reg_t index = reg_get_value(index_reg, &mcontext);
-
-  reg_t addr = base + index*scale + disp;
-
-  LDUMP_TAINT(0, false, "DECODED: base %p index %d scale %d disp %d.\n", 
-                     base, index, scale, disp);
+  reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp);
 
   LDEBUG_TAINT(false, "REG %s -> MEM %p size %d.\n", 
   	         REGNAME(src_reg), addr, REGSIZE(src_reg));
@@ -161,6 +154,8 @@ void nshr_taint_mv_mem2regsx(int seg_reg, int base_reg, int index_reg, int scale
 
 void nshr_taint_cond_jmp_signed(int type DBG_END_TAINTING_FUNC)
 {
+  STOP_IF_NOT_ACTIVE();
+
   if (!is_valid_eflags())
   {
   	return;
@@ -475,37 +470,6 @@ void nshr_taint_mv_reg2regsx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
   }
 }
 
-void nshr_taint_ret(DBG_END_TAINTING_FUNC_ALONE)
-{
-  GET_CONTEXT();
-  
-  reg_t address = *((reg_t *) reg_get_value(DR_REG_RSP, &mcontext));
-
-  module_data_t *data = dr_lookup_module((app_pc) address);
-
-  if (data == NULL)
-  {
-     LDEBUG_TAINT(false, "  JUMPING to unknown address %llx.\n", address);
-
-     dr_free_module_data(data);
-
-     return;
-  }
-
-  const char *modname = dr_module_preferred_name(data);
-
-  LDEBUG_TAINT(false, "  JUMPING to '%s' at address %llx.\n", modname, address);
-
-  if (strcmp(modname, LIBC_NAME) != 0)
-  {
-    LDEBUG_TAINT(true, "RETURNING to '%s'\n", modname);
-
-    started_ = MODE_ACTIVE;
-  }
-
-  dr_free_module_data(data);
-}
-
 // dst_reg = dst_reg+src (or 1, ^, &, depending on type)
 void nshr_taint_mix_constmem2reg(uint64 addr, int dst_reg, int type DBG_END_TAINTING_FUNC)
 {
@@ -550,15 +514,7 @@ void nshr_taint_mix_constmem2reg(uint64 addr, int dst_reg, int type DBG_END_TAIN
 // dst = dst+src_reg (or 1, ^, &, depending on type)
 void nshr_taint_mix_reg2mem(int src_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC)
 {
-  GET_CONTEXT();
-  
-  reg_t base  = reg_get_value(base_reg, &mcontext);
-  reg_t index = reg_get_value(index_reg, &mcontext);
-
-  reg_t addr = base + index*scale + disp;
-
-  LDUMP_TAINT(0, false, "DECODED: base %p index %d scale %d disp %d.\n", 
-                     base, index, scale, disp);
+  reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp);
 
   LDEBUG_TAINT(false, "DOING '%s' by REG %s -> MEM %p size %d.\n", PROP_NAMES[type], 
   	               REGNAME(src_reg), addr, REGSIZE(src_reg));
@@ -599,15 +555,7 @@ void nshr_taint_mix_reg2mem(int src_reg, int seg_reg, int base_reg, int index_re
 // dst_reg = dst_reg+src (or 1, ^, &, depending on type)
 void nshr_taint_mix_memNreg2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int src2_reg, int dst_reg, int type DBG_END_TAINTING_FUNC)
 {
-  GET_CONTEXT();
-
-  reg_t base  = reg_get_value(base_reg, &mcontext);
-  reg_t index = reg_get_value(index_reg, &mcontext);
-
-  reg_t addr = base + index*scale + disp;
-
-  LDUMP_TAINT(0, false, "DECODED: base %p index %d scale %d disp %d.\n", 
-                     base, index, scale, disp);
+  reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp);
 
   LDEBUG_TAINT(false, "DOING '%s' by MEM %p to REG %s -> REG %s size %d\n", PROP_NAMES[type], 
   	                addr, REGNAME(src2_reg), REGNAME(dst_reg), REGSIZE(dst_reg));
@@ -827,13 +775,14 @@ void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_E
   }
 }
 
+
 static void process_jump(app_pc pc DBG_END_TAINTING_FUNC)
 {
   module_data_t *data = dr_lookup_module(pc);
 
   if (data == NULL)
   {
-     LDUMP_TAINT(0, false, "InsDetail:\tIgnoring jump to %llx.\n", pc);
+     LDUMP_TAINT(0, false, "Ignoring jump to %llx.\n", pc);
 
      dr_free_module_data(data);
 
@@ -841,8 +790,6 @@ static void process_jump(app_pc pc DBG_END_TAINTING_FUNC)
   }
 
   const char *modname = dr_module_preferred_name(data);
-
-  LDUMP_TAINT(0, false, "Performing jump to %s (%llx).\n", modname, (uint64_t) pc);
 
   drsym_info_t sym;
 
@@ -857,15 +804,60 @@ static void process_jump(app_pc pc DBG_END_TAINTING_FUNC)
 
   drsym_error_t symres;
 
+  if (started_ == MODE_IN_LIBC && (strcmp(modname, LIBC_NAME) != 0 && strcmp(modname, LD_LINUX) != 0))
+  {
+    symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
+
+  	if (symres == DRSYM_SUCCESS)
+    {
+  	  LDUMP_TAINT(0, true, "Returning to Active mode in %s[%s] at %s.\n", sym.name, modname, data -> full_path);
+    }
+    else
+    {
+  	  LDUMP_TAINT(0, true, "Returning to Active mode in [%s] at %s.\n", modname, data -> full_path);
+    }
+
+    started_ = MODE_ACTIVE;
+
+    return;
+  }
+
+  if (started_ == MODE_BEFORE_MAIN)
+  {
+    symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
+
+    if (strcmp(sym.name, "main") == 0)
+    {
+      LDEBUG_TAINT(false, "Jumping to main.\n");
+
+      started_ = MODE_ACTIVE;
+
+      return;
+    }
+  }
+
+  if (started_ != MODE_ACTIVE)
+  {
+  	return;
+  }
+
   symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
 
   if (symres == DRSYM_SUCCESS)
   {
-  	LDUMP_TAINT(0, false, "InsDetail:\tDetected call to %s[%s] at %s.\n", sym.name, modname, data -> full_path);
+  	LDUMP_TAINT(0, true, "Detected call to %s[%s] at %s.\n", sym.name, modname, data -> full_path);
   }
   else
   {
-  	LDUMP_TAINT(0, false, "InsDetail:\tMissing symbols for call to [%s] at %s.\n", modname, data -> full_path);
+  	LDUMP_TAINT(0, true, "Missing symbols for call to [%s] at %s.\n", modname, data -> full_path);
+  }
+
+  if (strcmp(LD_LINUX, modname) == 0 || strcmp(LIBC_NAME, modname) == 0)
+  {
+
+  	LDUMP_TAINT(0, true, "Goind into MODE_IN_LIBC mode.\n");
+
+  	started_ = MODE_IN_LIBC;
   }
 
   // DON'T FORGET IT!

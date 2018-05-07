@@ -1014,7 +1014,7 @@ dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr
   int opcode = instr_get_opcode(instr);
 
   if (started_ == MODE_ACTIVE || 
-  	     (started_ == MODE_IN_LIBC && opcode == OP_ret))
+  	    (instrFunctions[opcode] == opcode_call && (started_ == MODE_IN_LIBC || started_ == MODE_BEFORE_MAIN)))
   {
     instr_disassemble_to_buffer(drcontext, instr, instruction, 64);
 

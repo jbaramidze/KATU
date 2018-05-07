@@ -124,6 +124,7 @@ enum mode {
   MODE_IGNORING,
   MODE_ACTIVE,
   MODE_IN_LIBC,
+  MODE_BEFORE_MAIN,
 
 };
 
@@ -492,7 +493,6 @@ void nshr_taint_mix_constmem2reg(uint64 addr, int dst_reg, int type DBG_END_TAIN
 void nshr_taint_check_jmp_reg(int reg DBG_END_TAINTING_FUNC);
 void nshr_taint_check_jmp_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC);
 void nshr_taint_check_jmp_immed(uint64_t pc DBG_END_TAINTING_FUNC);
-void nshr_taint_ret(DBG_END_TAINTING_FUNC_ALONE);
 
 // instructions.
 dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr_t *inst, bool for_trace, 

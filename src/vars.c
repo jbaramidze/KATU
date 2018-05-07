@@ -1,7 +1,7 @@
 #define LOGWARNING
 #define LOGTEST
 #define LOGDEBUG
-#define LOGDUMP
+#undef LOGDUMP
 
 #include "dr_api.h"
 #include "core/unix/include/syscall.h"
@@ -11,7 +11,7 @@ TaintMemStruct	taint_mem_;
 TaintRegStruct  taint_reg_;
 instrFunc		instrFunctions[MAX_OPCODE];
 Fd_entity 		fds_[MAX_FD];
-enum mode 		started_ 						= MODE_ACTIVE; //MODE_ACTIVE; //MODE_IGNORING;
+enum mode 		started_ 						= MODE_BEFORE_MAIN; //MODE_BEFORE_MAIN MODE_ACTIVE MODE_IGNORING
 Eflags          eflags_;
 
 UID_entity		uids_[MAX_UID];
@@ -78,7 +78,7 @@ int nshr_tid_copy_id(int id)
 {
   int newid = nshr_tid_new_id();
 
-  LDUMP("Utils:\t\tCopied id %d to %d.\n", id, newid);
+  LDEBUG("Utils:\t\tCopied id %d to %d.\n", id, newid);
 
   /*
   First copy everything from old id.
@@ -151,7 +151,7 @@ int nshr_reg_get_or_fix_sized_taint(int reg)
   ids_[newid].ops_size = 0;
   ids_[newid].size     = REGSIZE(reg);
 
-  LDUMP("Utils:\t\tFIXING SIZE: Created new id %d from uid %d size %d.\n", newid, ids_[newid].uid, REGSIZE(reg));
+  LDEBUG("Utils:\t\tFIXING SIZE: Created new id %d from uid %d size %d.\n", newid, ids_[newid].uid, REGSIZE(reg));
 
   for (unsigned int i = 0; i < REGSIZE(reg); i++)
   {
@@ -159,7 +159,7 @@ int nshr_reg_get_or_fix_sized_taint(int reg)
 
     if (i == 0)
     {
-      LDUMP("Utils:\t\tCreated new iid %d for reg %s byte %d, to id %d size %d index %d\n", 
+      LDEBUG("Utils:\t\tCreated new iid %d for reg %s byte %d, to id %d size %d index %d\n", 
               newiid, REGNAME(reg), REGSTART(reg) + i, newid, ID2SIZE(newid), IID2INDEX(newiid));
     }
 
@@ -180,7 +180,7 @@ int nshr_tid_modify_id_by_symbol(int dst_taint, int byte, enum prop_type operati
 
   ID2OPSIZE(newid)++;
 
-  LDUMP("Utils:\t\tAppended operation '%s' to id %d by ID#%d.\n", PROP_NAMES[operation], newid, src_taint);
+  LDEBUG("Utils:\t\tAppended operation '%s' to id %d by ID#%d.\n", PROP_NAMES[operation], newid, src_taint);
 
   return nshr_tid_new_iid(newid, 0);
 }

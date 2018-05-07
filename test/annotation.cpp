@@ -22,7 +22,7 @@ int main()
   nshrtaint((long long int) &a, 4);
   nshrtaint((long long int) &b, 4);
 
-  dynamorio_annotate_zhani_signal(1);
+  //dynamorio_annotate_zhani_signal(1);
  /////////////////////////////////////////////////////////////////
 /*
    asm volatile (
@@ -32,7 +32,7 @@ int main()
    	: : "a"(a) : );
 */
 
-  if (a > 10)
+  if (a > 10 && a < 30)
   {
   	int b = A[a];
   	b = b + 9;
@@ -41,7 +41,7 @@ int main()
   
 
 /////////////////////////////////////////////////////////////////
-  dynamorio_annotate_zhani_signal(0);
+  //dynamorio_annotate_zhani_signal(0);
 
 /*  printf("Opened: %d.\n", a);
   printf("Read %d bytes.\n", rd);*/
