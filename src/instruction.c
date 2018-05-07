@@ -657,10 +657,8 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
   	}
   	else if (opnd_is_immed(second))
   	{
-       int64 immed2 = opnd_get_immed_int(second);
-
-       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_reg2imm, false, DBG_TAINT_NUM_PARAMS(2),
-                                 OPND_CREATE_INT32(reg1), OPND_CREATE_INT64(immed2) DBG_END_DR_CLEANCALL);
+       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_reg2imm, false, DBG_TAINT_NUM_PARAMS(1),
+                                 OPND_CREATE_INT32(reg1) DBG_END_DR_CLEANCALL);
   	}
     else if (opnd_is_base_disp(second))
     {
@@ -670,11 +668,68 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
       int scale          = opnd_get_scale(second);
       int disp           = opnd_get_disp(second);
 
-       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_reg2mem, false, DBG_TAINT_NUM_PARAMS(6),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_reg2mem, false, DBG_TAINT_NUM_PARAMS(6),
                                  OPND_CREATE_INT32(reg1), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
                                      OPND_CREATE_INT32(index_reg),  OPND_CREATE_INT32(scale),  
                                           OPND_CREATE_INT32(disp) DBG_END_DR_CLEANCALL);
     }
+  	else
+  	{
+  	  FAIL();
+  	}
+  }
+  else if (opnd_is_base_disp(first))
+  {
+    reg_id_t base_reg  = opnd_get_base(first);
+    reg_id_t index_reg = opnd_get_index(first);
+    reg_id_t seg_reg   = opnd_get_segment(first);
+    int scale          = opnd_get_scale(first);
+    int disp           = opnd_get_disp(first);
+
+    int size = opnd_size_in_bytes(opnd_get_size(first));
+
+    if (opnd_is_reg(second))
+  	{
+      int reg2 = opnd_get_reg(second);
+
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_mem2reg, false, DBG_TAINT_NUM_PARAMS(7),
+                                 OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
+                                     OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(size),
+                                         OPND_CREATE_INT32(reg2) DBG_END_DR_CLEANCALL);
+  	}
+  	else if (opnd_is_immed(second))
+  	{
+       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_mem2imm, false, DBG_TAINT_NUM_PARAMS(6),
+                                 OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
+                                     OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), OPND_CREATE_INT32(size) 
+                                         DBG_END_DR_CLEANCALL);
+  	}
+  	else
+  	{
+  	  FAIL();
+  	}
+  }
+  else if (opnd_is_rel_addr(first))
+  {
+    app_pc addr;
+
+    instr_get_rel_addr_target(instr, &addr);
+
+    int size = opnd_size_in_bytes(opnd_get_size(first));
+
+    if (opnd_is_reg(second))
+  	{
+      int reg2 = opnd_get_reg(second);
+
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_constmem2reg, false, DBG_TAINT_NUM_PARAMS(3),
+                                 OPND_CREATE_INT64(addr), OPND_CREATE_INT32(size), OPND_CREATE_INT32(reg2) 
+                                      DBG_END_DR_CLEANCALL);
+  	}
+  	else if (opnd_is_immed(second))
+  	{
+       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_constmem2imm, false, DBG_TAINT_NUM_PARAMS(2),
+                                 OPND_CREATE_INT64(addr), OPND_CREATE_INT32(size) DBG_END_DR_CLEANCALL);
+  	}
   	else
   	{
   	  FAIL();

@@ -474,8 +474,12 @@ void nshr_taint_mv_baseindexmem_rm(int seg_reg, int base_reg, int index_reg, int
 void nshr_taint_mv_mem_rm(uint64 addr, int size DBG_END_TAINTING_FUNC);
 
 void nshr_taint_cmp_reg2reg(int reg1, int reg2 DBG_END_TAINTING_FUNC);
-void nshr_taint_cmp_reg2imm(int reg1, int64 val2 DBG_END_TAINTING_FUNC);
 void nshr_taint_cmp_reg2mem(int reg1, int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC);
+void nshr_taint_cmp_reg2imm(int reg1 DBG_END_TAINTING_FUNC);
+void nshr_taint_cmp_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int size, int reg DBG_END_TAINTING_FUNC);
+void nshr_taint_cmp_mem2imm(int seg_reg, int base_reg, int index_reg, int scale, int disp, int size DBG_END_TAINTING_FUNC);
+void nshr_taint_cmp_constmem2reg(uint64_t addr, int size, int reg DBG_END_TAINTING_FUNC);
+void nshr_taint_cmp_constmem2imm(uint64_t addr, int size DBG_END_TAINTING_FUNC);
 
 void nshr_taint_cond_jmp_signed(int type DBG_END_TAINTING_FUNC);
 

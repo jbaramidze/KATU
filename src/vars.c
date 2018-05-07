@@ -11,7 +11,7 @@ TaintMemStruct	taint_mem_;
 TaintRegStruct  taint_reg_;
 instrFunc		instrFunctions[MAX_OPCODE];
 Fd_entity 		fds_[MAX_FD];
-enum mode 		started_ 						= MODE_IGNORING; //MODE_ACTIVE; //MODE_IGNORING;
+enum mode 		started_ 						= MODE_ACTIVE; //MODE_ACTIVE; //MODE_IGNORING;
 Eflags          eflags_;
 
 UID_entity		uids_[MAX_UID];
