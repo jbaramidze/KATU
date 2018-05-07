@@ -819,6 +819,8 @@ static void process_jump(app_pc pc DBG_END_TAINTING_FUNC)
 
     started_ = MODE_ACTIVE;
 
+    dr_free_module_data(data);
+
     return;
   }
 
@@ -832,12 +834,16 @@ static void process_jump(app_pc pc DBG_END_TAINTING_FUNC)
 
       started_ = MODE_ACTIVE;
 
+      dr_free_module_data(data);
+
       return;
     }
   }
 
   if (started_ != MODE_ACTIVE)
   {
+    dr_free_module_data(data);
+
   	return;
   }
 
