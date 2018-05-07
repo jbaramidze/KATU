@@ -17,7 +17,7 @@ add_executable(annotation ${srcs} )
 target_link_libraries(annotation "c" "/custobuilds/lib/crtn.o")
 
 
-file( GLOB TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/testcases/vuln*.cpp )
+file( GLOB TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/testcases/*.cpp )
 
 foreach( testsourcefile ${TEST_SOURCES} )
     get_filename_component(barename ${testsourcefile} NAME)
