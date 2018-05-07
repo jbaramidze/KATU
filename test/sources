@@ -48,3 +48,9 @@ const char *path = "/home/zhani/Thesis/test/zaza";
     "cmp $0xa,%%eax  \n \t"
     "jne func"
     : : "a"(a) : );
+
+
+
+    dynamorio_annotate_zhani_signal(1);
+    everything goes here.
+    dynamorio_annotate_zhani_signal(0);
