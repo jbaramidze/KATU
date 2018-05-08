@@ -607,6 +607,117 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
   }
 }
 
+static void opcode_pop(void *drcontext, instr_t *instr, instrlist_t *ilist)
+{
+  if (instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 2)
+  {
+  	FAIL();
+  }
+
+  opnd_t src = instr_get_src(instr, 1);
+  opnd_t dst = instr_get_dst(instr, 0);
+
+  if (!opnd_is_base_disp(src))
+  {
+  	FAIL();
+  }
+
+  if (!opnd_is_reg(instr_get_src(instr, 0)) || opnd_get_reg(instr_get_src(instr, 0)) != DR_REG_RSP)
+  {
+  	FAIL();
+  }
+
+  if (!opnd_is_reg(instr_get_dst(instr, 1)) || opnd_get_reg(instr_get_dst(instr, 1)) != DR_REG_RSP)
+  {
+  	FAIL();
+  }
+
+  reg_id_t base_reg  = opnd_get_base(src);
+  reg_id_t index_reg = opnd_get_index(src);
+  reg_id_t seg_reg   = opnd_get_segment(src);
+  int scale          = opnd_get_scale(src);
+  int disp           = opnd_get_disp(src);
+
+  if (opnd_is_reg(dst))
+  {
+    int dst_reg = opnd_get_reg(dst);
+
+    LDUMP("InsDetail:\tTaint from base+disp %s:%s + %d*%s + %d to %s %d bytes.\n", 
+                                       REGNAME(seg_reg), REGNAME(base_reg), scale, 
+                                            REGNAME(index_reg), disp, REGNAME(dst_reg), REGSIZE(dst_reg));
+
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_mem2reg, false, DBG_TAINT_NUM_PARAMS(6),
+                             OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
+                                 OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
+  }
+  else
+  {
+  	FAIL();
+  }
+
+}
+
+static void opcode_push(void *drcontext, instr_t *instr, instrlist_t *ilist)
+{
+  if (instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 2)
+  {
+  	FAIL();
+  }
+
+  opnd_t src = instr_get_src(instr, 0);
+  opnd_t dst = instr_get_dst(instr, 1);
+
+  if (!opnd_is_base_disp(dst))
+  {
+  	FAIL();
+  }
+
+  if (!opnd_is_reg(instr_get_src(instr, 1)) || opnd_get_reg(instr_get_src(instr, 1)) != DR_REG_RSP)
+  {
+  	FAIL();
+  }
+
+  if (!opnd_is_reg(instr_get_dst(instr, 0)) || opnd_get_reg(instr_get_dst(instr, 0)) != DR_REG_RSP)
+  {
+  	FAIL();
+  }
+
+  reg_id_t base_reg  = opnd_get_base(dst);
+  reg_id_t index_reg = opnd_get_index(dst);
+  reg_id_t seg_reg   = opnd_get_segment(dst);
+  int scale          = opnd_get_scale(dst);
+  int disp           = opnd_get_disp(dst);
+
+  if (opnd_is_immed(src))
+  {
+    int access_size = -1*disp;
+
+    LDUMP("AAQInsDetail:\tRemove taint at base+disp %s: %s + %d*%s + %d, %d bytes.\n",
+                               REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, access_size);
+
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_baseindexmem_rm, false, DBG_TAINT_NUM_PARAMS(6),
+                          OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
+                                 OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), 
+                                     OPND_CREATE_INT32(access_size) DBG_END_DR_CLEANCALL);
+  }
+  else if (opnd_is_reg(src))
+  {
+  	int src_reg = opnd_get_reg(src);
+
+    LDUMP("InsDetail:\tTaint from %s to base+disp %s: %s + %d*%s + %d, %d bytes.\n", 
+                                REGNAME(src_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, 
+                                     REGNAME(index_reg), disp, REGSIZE(src_reg));
+
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2mem, false, DBG_TAINT_NUM_PARAMS(6), 
+                             OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
+                                 OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), 
+                                     OPND_CREATE_INT32(disp) DBG_END_DR_CLEANCALL);
+  }
+  else
+  {
+  	FAIL();
+  }
+}
 
 static void opcode_mov(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
@@ -917,23 +1028,28 @@ void nshr_init_opcodes(void)
   // Add custom handlers for all known opcodes.
   //
 
-  instrFunctions[OP_LABEL]          = opcode_ignore;	//3
-  instrFunctions[OP_add]			= opcode_add;		//4
-  instrFunctions[OP_or]				= opcode_add;		//5
-  instrFunctions[OP_adc]			= opcode_add;		//6
-  instrFunctions[OP_sbb]			= opcode_add;		//7
-  instrFunctions[OP_and]			= opcode_add;		//8
-  instrFunctions[OP_daa]			= wrong_opcode;		//9 (BCD)
-  instrFunctions[OP_sub]			= opcode_add;		//10
-  instrFunctions[OP_das]			= wrong_opcode;		//11 (BCD)
-  instrFunctions[OP_xor]			= opcode_add;		//12
-  instrFunctions[OP_aaa]			= wrong_opcode;		//13 (BCD)
-  instrFunctions[OP_cmp]			= opcode_cmp;		//14
-  instrFunctions[OP_aas]			= wrong_opcode;		//15 (BCD)
-  instrFunctions[OP_inc]			= opcode_ignore;	//16
-  instrFunctions[OP_dec]			= opcode_ignore;	//17
-
-
+  instrFunctions[OP_LABEL]          = opcode_ignore;	// 3
+  instrFunctions[OP_add]			= opcode_add;		// 4
+  instrFunctions[OP_or]				= opcode_add;		// 5
+  instrFunctions[OP_adc]			= opcode_add;		// 6
+  instrFunctions[OP_sbb]			= opcode_add;		// 7
+  instrFunctions[OP_and]			= opcode_add;		// 8
+  instrFunctions[OP_daa]			= wrong_opcode;		// 9 (BCD)
+  instrFunctions[OP_sub]			= opcode_add;		// 10
+  instrFunctions[OP_das]			= wrong_opcode;		// 11 (BCD)
+  instrFunctions[OP_xor]			= opcode_add;		// 12
+  instrFunctions[OP_aaa]			= wrong_opcode;		// 13 (BCD)
+  instrFunctions[OP_cmp]			= opcode_cmp;		// 14
+  instrFunctions[OP_aas]			= wrong_opcode;		// 15 (BCD)
+  instrFunctions[OP_inc]			= opcode_ignore;	// 16
+  instrFunctions[OP_dec]			= opcode_ignore;	// 17
+  instrFunctions[OP_push]			= opcode_push;		// 18
+  instrFunctions[OP_push_imm]		= opcode_push;		// 19
+  instrFunctions[OP_pop]            = opcode_pop;		// 20
+  instrFunctions[OP_pusha]          = wrong_opcode;		// 21
+  instrFunctions[OP_popa]           = wrong_opcode;		// 22
+  instrFunctions[OP_bound]          = wrong_opcode;		// 23
+  instrFunctions[OP_arpl]           = wrong_opcode;		// 24
   instrFunctions[OP_imul]			= opcode_add;		// 25
   instrFunctions[OP_jo_short]		= opcode_call;		// 26
   instrFunctions[OP_jno_short]		= opcode_call;		// 27
