@@ -96,7 +96,7 @@ void nshr_taint_mv_constmem2regsx(uint64 addr, int dst_reg, int extended_from_si
 
   	/*
   	FIXME: Quite tricky, try this before we see it fail.
-  	       This just puts 0th byte's taint ID to all 'extended' bytes. 
+  	       This just puts last byte's taint ID to all 'extended' bytes. 
   	*/
 
   	MEMTAINT2REGTAINT(dst_reg, i, index, addr + extended_from_size - 1);
@@ -152,7 +152,7 @@ void nshr_taint_mv_mem2regsx(int seg_reg, int base_reg, int index_reg, int scale
   nshr_taint_mv_constmem2regsx(addr, dst_reg, extended_from_size DGB_END_CALL_ARG);
 }
 
-void nshr_taint_cond_jmp_signed(int type DBG_END_TAINTING_FUNC)
+void nshr_taint_cond_jmp(enum cond_type type DBG_END_TAINTING_FUNC)
 {
   STOP_IF_NOT_ACTIVE();
 
@@ -160,6 +160,15 @@ void nshr_taint_cond_jmp_signed(int type DBG_END_TAINTING_FUNC)
   {
   	return;
   }
+  
+  int eflags_type = get_eflags_type();
+
+  if (eflags_type != PROP_CMP)
+  {
+  	FAIL();
+  }
+
+
 
   GET_CONTEXT();
 
@@ -168,13 +177,20 @@ void nshr_taint_cond_jmp_signed(int type DBG_END_TAINTING_FUNC)
   int *t2 = get_taint2_eflags(); // array of 16
   int *t1 = get_taint1_eflags(); // array of 16
 
+  if (t1 != NULL || t2 != NULL)
+  {
+  	LDUMP_TAINT(0, true, "Updating bounds.\n");
+  }
+
   if (taken) // taken.
   {
     if (t2 == NULL)
     {
-      if (type == 0)      bound_low(t1);
-      else if (type == 1) bound_high(t1);
-      else                FAIL();
+      if      (type == COND_LESS)    bound(t1, TAINT_BOUND_LOW);
+      else if (type == COND_MORE)    bound(t1, TAINT_BOUND_HIGH);
+      else if (type == COND_NONZERO) {} // Gives no info.
+      else if (type == COND_ZERO)    bound(t1, TAINT_BOUND_FIX);
+      else                           FAIL();
     }
     else
     {
@@ -185,9 +201,11 @@ void nshr_taint_cond_jmp_signed(int type DBG_END_TAINTING_FUNC)
   {
     if (t2 == NULL)
     {
-      if (type == 0)      bound_high(t1);
-      else if (type == 1) bound_low(t1);
-      else                FAIL();
+      if      (type == COND_LESS)    bound(t1, TAINT_BOUND_HIGH);
+      else if (type == COND_MORE)    bound(t1, TAINT_BOUND_LOW);
+      else if (type == COND_NONZERO) bound(t1, TAINT_BOUND_FIX);
+      else if (type == COND_ZERO)    {} // Gives no info.
+      else                           FAIL();
     }
     else
     {
@@ -196,8 +214,7 @@ void nshr_taint_cond_jmp_signed(int type DBG_END_TAINTING_FUNC)
   }
 }
 
-
-void nshr_taint_cmp_reg2mem(int reg1, int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC)
+void nshr_taint_cmp_reg2mem(int reg1, int seg_reg, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC)
 {
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp);
 
@@ -224,7 +241,7 @@ void nshr_taint_cmp_reg2mem(int reg1, int seg_reg, int base_reg, int index_reg, 
   }
 }
 
-void nshr_taint_cmp_reg2reg(int reg1, int reg2 DBG_END_TAINTING_FUNC)
+void nshr_taint_cmp_reg2reg(int reg1, int reg2, int type DBG_END_TAINTING_FUNC)
 {
   int found = 0;
 
@@ -237,7 +254,7 @@ void nshr_taint_cmp_reg2reg(int reg1, int reg2 DBG_END_TAINTING_FUNC)
   	{
   	  found = 1;
 
-      update_eflags(PROP_CMP, i, t1, t2);
+      update_eflags(type, i, t1, t2);
   	}
   }
 
@@ -247,7 +264,7 @@ void nshr_taint_cmp_reg2reg(int reg1, int reg2 DBG_END_TAINTING_FUNC)
   }
 }
 
-void nshr_taint_cmp_reg2imm(int reg1 DBG_END_TAINTING_FUNC)
+void nshr_taint_cmp_reg2imm(int reg1, int type DBG_END_TAINTING_FUNC)
 {
   int found = 0;
 
@@ -259,7 +276,7 @@ void nshr_taint_cmp_reg2imm(int reg1 DBG_END_TAINTING_FUNC)
   	{
   	  found = 1;
 
-      update_eflags(PROP_CMP, i, t1, -1);
+      update_eflags(type, i, t1, -1);
   	}
   }
 
@@ -269,21 +286,21 @@ void nshr_taint_cmp_reg2imm(int reg1 DBG_END_TAINTING_FUNC)
   }
 }
 
-void nshr_taint_cmp_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int size, int reg2 DBG_END_TAINTING_FUNC)
+void nshr_taint_cmp_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int size, int reg2, int type DBG_END_TAINTING_FUNC)
 {
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp);
 
-  nshr_taint_cmp_constmem2reg(addr, size, reg2 DGB_END_CALL_ARG);
+  nshr_taint_cmp_constmem2reg(addr, size, reg2, type DGB_END_CALL_ARG);
 }
 
-void nshr_taint_cmp_mem2imm(int seg_reg, int base_reg, int index_reg, int scale, int disp, int size DBG_END_TAINTING_FUNC)
+void nshr_taint_cmp_mem2imm(int seg_reg, int base_reg, int index_reg, int scale, int disp, int size, int type DBG_END_TAINTING_FUNC)
 {
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp);
 
-  nshr_taint_cmp_constmem2imm(addr, size DGB_END_CALL_ARG);
+  nshr_taint_cmp_constmem2imm(addr, size, type DGB_END_CALL_ARG);
 }
 
-void nshr_taint_cmp_constmem2reg(uint64_t addr, int size, int reg2 DBG_END_TAINTING_FUNC)
+void nshr_taint_cmp_constmem2reg(uint64_t addr, int size, int reg2, int type DBG_END_TAINTING_FUNC)
 {
   int found = 0;
 
@@ -298,7 +315,7 @@ void nshr_taint_cmp_constmem2reg(uint64_t addr, int size, int reg2 DBG_END_TAINT
   	{
   	  found = 1;
 
-      update_eflags(PROP_CMP, i, t1, t2);
+      update_eflags(type, i, t1, t2);
   	}
   }
 
@@ -308,7 +325,7 @@ void nshr_taint_cmp_constmem2reg(uint64_t addr, int size, int reg2 DBG_END_TAINT
   }
 }
 
-void nshr_taint_cmp_constmem2imm(uint64_t addr, int size DBG_END_TAINTING_FUNC)
+void nshr_taint_cmp_constmem2imm(uint64_t addr, int size, int type DBG_END_TAINTING_FUNC)
 {
   int found = 0;
 
@@ -322,7 +339,7 @@ void nshr_taint_cmp_constmem2imm(uint64_t addr, int size DBG_END_TAINTING_FUNC)
   	{
   	  found = 1;
 
-      update_eflags(PROP_CMP, i, t1, -1);
+      update_eflags(type, i, t1, -1);
   	}
   }
 
@@ -463,10 +480,10 @@ void nshr_taint_mv_reg2regsx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
 
   	/*
   	FIXME: Quite tricky, try this before we see it fail.
-  	       This just puts 0th byte's taint ID to all 'extended' bytes. 
+  	       This just puts last byte's taint ID to all 'extended' bytes. 
   	*/
 
-    REGTAINT2REGTAINT(dst_reg, i, src_reg, 0);
+    REGTAINT2REGTAINT(dst_reg, i, src_reg, REGSIZE(src_reg) - 1);
   }
 }
 

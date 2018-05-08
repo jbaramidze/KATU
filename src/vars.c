@@ -321,7 +321,7 @@ reg_t decode_addr(int seg_reg, int base_reg, int index_reg, int scale, int disp)
 
 void update_eflags(int opcode, int index, int t1, int t2)
 {
-	eflags_.last_affecting_opcode = opcode;
+	eflags_.type = opcode;
 
 	eflags_.taint1[index] = t1;
 	eflags_.taint2[index] = t2;
@@ -337,6 +337,12 @@ void invalidate_eflags()
 int is_valid_eflags()
 {
 	return eflags_.valid;
+}
+
+
+int get_eflags_type()
+{
+	return eflags_.type;
 }
 
 int *get_taint1_eflags()
@@ -369,7 +375,7 @@ int *get_taint2_eflags()
 	return NULL;
 }
 
-void bound_high(int *ids)
+void bound(int *ids, int mask)
 {
 	for (int i = 0; i < 8; i++)
     {
@@ -377,24 +383,17 @@ void bound_high(int *ids)
       {
       	int uid = ID2UID(ids[i]);
 
-  		LTEST("Bounder:\t\tBounding Taint ID#%d (UID#%d) from top.\n", ids[i], uid);
+      	if (ID2OPSIZE(ids[i]) > 0)
+      	{
+      	  FAIL();
+      	}
+        
+        if (i == 0)
+        {
+  		  LTEST("Bounder:\t\tBounding Taint ID#%d (UID#%d) by mask %d.\n", ids[i], uid, mask);
+  		}
 
-	    uids_[uid].bounded |= TAINT_BOUND_HIGH;
-      }
-    }
-}
-
-void bound_low(int *ids)
-{	
-	for (int i = 0; i < 8; i++)
-    {
-      if (ids[i] != -1)
-      {
-      	int uid = ID2UID(ids[i]);
-
-  		LTEST("Bounder:\t\tBounding Taint ID#%d (UID#%d) from below.\n", ids[i], uid);
-
-	    uids_[uid].bounded |= TAINT_BOUND_LOW;
+	    uids_[uid].bounded |= mask;
       }
     }
 }
@@ -414,12 +413,12 @@ void check_bounds(int reg)
   	{
       int uid = ID2UID(t);
 
-      if ((uids_[uid].bounded & TAINT_BOUND_LOW) == 0)
+      if ((uids_[uid].bounded & (TAINT_BOUND_LOW | TAINT_BOUND_FIX)) == 0)
       {
         LWARNING("!!!WARNING!!! ID#%d (UID#%d) is not bound from below!!\n", t, uid);
       }
 
-      if ((uids_[uid].bounded & TAINT_BOUND_HIGH) == 0)
+      if ((uids_[uid].bounded & (TAINT_BOUND_HIGH | TAINT_BOUND_FIX)) == 0)
       {
         LWARNING("!!!WARNING!!! ID#%d (UID#%d) is not bound from up!!\n", t, uid);
       }
