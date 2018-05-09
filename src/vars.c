@@ -36,17 +36,17 @@ int instr_next_pointer = 0;
 
 #endif
 
-int is_binary(enum prop_type type )
+int prop_is_binary(enum prop_type type )
 {
   return type >= PROP_ADD && type <= PROP_IMUL;
 }
 
-int is_mov(enum prop_type type )
+int prop_is_mov(enum prop_type type )
 {
 	return type == PROP_MOV || type == PROP_MOVZX || type == PROP_MOVSX;
 }
 
-int is_restrictor(enum prop_type type )
+int prop_is_restrictor(enum prop_type type )
 {
 	return type >= PROP_OR && type <= PROP_AND;
 }

@@ -13,7 +13,8 @@ set(DynamoRIO_MAIN "/home/zhani/Thesis/installer/dynamorio")
 
 set(DynamoRIO_DIR "${DynamoRIO_MAIN}/build/cmake")
 
-include_directories("${DynamoRIO_MAIN}" "include" "${DynamoRIO_MAIN}/build/ext/include")
+include_directories("${DynamoRIO_MAIN}" "include" "${DynamoRIO_MAIN}/build/ext/include" "third_party/lp_solve_5.5")
+link_directories("third_party/lp_solve_5.5")
 
 option(SHOW_RESULTS
     "Display client results in pop-up (Windows) or console message (Linux)"
@@ -53,6 +54,7 @@ endif (NOT DynamoRIO_FOUND)
 function(add_dr_client name source_file_list extension_list)
   add_library(${name} ${libtype} ${source_file_list})
   set_target_properties(${name} PROPERTIES LINKER_LANGUAGE C)
+  target_link_libraries(${name} "lpsolver")
   configure_DynamoRIO_client(${name})
   foreach (ext ${extension_list})
     use_DynamoRIO_extension(${name} ${ext})

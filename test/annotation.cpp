@@ -20,10 +20,11 @@ int main()
   int b = 3;
 
   nshrtaint((long long int) &a, 4);
-  //nshrtaint((long long int) &b, 4);
+  nshrtaint((long long int) &b, 4);
 
+  int c = a + b;
 
-  if (a == 15)
+  if (c < 10)
   {
   	int h = A[a];
   }

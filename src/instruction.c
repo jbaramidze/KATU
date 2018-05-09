@@ -153,7 +153,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
                                      OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), OPND_CREATE_INT32(dst_reg), 
                                          OPND_CREATE_INT32(extend_from) DBG_END_DR_CLEANCALL);
       }
-      else if (is_binary(type))
+      else if (prop_is_binary(type))
       {
       	if (opnd_is_reg(src2))
       	{
@@ -173,7 +173,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
           FAIL(); // FIXME: fix for imul 3-operand, third will be immediate, will fail here.
         }
       }
-      else if (is_restrictor(type))
+      else if (prop_is_restrictor(type))
       {
       	//FIXME: implement it.
       }
@@ -198,7 +198,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
       reg_id_t dst_reg = opnd_get_reg(dst);
 
-      if (is_mov(type))
+      if (prop_is_mov(type))
       {
       	if (!opnd_same(src2, dst)) {  FAIL(); }
 
@@ -207,7 +207,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, DBG_TAINT_NUM_PARAMS(1),
                                  OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       }
-      else if (is_binary(type))
+      else if (prop_is_binary(type))
       {
       	if (opnd_is_reg(src2))
       	{
@@ -219,7 +219,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       	}
         // Nothing to do in this case.
       }
-      else if (is_restrictor(type))
+      else if (prop_is_restrictor(type))
       {
       	/*
       	FIXME: what if e.g AND 00000011000 was done? it can be limiting. Fix later.
@@ -243,7 +243,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
       int access_size = opnd_size_in_bytes(opnd_get_size(src1));
 
-      if (is_mov(type))
+      if (prop_is_mov(type))
       { 
       	if (!opnd_same(src2, dst)) {  FAIL(); }
 
@@ -263,13 +263,13 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
         	FAIL();
         }
       }
-      else if (is_binary(type))
+      else if (prop_is_binary(type))
       {
       	if (!opnd_same(src2, dst)) {  FAIL(); }
 
         // Nothing to do in this case.
       }
-      else if (is_restrictor(type))
+      else if (prop_is_restrictor(type))
       {
       	/*
       	FIXME: what if e.g AND 00000011000 was done? it can be limiting. Fix later.
@@ -296,7 +296,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
       int access_size = opnd_size_in_bytes(opnd_get_size(src1));
 
-      if (is_mov(type))
+      if (prop_is_mov(type))
       {
       	if (!opnd_same(src2, dst)) {  FAIL(); }
 
@@ -305,13 +305,13 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_mem_rm, false, DBG_TAINT_NUM_PARAMS(2), 
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(access_size) DBG_END_DR_CLEANCALL);
       }
-      else if (is_binary(type))
+      else if (prop_is_binary(type))
       {
       	if (!opnd_same(src2, dst)) {  FAIL(); }
 
       	// Nothing to do in this case.
       }
-      else if (is_restrictor(type))
+      else if (prop_is_restrictor(type))
       {      	
         /*
       	FIXME: what if e.g AND 00000011000 was done? it can be limiting. Fix later.
@@ -360,7 +360,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
                                      OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), 
                                          OPND_CREATE_INT32(disp) DBG_END_DR_CLEANCALL);
       }
-      else if (is_binary(type))
+      else if (prop_is_binary(type))
       { 
       	if (opnd_is_base_disp(src2))
       	{
@@ -385,7 +385,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
           FAIL();
         }
       }
-      else if (is_restrictor(type))
+      else if (prop_is_restrictor(type))
       {
       	//FIXME: implement it.
       }
@@ -438,7 +438,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2reg, false, DBG_TAINT_NUM_PARAMS(2),
                                OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       }
-      else if (is_binary(type))
+      else if (prop_is_binary(type))
       {
       	if (opnd_is_reg(src2))
       	{
@@ -491,7 +491,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
            FAIL();
         }
       }
-      else if (is_restrictor(type))
+      else if (prop_is_restrictor(type))
       {
       	//FIXME: implement it.
       }
@@ -520,7 +520,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2constmem, false, DBG_TAINT_NUM_PARAMS(2), 
                                  OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT64(addr) DBG_END_DR_CLEANCALL);
       }
-      else if (is_restrictor(type))
+      else if (prop_is_restrictor(type))
       {
       	//FIXME: implement it.
       }
@@ -560,7 +560,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_constmem2reg, false, DBG_TAINT_NUM_PARAMS(2),
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       }
-      else if (is_binary(type))
+      else if (prop_is_binary(type))
       {
       	LDUMP("InsDetail:\tDoing '%s' to taint from pc-relative %llx to %s %d bytes.\n", PROP_NAMES[type], 
                   addr, REGNAME(dst_reg), REGSIZE(dst_reg));
@@ -587,7 +587,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(dst_reg),
                                    OPND_CREATE_INT32(extend_from) DBG_END_DR_CLEANCALL);
       }
-      else if (is_restrictor(type))
+      else if (prop_is_restrictor(type))
       {
       	//FIXME: implement it.
       }

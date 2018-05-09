@@ -128,9 +128,9 @@ static const char *PROP_NAMES[] = {
     "cmp", "test"
 };
 
-int is_binary(enum prop_type type );
-int is_mov(enum prop_type type );
-int is_restrictor(enum prop_type type );
+int prop_is_binary(enum prop_type type );
+int prop_is_mov(enum prop_type type );
+int prop_is_restrictor(enum prop_type type );
 
 
 enum mode {
