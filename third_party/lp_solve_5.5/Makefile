@@ -1,7 +1,8 @@
 
 CC = gcc # C compiler
 CFLAGS = -fPIC -Wall -Wextra -O2 -g -Ishared -Icolamd -Ibfp -Ibfp/bfp_LUSOL -I. -Ibfp/bfp_LUSOL/LUSOL -DLoadableBlasLib=0 -DYY_NEVER_INTERACTIVE -DPARSER_LP -DINVERSE_ACTIVE=INVERSE_LUSOL -DRoleIsExternalInvEngine -DLoadInverseLib=0 -DLoadLanguageLib=0
-LDFLAGS = -shared -lm -lc # linking flags
+LDFLAGS = -shared # linking flags
+LDLIBS = -lm -lc
 RM = rm -f  # rm command
 TARGET_LIB = liblpsolver.so # target lib
 
@@ -25,7 +26,7 @@ BBOBJS=$(BBSRCS:.c=.o)
 all: ${TARGET_LIB}
 
 $(TARGET_LIB): $(OBJS) $(SOBJS) $(COBJS) $(BOBJS) $(BBOBJS)
-	$(CC) ${LDFLAGS} -o $@ $^
+	$(CC) ${LDFLAGS} -o $@ $^ ${LDLIBS}
 
 $(SRCS:.c=.d):%.d:%.c
 	$(CC) $(CFLAGS) -MM $< >$@
