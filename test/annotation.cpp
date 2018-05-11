@@ -18,15 +18,18 @@ int main()
 {
   int a = 1;
   int b = 3;
+  int c = 3;
 
   nshrtaint((long long int) &a, 4);
   nshrtaint((long long int) &b, 4);
+  nshrtaint((long long int) &c, 4);
 
-  int c = a + b;
+  int d = a + b;
+  int e = d + c;
 
-  if (c < 10)
+  if (d > 0 && d < 100)
   {
-  	int h = A[c];
+  	int h = A[e];
   }
   
 }

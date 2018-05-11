@@ -1,0 +1,9 @@
+build/
+core
+
+#files being edited
+*~
+
+*.swp
+*.o
+*.so

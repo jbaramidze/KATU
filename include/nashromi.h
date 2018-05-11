@@ -447,6 +447,7 @@ int get_eflags_type();
 
 void bound(int *ids, int mask);
 void check_bounds(int reg);
+int solve_ilp(int id);
 
 
 /****************************************************
