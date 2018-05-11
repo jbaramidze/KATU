@@ -2,6 +2,7 @@
 #define THESIS_MODULE_H
 
 #include <stdint.h>
+#include "lp_lib.h"
 
 // Do additional checks, while testing
 #define CHECKS
@@ -88,6 +89,7 @@
 #define DEFAULT_OPERATIONS    8
 #define TAINTMAP_NUM          10
 #define TAINTMAP_SIZE         65536
+#define ILP_MAX_CONSTR        1000
 
 enum prop_type {
   // MOV's
@@ -151,18 +153,28 @@ typedef struct {
 
 } Fd_entity;
 
+struct Group_restriction{
+  int id;
+
+  int bound_type;
+  struct Group_restriction *next;
+};
+
+typedef struct Group_restriction Group_restriction;
+
 typedef struct {
   int fd;
 
   // TAINT_BOUND_*
   int bounded;
 
+  Group_restriction *gr;
+
 } UID_entity;
 
 typedef struct {
   enum prop_type type;
   int64 value;
-  int is_id;
 
 } Operations;
 
@@ -379,6 +391,8 @@ extern ID_entity  ids_[MAX_ID];
 extern IID_entity iids_[MAX_IID];
 
 extern instrFunc instrFunctions[MAX_OPCODE];
+
+extern lprec *lp;
 
 
 /****************************************************

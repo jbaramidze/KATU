@@ -1,4 +1,5 @@
 #!/bin/bash
+export LD_LIBRARY_PATH=`pwd`/../third_party/lp_solve_5.5/
 
 echo "Testing vulnerable cases"
 for filename in testcases/vuln*.cpp; do

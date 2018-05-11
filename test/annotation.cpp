@@ -16,7 +16,7 @@ int A[20];
 
 int main()
 {
-  int a = 15;
+  int a = 1;
   int b = 3;
 
   nshrtaint((long long int) &a, 4);
@@ -26,7 +26,7 @@ int main()
 
   if (c < 10)
   {
-  	int h = A[a];
+  	int h = A[c];
   }
   
 }

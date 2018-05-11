@@ -7,27 +7,28 @@
 #include "core/unix/include/syscall.h"
 #include "nashromi.h"
 
-TaintMemStruct	taint_mem_;
+TaintMemStruct  taint_mem_;
 TaintRegStruct  taint_reg_;
-instrFunc		instrFunctions[MAX_OPCODE];
-Fd_entity 		fds_[MAX_FD];
-enum mode 		started_ 						= MODE_BEFORE_MAIN; //MODE_BEFORE_MAIN MODE_ACTIVE MODE_IGNORING
+instrFunc       instrFunctions[MAX_OPCODE];
+Fd_entity       fds_[MAX_FD];
+enum mode       started_                     = MODE_BEFORE_MAIN; //MODE_BEFORE_MAIN MODE_ACTIVE MODE_IGNORING
 Eflags          eflags_;
 
-UID_entity		uids_[MAX_UID];
-ID_entity		ids_[MAX_ID];
+UID_entity      uids_[MAX_UID];
+ID_entity       ids_[MAX_ID];
 IID_entity      iids_[MAX_IID];
 
 // Used to describe true taint sources (e.g. read())
-int				nextUID							= 1;
+int             nextUID                      = 1;
 
 // Used to describe taint and operations
-int 			nextID							= 1;
+int             nextID                       = 1;
 
 // Used to describe which ID memory has, of what size and which index
-int 			nextIID							= 1;
+int             nextIID                      = 1;
 
 
+lprec           *lp;
 
 #ifdef DBG_PASS_INSTR
 
@@ -43,12 +44,12 @@ int prop_is_binary(enum prop_type type )
 
 int prop_is_mov(enum prop_type type )
 {
-	return type == PROP_MOV || type == PROP_MOVZX || type == PROP_MOVSX;
+  return type == PROP_MOV || type == PROP_MOVZX || type == PROP_MOVSX;
 }
 
 int prop_is_restrictor(enum prop_type type )
 {
-	return type >= PROP_OR && type <= PROP_AND;
+  return type >= PROP_OR && type <= PROP_AND;
 }
 
 int nshr_tid_new_id()
@@ -94,7 +95,6 @@ int nshr_tid_copy_id(int id)
   {
     ids_[newid].ops[i].type  = ids_[id].ops[i].type;
     ids_[newid].ops[i].value = ids_[id].ops[i].value;
-    ids_[newid].ops[i].is_id = ids_[id].ops[i].is_id;
   }
 
   return newid;
@@ -108,10 +108,10 @@ int nshr_reg_taint_any(int reg)
 
   for (int i = 0; i < size; i++)
   {
-  	if (REGTAINTVAL8(reg, 0) > 0) return IID2ID(REGTAINTVAL8(reg, 0));
-  	if (REGTAINTVAL4(reg, 0) > 0) return IID2ID(REGTAINTVAL4(reg, 0));
-  	if (REGTAINTVAL2(reg, 0) > 0) return IID2ID(REGTAINTVAL2(reg, 0));
-  	if (REGTAINTVAL1(reg, 0) > 0) return IID2ID(REGTAINTVAL1(reg, 0));
+    if (REGTAINTVAL8(reg, 0) > 0) return IID2ID(REGTAINTVAL8(reg, 0));
+    if (REGTAINTVAL4(reg, 0) > 0) return IID2ID(REGTAINTVAL4(reg, 0));
+    if (REGTAINTVAL2(reg, 0) > 0) return IID2ID(REGTAINTVAL2(reg, 0));
+    if (REGTAINTVAL1(reg, 0) > 0) return IID2ID(REGTAINTVAL1(reg, 0));
   }
 
   return -1;
@@ -132,10 +132,10 @@ int nshr_reg_get_or_fix_sized_taint(int reg)
   {
     if (IID2INDEX(iid) != 0)
     {
-    	FAIL();
+      FAIL();
     }
 
-  	return IID2ID(iid);
+    return IID2ID(iid);
   }
 
   int id = nshr_reg_taint_any(reg);
@@ -175,7 +175,6 @@ int nshr_tid_modify_id_by_symbol(int dst_taint, int byte, enum prop_type operati
   int newid = nshr_tid_copy_id(dst_taint);
 
   ID2OP(newid, ID2OPSIZE(newid)).type  = operation;
-  ID2OP(newid, ID2OPSIZE(newid)).is_id = 1;
   ID2OP(newid, ID2OPSIZE(newid)).value = src_taint;
 
   ID2OPSIZE(newid)++;
@@ -189,6 +188,7 @@ int nshr_tid_new_uid(int fd)
 {
   uids_[nextUID].fd       = fd;
   uids_[nextUID].bounded  = 0;
+  uids_[nextUID].gr       = NULL;
 
   int newid  = nshr_tid_new_id();
   int newiid = nshr_tid_new_iid(newid, 0);
@@ -219,9 +219,9 @@ void nshr_post_scanf(void *wrapcxt, void *user_data)
 int mem_taint_is_empty(int index, uint64_t addr)
 {
   return (taint_mem_.value[index][(addr) % TAINTMAP_SIZE][0] == -1 && 
-  	      taint_mem_.value[index][(addr) % TAINTMAP_SIZE][1] == -1 && 
-  	      taint_mem_.value[index][(addr) % TAINTMAP_SIZE][2] == -1 && 
-  	      taint_mem_.value[index][(addr) % TAINTMAP_SIZE][3] == -1);
+          taint_mem_.value[index][(addr) % TAINTMAP_SIZE][1] == -1 && 
+          taint_mem_.value[index][(addr) % TAINTMAP_SIZE][2] == -1 && 
+          taint_mem_.value[index][(addr) % TAINTMAP_SIZE][3] == -1);
 }  
 
 uint64_t mem_taint_get_addr(int index, uint64_t addr)
@@ -298,7 +298,7 @@ instr_t *instr_dupl(instr_t *instr)
 
   if (instr_next_pointer >= 1024*16)
   {
-  	FAIL();
+    FAIL();
   }
 
   return copy;
@@ -314,114 +314,436 @@ reg_t decode_addr(int seg_reg, int base_reg, int index_reg, int scale, int disp)
   reg_t addr = base + index*scale + disp;
 
   LDUMP("DECODED: base %p index %d scale %d disp %d.\n", 
-  	                 base, index, scale, disp);
+                     base, index, scale, disp);
 
   return addr;
 }
 
 void update_eflags(int opcode, int index, int t1, int t2)
 {
-	eflags_.type = opcode;
+  eflags_.type = opcode;
 
-	eflags_.taint1[index] = t1;
-	eflags_.taint2[index] = t2;
+  eflags_.taint1[index] = t1;
+  eflags_.taint2[index] = t2;
 
-	eflags_.valid = 1;
+  eflags_.valid = 1;
 }
 
 void invalidate_eflags()
 {
-    eflags_.valid = 0;
+  eflags_.valid = 0;
 }
 
 int is_valid_eflags()
 {
-	return eflags_.valid;
+  return eflags_.valid;
 }
 
 
 int get_eflags_type()
 {
-	return eflags_.type;
+  return eflags_.type;
 }
 
 int *get_taint1_eflags()
 {
-	if (!is_valid_eflags()) return NULL;
+  if (!is_valid_eflags()) return NULL;
 
-	for (int i = 0; i < 8; i++)
-	{
-	  if (eflags_.taint1[i] > 0)
-	  {
-	  	return eflags_.taint1;
-	  }
-	}
+  for (int i = 0; i < 8; i++)
+  {
+    if (eflags_.taint1[i] > 0)
+    {
+      return eflags_.taint1;
+    }
+  }
 
-	return NULL;
+  return NULL;
 }
 
 int *get_taint2_eflags()
 {
-	if (!is_valid_eflags()) return NULL;
+  if (!is_valid_eflags()) return NULL;
 
-	for (int i = 0; i < 8; i++)
-	{
-	  if (eflags_.taint2[i] > 0)
-	  {
-	  	return eflags_.taint2;
-	  }
-	}
+  for (int i = 0; i < 8; i++)
+  {
+    if (eflags_.taint2[i] > 0)
+    {
+      return eflags_.taint2;
+    }
+  }
 
-	return NULL;
+  return NULL;
 }
 
 void bound(int *ids, int mask)
 {
-	for (int i = 0; i < 8; i++)
+  for (int i = 0; i < 8; i++)
+  {
+    if (ids[i] != -1)
     {
-      if (ids[i] != -1)
-      {
-      	int uid = ID2UID(ids[i]);
+      int id = ids[i];
+      int uid = ID2UID(id);
 
-      	if (ID2OPSIZE(ids[i]) > 0)
-      	{
-      	  FAIL();
-      	}
-        
+      if (ID2OPSIZE(id) > 0)
+      {
+        Group_restriction *gr = (Group_restriction *) malloc(sizeof(Group_restriction));
+        gr -> id = id;
+        gr -> bound_type = mask;
+        gr -> next = uids_[uid].gr;
+
+        uids_[uid].gr = gr;
+      }
+      else
+      {
         if (i == 0)
         {
-  		  LTEST("Bounder:\t\tBounding Taint ID#%d (UID#%d) by mask %d.\n", ids[i], uid, mask);
-  		}
+          LTEST("Bounder:\t\tBounding Taint ID#%d (UID#%d) by mask %d.\n", ids[i], uid, mask);
+        }
 
-	    uids_[uid].bounded |= mask;
+        uids_[uid].bounded |= mask;
       }
     }
+  }
+}
+
+static int lower_bound(int uid)
+{
+  if ((uids_[uid].bounded & (TAINT_BOUND_LOW | TAINT_BOUND_FIX)) == 0)
+  {
+    return 0;
+  }
+
+  return 1;
+}
+
+static int higher_bound(int uid)
+{
+  if ((uids_[uid].bounded & (TAINT_BOUND_HIGH | TAINT_BOUND_FIX)) == 0)
+  {
+    return 0;
+  }
+
+  return 1;
+}
+
+// Returns: -1 on vulnerability
+//           1 on safe
+//           0 on could not decide
+int check_bounds_separately(int id)
+{
+  int uid = ID2UID(id);
+
+  int vuln1 = 0;
+  int vuln2 = 0;
+
+  if (!lower_bound(uid) || !higher_bound(uid))
+  {
+    vuln1 = 1;
+  }
+
+  for (int i = 0; i < ID2OPSIZE(id); i++)
+  {
+    int tuid = ID2OP(id, i).value;
+
+    if (!lower_bound(uid) || !higher_bound(uid))
+    {
+      vuln2 = 1;
+    }
+  }
+
+  // all participants are well bound.
+  if (vuln1 == 0 && vuln2 == 0)
+  {
+    return 1;
+  }
+
+  // only one uid participating, and it's not bounded.
+  if (ID2OPSIZE(id) == 0 && vuln1 == 1)
+  {
+    LWARNING("!!!WARNING!!! ID#%d (UID#%d) is not bound from below!!\n", id, uid);
+
+  	return -1;
+  }
+
+  return 0;
+}
+
+
+
+static REAL KS[] = {1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1,
+                    1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1};
+
+// Used by recursively_get_uids, for objective function.
+
+static int uids_objective_map[MAX_UID];
+static int uids_objective_vector[MAX_UID];
+static int uids_objective_vector_size;
+
+// Used by recursively_get_uids, for constraints.
+
+static int uids_constr_map[MAX_UID];
+static int uids_constr_vector[MAX_UID];
+static int uids_constr_vector_size;
+
+// Used by to keep info about all the uids that matter.
+
+static int uids_total_map[MAX_UID];
+static int uids_total_vector[MAX_UID];
+static int uids_total_vector_size;
+
+// Temporary one used to pass to ilp_*
+
+static int uids_t[MAX_UID];
+
+// We need it to map uid's to integers.
+// Will use uids_total_map.
+
+static int uids_counter;
+static int uids_total[MAX_UID];
+
+
+void ilp_bound(int *input, int size, int type)
+{
+  if (size > 8) dr_printf("FAIL!!!.\n");
+  int coeff[16];
+
+  for (int i = 0; i < size; i++)
+  {
+    coeff[2*i]   = 2*input[i];
+    coeff[2*i+1] = 2*input[i] + 1;
+  }
+
+  dr_printf("Constraint: ");
+  for (int i = 0; i < 2*size; i++) dr_printf("(%lf %d)", KS[i], coeff[i]);
+  dr_printf("\n");
+
+  if(!add_constraintex(lp, 2*size, KS, coeff, type, 0))
+  {
+    dr_printf("FAIL!.\n");
+  }
+
+}
+
+void ilp_objective(int *input, int size)
+{
+  if (size > 8) dr_printf("FAIL!!!.\n");
+  int coeff[16];
+
+  for (int i = 0; i < size; i++)
+  {
+    coeff[2*i]   = 2*input[i];
+    coeff[2*i+1] = 2*input[i] + 1;
+  }
+
+  dr_printf("Objective: ");
+  for (int i = 0; i < 2*size; i++) dr_printf("(%lf %d)", KS[i], coeff[i]);
+  dr_printf("\n");
+
+  if(!set_obj_fnex(lp, 2*size, KS, coeff))
+  {
+    dr_printf("FAIL!.\n");
+  }
+}
+
+
+static void recursively_get_uids_objective(int id)
+{
+  if (uids_objective_map[ID2UID(id)] == -1)
+  {
+    uids_objective_vector[uids_objective_vector_size++] = ID2UID(id);
+    uids_objective_map[ID2UID(id)] = uids_counter;
+
+    uids_total[uids_counter++] = ID2UID(id);
+  }
+
+  for (int i = 0; i < ID2OPSIZE(id); i++)
+  {
+    recursively_get_uids_objective(ID2OP(id, i).value);
+  }
+}
+
+static void recursively_get_uids_constr(int id)
+{
+  if (uids_constr_map[ID2UID(id)] == -1)
+  {
+    uids_constr_vector[uids_constr_vector_size++] = ID2UID(id);
+    uids_constr_map[ID2UID(id)] = 1;
+  }
+
+  // Add in global ones as well, since we need to find it's constraints as well.
+  if (uids_total_map[ID2UID(id)] == -1)
+  {
+    uids_total_vector[uids_total_vector_size++] = ID2UID(id);
+    uids_total_map[ID2UID(id)] = uids_counter;
+
+    uids_total[uids_counter++] = ID2UID(id);
+  }
+
+  for (int i = 0; i < ID2OPSIZE(id); i++)
+  {
+    recursively_get_uids_constr(ID2OP(id, i).value);
+  }
+}
+
+static int solve_ilp(int id)
+{
+  dr_printf("STARTING ILP FOR %d.\n", id);
+
+  uids_counter = 1;
+
+  /*
+  Get uids paticipating in this id.
+  */
+
+  for(int i = 0; i < MAX_UID; i++) 
+  	       uids_objective_map[i] = -1;
+  uids_objective_vector_size = 0;
+
+  recursively_get_uids_objective(id);
+
+  uids_total_vector_size = uids_objective_vector_size;
+
+  for (int i = 0; i < MAX_UID; i++)
+  {
+  	uids_total_map[i]    = uids_objective_map[i];
+  	uids_total_vector[i] = uids_objective_vector[i];
+  }
+
+
+  dr_printf("Printing objective: \n");
+  for (int i = 0; i < uids_objective_vector_size; i++) 
+  	   dr_printf("%d (%d)  ", uids_objective_vector[i], uids_total_map[uids_objective_vector[i]]);
+  dr_printf("\n");
+
+  for (int i = 0; i < uids_objective_vector_size; i++) uids_t[i] = uids_total_map[uids_objective_vector[i]];
+
+  set_add_rowmode(lp, FALSE);
+
+  ilp_objective(uids_t, uids_objective_vector_size);
+
+  /*
+  For each uid, get constraint lists,
+  while adding new uids as we proceed
+  */
+
+  while (uids_total_vector_size > 0)
+  {
+  	int curr_uid = uids_total_vector[--uids_total_vector_size];
+
+  	Group_restriction *gr = uids_[curr_uid].gr;
+
+    while (gr != NULL)
+    {
+  	  // Add this gr as a constraint.
+  	  int constrained_id = gr -> id;
+
+      for(int i = 0; i < MAX_UID; i++) 
+  	          uids_constr_map[i] = -1;
+      uids_constr_vector_size = 0;
+
+      recursively_get_uids_constr(constrained_id);
+
+      dr_printf("Printing constr: \n");
+      for (int i = 0; i < uids_constr_vector_size; i++) 
+      	  dr_printf("%d (%d)  ", uids_constr_vector[i], uids_total_map[uids_constr_vector[i]]);
+      dr_printf("[%d]\n", gr -> bound_type);
+
+      set_add_rowmode(lp, TRUE);
+
+      for (int i = 0; i < uids_constr_vector_size; i++) uids_t[i] = uids_total_map[uids_constr_vector[i]];
+
+      if (gr -> bound_type & TAINT_BOUND_LOW)
+      {
+        ilp_bound(uids_t, uids_objective_vector_size, LE);
+      }
+      if (gr -> bound_type & TAINT_BOUND_HIGH)
+      {
+        ilp_bound(uids_t, uids_objective_vector_size, GE);
+      }
+      if (gr -> bound_type & TAINT_BOUND_FIX)
+      {
+        ilp_bound(uids_t, uids_objective_vector_size, LE);
+        ilp_bound(uids_t, uids_objective_vector_size, GE);
+      }
+
+
+  	  gr = gr -> next;
+  	}
+  }
+
+  dr_printf("Printing total: \n");
+  for (int i = 1; i < uids_counter; i++) dr_printf("%d (corresponds to %d)", 
+  	                     uids_total[i], uids_total_map[uids_total[i]]);
+  dr_printf("\n");
+
+  int unbound = 0;
+
+  set_add_rowmode(lp, FALSE);
+  
+  set_maxim(lp);
+
+  write_LP(lp, stdout);
+  set_verbose(lp, IMPORTANT);
+
+  solve(lp);
+  dr_printf("Objective value MAX: %f\n", get_objective(lp));
+
+  if (get_objective(lp) > 10)
+  {
+  	unbound = 1;
+  }
+
+  set_minim(lp);
+
+  write_LP(lp, stdout);
+  set_verbose(lp, IMPORTANT);
+
+  solve(lp);
+
+  dr_printf("Objective value MIN: %f\n", get_objective(lp));
+
+  if (get_objective(lp) > 10)
+  {
+  	unbound = 1;
+  }
+
+  while (get_Nrows(lp) > 0)
+  {
+    del_constraint(lp, 1);
+  }
+
+  if (unbound == 0)
+  {
+  	return 1;
+  }
+  else
+  { 
+    LWARNING("!!!WARNING!!! ILP DETECTED UNBOUNDNESS!!\n");
+  	return 0;
+  }
 }
 
 void check_bounds(int reg)
 {
   if (reg == DR_REG_NULL)
   {
-  	return;
+    return;
   }
 
   for (unsigned int i = 0; i < REGSIZE(reg); i++)
   {
-  	int t = REGTAINTVAL1(reg, i);
+    int id = REGTAINTVAL1(reg, i);
 
-  	if (t > 0)
-  	{
-      int uid = ID2UID(t);
-
-      if ((uids_[uid].bounded & (TAINT_BOUND_LOW | TAINT_BOUND_FIX)) == 0)
+    if (id > 0)
+    {
+      if (check_bounds_separately(id) != 0) // if 0 we need ILP to solve.
       {
-        LWARNING("!!!WARNING!!! ID#%d (UID#%d) is not bound from below!!\n", t, uid);
+        return;
       }
-
-      if ((uids_[uid].bounded & (TAINT_BOUND_HIGH | TAINT_BOUND_FIX)) == 0)
+      else
       {
-        LWARNING("!!!WARNING!!! ID#%d (UID#%d) is not bound from up!!\n", t, uid);
+      	solve_ilp(id);
       }
-  	}
+    }
   }
 }
