@@ -124,9 +124,9 @@ void nshr_taint_mv_constmem2reg(uint64 addr, int dst_reg DBG_END_TAINTING_FUNC)
 
 void nshr_taint_mv_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg DBG_END_TAINTING_FUNC)
 {
-  check_bounds(base_reg);
-  check_bounds(index_reg);
-  
+  check_bounds(base_reg  DGB_END_CALL_ARG);
+  check_bounds(index_reg DGB_END_CALL_ARG);
+
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp);
 
   nshr_taint_mv_constmem2reg(addr, dst_reg DGB_END_CALL_ARG);
@@ -134,8 +134,9 @@ void nshr_taint_mv_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, 
 
 void nshr_taint_mv_mem2regzx(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC)
 {
-  check_bounds(base_reg);
-  check_bounds(index_reg);
+
+  check_bounds(base_reg DGB_END_CALL_ARG);
+  check_bounds(index_reg DGB_END_CALL_ARG);
 
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp);
 
@@ -144,8 +145,8 @@ void nshr_taint_mv_mem2regzx(int seg_reg, int base_reg, int index_reg, int scale
 
 void nshr_taint_mv_mem2regsx(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC)
 {
-  check_bounds(base_reg);
-  check_bounds(index_reg);
+  check_bounds(base_reg DGB_END_CALL_ARG);
+  check_bounds(index_reg DGB_END_CALL_ARG);
   
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp);
 
@@ -161,25 +162,39 @@ void nshr_taint_cond_jmp(enum cond_type type DBG_END_TAINTING_FUNC)
   	return;
   }
   
-  int eflags_type = get_eflags_type();
-
-  if (eflags_type != PROP_CMP)
-  {
-  	FAIL();
-  }
-
-
-
   GET_CONTEXT();
 
   int taken = instr_jcc_taken(instr, mcontext.xflags);
 
-  int *t2 = get_taint2_eflags(); // array of 16
-  int *t1 = get_taint1_eflags(); // array of 16
+  int eflags_type = get_eflags_type();
+
+  int *t1, *t2;
+
+  if (eflags_type == PROP_CMP)
+  {
+    t2 = get_taint2_eflags(); // array of 8
+    t1 = get_taint1_eflags(); // array of 8
+  }
+  else if (eflags_type == PROP_TEST)
+  {
+    t2 = get_taint2_eflags(); // array of 8
+    t1 = get_taint1_eflags(); // array of 8
+
+    // Make sure test %%x %%x was done.
+    for (int i = 0; i < 8; i++)
+      if (t1[i] != t2[i]) FAIL();
+
+    t2 = NULL;
+  }
+  else
+  {
+    FAIL();
+  }
+
 
   if (t1 != NULL || t2 != NULL)
   {
-  	LDUMP_TAINT(0, true, "Updating bounds.\n");
+  	LDUMP_TAINT(0, true, "Updating bounds (taken=%d).\n", taken);
   }
 
   if (taken) // taken.

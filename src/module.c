@@ -1,5 +1,4 @@
 #include "dr_api.h"
-#include "drsyms.h"
 #include "drwrap.h"
 #include "drmgr.h"
 #include "core/unix/include/syscall.h"

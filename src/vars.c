@@ -304,6 +304,39 @@ instr_t *instr_dupl(instr_t *instr)
   return copy;
 }
 
+
+drsym_info_t *get_func(app_pc pc)
+{
+  module_data_t *data = dr_lookup_module(pc);
+
+  if (data == NULL)
+  {
+  	return NULL;
+  }
+
+  static drsym_info_t sym;
+
+  char name_buf[1024];
+  char file_buf[1024];
+
+  sym.struct_size = sizeof(sym);
+  sym.name = name_buf;
+  sym.name_size = 1024;
+  sym.file = file_buf;
+  sym.file_size = 1024;
+
+  drsym_error_t symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
+
+  dr_free_module_data(data);
+
+  if (symres != DRSYM_SUCCESS)
+  {
+  	return NULL;
+  }
+
+  return &sym;
+}
+
 reg_t decode_addr(int seg_reg, int base_reg, int index_reg, int scale, int disp)
 {
   GET_CONTEXT();
@@ -429,7 +462,7 @@ static int higher_bound(int uid)
 // Returns: -1 on vulnerability
 //           1 on safe
 //           0 on could not decide
-int check_bounds_separately(int id)
+int check_bounds_separately(int id DBG_END_TAINTING_FUNC)
 {
   int uid = ID2UID(id);
 
@@ -460,7 +493,14 @@ int check_bounds_separately(int id)
   // only one uid participating, and it's not bounded.
   if (ID2OPSIZE(id) == 0 && vuln1 == 1)
   {
-    LWARNING("!!!WARNING!!! ID#%d (UID#%d) is not bound from below!!\n", id, uid);
+
+    #ifdef DBG_PASS_INSTR
+    drsym_info_t *func = get_func(instr_get_app_pc(instr));
+    LWARNING("!!!WARNING!!! Detected unbounded access for ID#%d (UID#%d), at %s  %s:%d\n", 
+    	              id, ID2UID(id), func -> name, func -> file, func -> line);
+    #else
+    LWARNING("!!!WARNING!!! Detected unbounded access for ID#%d (UID#%d)\n", id, ID2UID(id));
+    #endif
 
   	return -1;
   }
@@ -469,7 +509,7 @@ int check_bounds_separately(int id)
 }
 
 
-void check_bounds(int reg)
+void check_bounds(int reg DBG_END_TAINTING_FUNC)
 {
   if (reg == DR_REG_NULL)
   {
@@ -482,13 +522,13 @@ void check_bounds(int reg)
 
     if (id > 0)
     {
-      if (check_bounds_separately(id) != 0) // if 0 we need ILP to solve.
+      if (check_bounds_separately(id DGB_END_CALL_ARG) != 0) // if 0 we need ILP to solve.
       {
         return;
       }
       else
       {
-      	solve_ilp(id);
+      	solve_ilp(id DGB_END_CALL_ARG);
       }
     }
   }

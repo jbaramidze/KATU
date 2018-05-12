@@ -123,7 +123,7 @@ static void recursively_get_uids_constr(int id)
   }
 }
 
-int solve_ilp(int id)
+int solve_ilp(int id DBG_END_TAINTING_FUNC)
 {
   LDEBUG("ILP:\tStarting ILP for ID#%d.\n", id);
 
@@ -146,7 +146,6 @@ int solve_ilp(int id)
   	uids_total_map[i]    = uids_objective_map[i];
   	uids_total_vector[i] = uids_objective_vector[i];
   }
-
 
   LDUMP("ILP:\tPrinting objective: \n");
 
@@ -275,8 +274,15 @@ int solve_ilp(int id)
   	return 1;
   }
   else
-  { 
-    LWARNING("!!!WARNING!!! ILP DETECTED UNBOUNDNESS!!\n");
+  {
+    #ifdef DBG_PASS_INSTR
+    drsym_info_t *func = get_func(instr_get_app_pc(instr));
+    LWARNING("!!!WARNING!!! ILP Detected unbounded access for ID#%d (UID#%d), at %s  %s:%d\n", 
+    	               id, ID2UID(id), func -> name, func -> file, func -> line);
+    #else
+    LWARNING("!!!WARNING!!! ILP Detected unbounded access for ID#%d (UID#%d)\n", id, ID2UID(id));
+    #endif
+
   	return 0;
   }
 }

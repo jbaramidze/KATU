@@ -2,6 +2,7 @@
 #define THESIS_MODULE_H
 
 #include <stdint.h>
+#include "drsyms.h"
 #include "lp_lib.h"
 
 // Do additional checks, while testing
@@ -446,8 +447,10 @@ int *get_taint2_eflags();
 int get_eflags_type();
 
 void bound(int *ids, int mask);
-void check_bounds(int reg);
-int solve_ilp(int id);
+void check_bounds(int reg DBG_END_TAINTING_FUNC);
+int solve_ilp(int id DBG_END_TAINTING_FUNC);
+
+drsym_info_t *get_func(app_pc pc);
 
 
 /****************************************************

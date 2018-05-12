@@ -27,7 +27,7 @@ int main()
   int d = a + b;
   int e = d + c;
 
-  if (d > 0 && d < 100)
+  if (d > 0 && d < 100 && c > 0)
   {
   	int h = A[e];
   }
