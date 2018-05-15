@@ -7,8 +7,6 @@
 #include "nashromi.h"
 
 
-
-
 static REAL KS[] = {1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1,
                     1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1};
 
@@ -45,7 +43,7 @@ void ilp_bound(int *input, int size, int type)
 {
   if (size > 256) 
   {
-    FAIL();
+    DIE("ERROR! ILP Failure at [A]\n");
   }
 
   int coeff[512];
@@ -58,7 +56,7 @@ void ilp_bound(int *input, int size, int type)
 
   if(!add_constraintex(lp, 2*size, KS, coeff, type, 0))
   {
-    FAIL();
+    DIE("ERROR! ILP Failure at [B]\n");
   }
 }
 
@@ -66,7 +64,7 @@ void ilp_objective(int *input, int size)
 {
   if (size > 256) 
   {
-    FAIL();
+    DIE("ERROR! ILP Failure at [C]\n");
   }
 
   int coeff[512];
@@ -79,7 +77,7 @@ void ilp_objective(int *input, int size)
 
   if(!set_obj_fnex(lp, 2*size, KS, coeff))
   {
-    FAIL();
+    DIE("ERROR! ILP Failure at [D]\n");
   }
 }
 

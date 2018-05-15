@@ -21,10 +21,7 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
   opnd_t src = instr_get_src(instr, 0);
   opnd_t dst = instr_get_dst(instr, 0);
 
-  if (!opnd_is_reg(dst))
-  {
-  	FAIL();
-  }
+  FAILIF(!opnd_is_reg(dst));
 
   reg_id_t dst_reg   = opnd_get_reg(dst);
 
@@ -40,10 +37,7 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
       LDUMP("InsDetail:\tTaint %s + %d*%s + %d to %s, %d bytes.\n", REGNAME(base_reg), 
                        scale, REGNAME(index_reg), disp, REGNAME(dst_reg), REGSIZE(dst_reg));
 
-      if (scale == 0)
-      {
-      	FAIL();
-      }
+      FAILIF(scale == 0);
 
       if (base_reg == index_reg)
       {
@@ -117,7 +111,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
       if (type == PROP_MOV)
       {
-      	if (!opnd_same(src2, dst)) {  FAIL(); }
+      	FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tTaint from base+disp %s:%s + %d*%s + %d to %s %d bytes.\n", 
                                            REGNAME(seg_reg), REGNAME(base_reg), scale, 
@@ -129,7 +123,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (type == PROP_MOVZX)
       {
-      	if (!opnd_same(src2, dst)) {  FAIL(); }
+      	FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tTaint from base+disp %s:%s + %d*%s + %d to %s zero extend %d bytes to %d bytes.\n", 
                                            REGNAME(seg_reg), REGNAME(base_reg), scale, 
@@ -142,7 +136,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (type == PROP_MOVSX)
       {
-      	if (!opnd_same(src2, dst)) {  FAIL(); }
+      	FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tTaint from base+disp %s:%s + %d*%s + %d to %s sign extend %d bytes to %d bytes.\n", 
                                            REGNAME(seg_reg), REGNAME(base_reg), scale, 
@@ -200,7 +194,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
       if (prop_is_mov(type))
       {
-      	if (!opnd_same(src2, dst)) {  FAIL(); }
+      	FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tRemove taint at %s, %d bytes\n", REGNAME(dst_reg), REGSIZE(dst_reg));
 
@@ -211,7 +205,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
       	if (opnd_is_reg(src2))
       	{
-      	  if (!opnd_same(src2, dst)) {  FAIL(); } // if it fails implement, but hope it's never used.
+      	  FAILIF(!opnd_same(src2, dst));   // if it fails implement, but hope it's never used.
       	}
       	else
       	{
@@ -245,7 +239,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
       if (prop_is_mov(type))
       { 
-      	if (!opnd_same(src2, dst)) {  FAIL(); }
+      	FAILIF(!opnd_same(src2, dst));
 
         if (seg_reg == DR_REG_NULL)
         {
@@ -265,7 +259,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_binary(type))
       {
-      	if (!opnd_same(src2, dst)) {  FAIL(); }
+      	FAILIF(!opnd_same(src2, dst));
 
         // Nothing to do in this case.
       }
@@ -298,7 +292,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
       if (prop_is_mov(type))
       {
-      	if (!opnd_same(src2, dst)) {  FAIL(); }
+      	FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tRemove taint at pc-relative %llx, %d bytes.\n", addr, access_size);
 
@@ -307,7 +301,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_binary(type))
       {
-      	if (!opnd_same(src2, dst)) {  FAIL(); }
+      	FAILIF(!opnd_same(src2, dst));
 
       	// Nothing to do in this case.
       }
@@ -349,7 +343,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
       if (type == PROP_MOV)
       {
-      	if (!opnd_same(src2, dst)) {  FAIL(); }
+      	FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tTaint from %s to base+disp %s: %s + %d*%s + %d, %d bytes.\n", 
                                         REGNAME(src1_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, 
@@ -365,11 +359,11 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       	if (opnd_is_base_disp(src2))
       	{
       	  // make sure it's the same:
-          if (opnd_get_base(src2)    != base_reg) FAIL();
-          if (opnd_get_index(src2)   != index_reg) FAIL();
-          if (opnd_get_segment(src2) != seg_reg) FAIL();
-          if (opnd_get_scale(src2)   != scale) FAIL();
-          if (opnd_get_disp(src2)    != disp) FAIL();
+          FAILIF(opnd_get_base(src2)    != base_reg);
+          FAILIF(opnd_get_index(src2)   != index_reg);
+          FAILIF(opnd_get_segment(src2) != seg_reg);
+          FAILIF(opnd_get_scale(src2)   != scale);
+          FAILIF(opnd_get_disp(src2)    != disp);
 
       	  LDUMP("InsDetail:\tDoing '%s' to taint from %s and base+disp %s:%s + %d*%s + %d to same mem., %d bytes.\n", PROP_NAMES[type], 
           	                      REGNAME(src1_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), 
@@ -411,7 +405,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (type == PROP_MOVZX)
       {
-      	if (!opnd_same(src2, dst)) {  FAIL(); }
+      	FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tTaint from %s to %s zero extend %d bytes to %d bytes.\n", REGNAME(src1_reg), 
         	             REGNAME(dst_reg), REGSIZE(src1_reg), REGSIZE(dst_reg));
@@ -421,7 +415,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (type == PROP_MOVSX)
       {
-      	if (!opnd_same(src2, dst)) {  FAIL(); }
+      	FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tTaint from %s to %s sign extend %d bytes to %d bytes.\n", REGNAME(src1_reg), 
         	             REGNAME(dst_reg), REGSIZE(src1_reg), REGSIZE(dst_reg));
@@ -431,7 +425,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (type == PROP_MOV)
       {
-      	if (!opnd_same(src2, dst)) {  FAIL(); }
+      	FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tTaint from %s to %s.\n", REGNAME(src1_reg), REGNAME(dst_reg));
 
@@ -512,7 +506,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
       if (type == PROP_MOV)
       {
-      	if (!opnd_same(src2, dst)) {  FAIL(); }
+      	FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tTaint %s to pc-relative %llx, %d bytes.\n", 
                                         REGNAME(src1_reg), addr, REGSIZE(src1_reg));
@@ -551,7 +545,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
       reg_id_t dst_reg = opnd_get_reg(dst);
 
-      if (!opnd_is_reg(src2) || dst_reg != opnd_get_reg(src2)) FAIL();
+      FAILIF(!opnd_is_reg(src2) || dst_reg != opnd_get_reg(src2));
 
       if (type == PROP_MOV)
       {
@@ -609,28 +603,14 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
 static void opcode_pop(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
-  if (instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 2)
-  {
-  	FAIL();
-  }
+  FAILIF(instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 2);
 
   opnd_t src = instr_get_src(instr, 1);
   opnd_t dst = instr_get_dst(instr, 0);
 
-  if (!opnd_is_base_disp(src))
-  {
-  	FAIL();
-  }
-
-  if (!opnd_is_reg(instr_get_src(instr, 0)) || opnd_get_reg(instr_get_src(instr, 0)) != DR_REG_RSP)
-  {
-  	FAIL();
-  }
-
-  if (!opnd_is_reg(instr_get_dst(instr, 1)) || opnd_get_reg(instr_get_dst(instr, 1)) != DR_REG_RSP)
-  {
-  	FAIL();
-  }
+  FAILIF(!opnd_is_base_disp(src));
+  FAILIF(!opnd_is_reg(instr_get_src(instr, 0)) || opnd_get_reg(instr_get_src(instr, 0)) != DR_REG_RSP);
+  FAILIF(!opnd_is_reg(instr_get_dst(instr, 1)) || opnd_get_reg(instr_get_dst(instr, 1)) != DR_REG_RSP);
 
   reg_id_t base_reg  = opnd_get_base(src);
   reg_id_t index_reg = opnd_get_index(src);
@@ -659,28 +639,14 @@ static void opcode_pop(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
 static void opcode_push(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
-  if (instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 2)
-  {
-  	FAIL();
-  }
+  FAILIF(instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 2);
 
   opnd_t src = instr_get_src(instr, 0);
   opnd_t dst = instr_get_dst(instr, 1);
 
-  if (!opnd_is_base_disp(dst))
-  {
-  	FAIL();
-  }
-
-  if (!opnd_is_reg(instr_get_src(instr, 1)) || opnd_get_reg(instr_get_src(instr, 1)) != DR_REG_RSP)
-  {
-  	FAIL();
-  }
-
-  if (!opnd_is_reg(instr_get_dst(instr, 0)) || opnd_get_reg(instr_get_dst(instr, 0)) != DR_REG_RSP)
-  {
-  	FAIL();
-  }
+  FAILIF(!opnd_is_base_disp(dst));
+  FAILIF(!opnd_is_reg(instr_get_src(instr, 1)) || opnd_get_reg(instr_get_src(instr, 1)) != DR_REG_RSP);
+  FAILIF(!opnd_is_reg(instr_get_dst(instr, 0)) || opnd_get_reg(instr_get_dst(instr, 0)) != DR_REG_RSP);
 
   reg_id_t base_reg  = opnd_get_base(dst);
   reg_id_t index_reg = opnd_get_index(dst);
@@ -881,13 +847,24 @@ static void process_conditional_jmp(void *drcontext, instr_t *instr, instrlist_t
   {
     // Do nothing.
   }
-  else if (opcode == OP_call_ind)
+  else if (opcode == OP_call_ind || opcode == OP_jmp_ind)
   {
-  	if (instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 2) FAIL();
-
-  	if (!opnd_is_reg(instr_get_dst(instr, 0)) || opnd_get_reg(instr_get_dst(instr, 0)) != DR_REG_RSP) FAIL();
-  	if (!opnd_is_reg(instr_get_src(instr, 1)) || opnd_get_reg(instr_get_src(instr, 1)) != DR_REG_RSP) FAIL();
-  	if (!opnd_is_base_disp(instr_get_dst(instr, 1)) || opnd_get_base(instr_get_dst(instr, 1)) != DR_REG_RSP) FAIL();
+    // Just some tests, to be sure we catch all cases.
+  	if (opcode == OP_call_ind)
+  	{
+  	  FAILIF(instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 2);
+  	  FAILIF(!opnd_is_reg(instr_get_dst(instr, 0)) || opnd_get_reg(instr_get_dst(instr, 0)) != DR_REG_RSP);
+  	  FAILIF(!opnd_is_reg(instr_get_src(instr, 1)) || opnd_get_reg(instr_get_src(instr, 1)) != DR_REG_RSP);
+  	  FAILIF(!opnd_is_base_disp(instr_get_dst(instr, 1)) || opnd_get_base(instr_get_dst(instr, 1)) != DR_REG_RSP);
+  	}
+  	else if (opcode == OP_jmp_ind)
+    {
+      FAILIF(instr_num_srcs(instr) != 1 || instr_num_dsts(instr) != 0);
+    }
+    else
+    {
+      FAIL();
+    }
 
     opnd_t src = instr_get_src(instr, 0);
 
@@ -917,6 +894,10 @@ static void process_conditional_jmp(void *drcontext, instr_t *instr, instrlist_t
                                OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                      OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), OPND_CREATE_INT32(size)
                                           DBG_END_DR_CLEANCALL);
+    }
+    else if (opnd_is_rel_addr(src))
+    {
+      // Do nothing, nothing can go wrong.
     }
     else
     {
@@ -954,12 +935,12 @@ static void process_conditional_jmp(void *drcontext, instr_t *instr, instrlist_t
 
 static void opcode_convert(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
-  if (instr_num_srcs(instr) != 1 || instr_num_dsts(instr) != 1) FAIL();
+  FAILIF(instr_num_srcs(instr) != 1 || instr_num_dsts(instr) != 1);
 
   opnd_t src = instr_get_src(instr, 0);
   opnd_t dst = instr_get_dst(instr, 0);
 
-  if (!opnd_is_reg(src) || !opnd_is_reg(dst)) FAIL();
+  FAILIF(!opnd_is_reg(src) || !opnd_is_reg(dst));
 
   int src_reg   = opnd_get_reg(src);
   int dst_reg   = opnd_get_reg(dst);
@@ -968,7 +949,7 @@ static void opcode_convert(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
   if (opcode == OP_cwde)
   {
-  	if (src_reg != DR_REG_AX) FAIL();
+  	FAILIF(src_reg != DR_REG_AX);
 
     // sign extend AL -> AX
   	if (dst_reg == DR_REG_AX)
@@ -1040,8 +1021,8 @@ static void opcode_add(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
   else
   {
-    if (!opnd_same(src2, dst)) FAIL();
-    if (instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 1) FAIL();
+    FAILIF(!opnd_same(src2, dst));
+    FAILIF(instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 1);
 
     if (opcode == OP_sub)
     {
@@ -1094,6 +1075,24 @@ static void wrong_opcode(void *drcontext, instr_t *instr, instrlist_t *ilist)
   FAIL();
 }
 
+/*
+This one needs to be treated differently. This corresponds to ret, and
+in that case we are not jumping to *$ret, but **$ret! 
+*/
+static void opcode_ret(void *drcontext, instr_t *instr, instrlist_t *ilist)
+{
+  FAILIF(!instr_is_cti(instr));
+
+  opnd_t t = instr_get_target(instr);
+
+  int reg = opnd_get_reg(t);
+
+  FAILIF(reg != DR_REG_RSP);
+
+  dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_check_ret, false, DBG_TAINT_NUM_PARAMS(0)
+                          DBG_END_DR_CLEANCALL);
+}
+
 static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
   /*
@@ -1101,11 +1100,10 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
   */
   process_conditional_jmp(drcontext, instr, ilist);
 
-  if (!instr_is_cti(instr)) FAIL();
+  FAILIF(!instr_is_cti(instr));
 
   opnd_t t = instr_get_target(instr);
 
-  // opnd_get_reg(t) == DR_REG_RSP for 'ret'.
   if (opnd_is_reg(t))
   {
     int reg = opnd_get_reg(t);
@@ -1228,8 +1226,8 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_cwde]			= opcode_convert;   // 64
   instrFunctions[OP_cdq]			= opcode_convert;   // 65
 
-  instrFunctions[OP_ret]			= opcode_call;		// 70
-  instrFunctions[OP_ret_far]		= opcode_call;		// 71
+  instrFunctions[OP_ret]			= opcode_ret;		// 70
+  instrFunctions[OP_ret_far]		= opcode_ret;		// 71
 
   instrFunctions[OP_enter]			= opcode_ignore; 	// 74
   instrFunctions[OP_leave]			= opcode_ignore;	// 75
@@ -1276,7 +1274,7 @@ dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr
   int opcode = instr_get_opcode(instr);
 
   if (started_ == MODE_ACTIVE || 
-  	    (instrFunctions[opcode] == opcode_call && (started_ == MODE_IN_LIBC || started_ == MODE_BEFORE_MAIN)))
+  	     (instr_is_cti(instr) && started_ != MODE_IGNORING))
   {
     instr_disassemble_to_buffer(drcontext, instr, instruction, 64);
 
@@ -1290,5 +1288,3 @@ dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr
 
   return DR_EMIT_DEFAULT;
 }
-
-

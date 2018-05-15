@@ -199,7 +199,7 @@ void nshr_taint_cond_jmp(enum cond_type type DBG_END_TAINTING_FUNC)
 
     // Make sure test %%x %%x was done.
     for (int i = 0; i < 8; i++)
-      if (t1[i] != t2[i]) FAIL();
+      FAILIF(t1[i] != t2[i]);
 
     t2 = NULL;
   }
@@ -209,20 +209,15 @@ void nshr_taint_cond_jmp(enum cond_type type DBG_END_TAINTING_FUNC)
   }
 
   // This case should be covered by !is_valid_eflags()
-  if (t1 == NULL && t2 == NULL)
-  {
-    FAIL();
-  }
+  FAILIF(t1 == NULL && t2 == NULL);
 
   LDUMP_TAINT(0, true, "Updating bounds (taken=%d).\n", taken);
 
   if (taken) // taken.
   {
-    if (t1 != NULL && t2 != NULL)
-    {
-      FAIL();
-    }
-    else if (t2 == NULL)
+    FAILIF(t1 != NULL && t2 != NULL);
+
+    if (t2 == NULL)
     {
       if      (type == COND_LESS)    bound(t1, TAINT_BOUND_LOW);
       else if (type == COND_MORE)    bound(t1, TAINT_BOUND_HIGH);
@@ -450,10 +445,7 @@ void nshr_taint_mv_reg2reg(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
                  REGNAME(dst_reg), REGSIZE(dst_reg));
 
 
-  if (REGSIZE(src_reg) > REGSIZE(dst_reg))
-  {
-  	FAIL();
-  }
+  FAILIF(REGSIZE(src_reg) > REGSIZE(dst_reg));
 
   for (unsigned int i = 0; i < REGSIZE(src_reg); i++)
   {
@@ -468,7 +460,7 @@ void nshr_taint_mv_reg2reg(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
 
   if (REGSIZE(dst_reg) > REGSIZE(src_reg))
   {
-  	if (REGSIZE(dst_reg) != 2*REGSIZE(src_reg)) FAIL();
+  	FAILIF(REGSIZE(dst_reg) != 2*REGSIZE(src_reg));
 
     for (unsigned int i = REGSIZE(src_reg); i < REGSIZE(dst_reg); i++)
     {
@@ -693,10 +685,7 @@ void nshr_taint_mix_memNreg2reg(int seg_reg, int base_reg, int index_reg, int sc
 void nshr_taint_mix_regNreg2reg(int src1_reg, int src2_reg, int dst_reg, int type DBG_END_TAINTING_FUNC)
 {
   // Make sure no such case leaks from instrumentation phase.
-  if (src1_reg == dst_reg && src2_reg == dst_reg)
-  {
-  	FAIL();
-  }
+  FAILIF(src1_reg == dst_reg && src2_reg == dst_reg);
 
   LDEBUG_TAINT(false, "DOING '%s' by REG %s and REG %s to REG %s size %d\n", PROP_NAMES[type], 
   	               REGNAME(src1_reg), REGNAME(src2_reg), REGNAME(dst_reg), REGSIZE(dst_reg));
@@ -789,7 +778,7 @@ void nshr_taint(reg_t addr, unsigned int size, int fd)
     }
     else
     {
-      LDUMP("  ADD MEM %p mark %d TAINT#[%d %d %d %d] INDEX %d TOTAL %d.\n", 
+      dr_printf("  ADD MEM %p mark %d TAINT#[%d %d %d %d] INDEX %d TOTAL %d.\n", 
       	                 ADDR(addr + i), nshr_tid_new_iid_get(), MEMTAINTVALS_LOG(index, addr + i), index, size);
 
       SETMEMTAINTVAL1(index, addr + i, nshr_tid_new_uid(fd));
@@ -803,10 +792,7 @@ void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_E
   LDEBUG_TAINT(false, "REG %s + REG %s size %d -> REG %s size %d.\n", 
              REGNAME(index_reg), REGNAME(base_reg), REGSIZE(base_reg), REGNAME(dst_reg), REGSIZE(index_reg));
 
-  if (REGSIZE(base_reg) != REGSIZE(index_reg))
-  {
-  	FAIL();
-  }
+  FAILIF(REGSIZE(base_reg) != REGSIZE(index_reg));
 
   int size = MIN(REGSIZE(base_reg), REGSIZE(dst_reg));
 
@@ -876,7 +862,7 @@ static void process_jump(app_pc pc DBG_END_TAINTING_FUNC)
 
   if (data == NULL)
   {
-     LDUMP_TAINT(0, false, "Ignoring jump to %llx.\n", pc);
+     LDUMP_TAINT(0, true, "Ignoring jump to %llx.\n", pc);
 
      dr_free_module_data(data);
 
@@ -904,7 +890,8 @@ static void process_jump(app_pc pc DBG_END_TAINTING_FUNC)
 
   	if (symres == DRSYM_SUCCESS)
     {
-  	  LDUMP_TAINT(0, true, "Returning to Active mode in %s[%s] at %s.\n", sym.name, modname, data -> full_path);
+  	  LDUMP_TAINT(0, true, "Returning to Active mode in %s[%s] at %s %s:%d.\n", 
+                       sym.name, modname, data -> full_path, sym.file, sym.line);
     }
     else
     {
@@ -962,6 +949,16 @@ static void process_jump(app_pc pc DBG_END_TAINTING_FUNC)
 
   // DON'T FORGET IT!
   dr_free_module_data(data);
+}
+
+
+void nshr_taint_check_ret(DBG_END_TAINTING_FUNC_ALONE)
+{
+  GET_CONTEXT();
+  
+  reg_t pc = *((uint64_t *) reg_get_value(DR_REG_RSP, &mcontext));
+
+  process_jump((unsigned char *) pc DGB_END_CALL_ARG);
 }
 
 void nshr_taint_check_jmp_reg(int reg DBG_END_TAINTING_FUNC)

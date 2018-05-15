@@ -4,20 +4,14 @@
 
 const char *path = "/home/zhani/Thesis/test/zaza";
 
-
-void (*p[4]) (int x, int y);
+int A[10];
 
 int main()
 {
+  int a;
+  scanf("%d", &a);
 
-  int a = 1;
-  int b = 3;
-  int c = 3;
+  int b = A[a];
 
-  nshrtaint((long long int) &a, 4);
-  nshrtaint((long long int) &b, 4);
-  nshrtaint((long long int) &c, 4);
-
-  (*p[a]) (2, 3);
   
 }

@@ -230,6 +230,12 @@ typedef struct {
                    dump(); \
                  				exit(-1); }
 
+#define FAILIF(statement) { if (statement) { dr_printf("FAIL! at %s:%d.\n", __FILE__, __LINE__); \
+                               dump(); \
+                                 exit(-1); } }
+
+#define DIE(text) { dr_printf(text); exit(-1); }
+
 #define GET_CONTEXT()			dr_mcontext_t mcontext = {sizeof(mcontext),DR_MC_ALL}; \
 					void *drcontext = dr_get_current_drcontext(); \
 					dr_get_mcontext(drcontext, &mcontext)
@@ -472,7 +478,6 @@ int nshr_tid_copy_id(int id);
 int nshr_tid_modify_id_by_symbol(int dst_taint, int byte, enum prop_type operation, int src_taint);
 
 int nshr_reg_taint_any(int reg);
-int nshr_reg_get_or_fix_sized_taint(int index_reg);
 
 //
 // Function declarations.
@@ -526,6 +531,8 @@ void nshr_taint_mix_reg2mem(int src_reg, int seg_reg, int base_reg, int index_re
 void nshr_taint_mix_memNreg2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int src2_reg, int dst_reg, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_mix_constmem2reg(uint64 addr, int dst_reg, int type DBG_END_TAINTING_FUNC); 
 
+
+void nshr_taint_check_ret(DBG_END_TAINTING_FUNC_ALONE);
 void nshr_taint_check_jmp_reg(int reg DBG_END_TAINTING_FUNC);
 void nshr_taint_check_jmp_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC);
 void nshr_taint_check_jmp_immed(uint64_t pc DBG_END_TAINTING_FUNC);

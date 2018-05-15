@@ -43,7 +43,7 @@ event_exit(void)
 
     if (drsym_exit() != DRSYM_SUCCESS)
     {
-      FAIL();
+      DIE("ERROR! drsym_exit failure.\n");
     }
 
     drmgr_exit();
@@ -146,7 +146,7 @@ void init(void)
 
   if (lp == NULL)
   {
-  	FAIL();
+  	DIE("ERROR! Failed making LP\n");
   }
 }
 
@@ -171,9 +171,7 @@ dr_init(client_id_t client_id)
 {
   if (!drmgr_init())
   {
-    dr_printf("Info:\t\tERROR:\t\tFailed starting drmgr.\n");
-
-    FAIL();
+    DIE("ERROR:! Failed starting drmgr.\n");
   }
 
   dr_set_client_name("Nashromi",
@@ -197,16 +195,12 @@ dr_init(client_id_t client_id)
 
   if (drsym_init(0) != DRSYM_SUCCESS) 
   {
-    dr_printf("Info:\t\tERROR:\t\tFailed starting drsym.\n");
-
-    FAIL();
+    DIE("ERROR! Failed starting drsym.\n");
   }
 
   if (!drwrap_init())
   {	
-    dr_printf("Info:\t\tERROR:\t\tFailed starting drwrap.\n");
-
-    FAIL();
+    DIE("ERROR! Failed starting drwrap.\n");
   }
 
   init();

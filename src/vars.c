@@ -117,59 +117,6 @@ int nshr_reg_taint_any(int reg)
   return -1;
 }
 
-// If correct sizing tainted - return
-// If none of sizings tainted - return -1
-// If one of the sizings tainted - make new taint id, of correct size and return.
-// !!!! WE IGNORE CASE IF e.g. this int's second half is tainted as first half of another int  !!!!!!
-int nshr_reg_get_or_fix_sized_taint(int reg)
-{
-  int index = SIZE_TO_INDEX(REGSIZE(reg));
-
-  // case 1. 
-  int iid = REGTAINTVAL(reg, 0, index);
-
-  if (iid > 0)
-  {
-    if (IID2INDEX(iid) != 0)
-    {
-      FAIL();
-    }
-
-    return IID2ID(iid);
-  }
-
-  int id = nshr_reg_taint_any(reg);
-
-  // case 2.
-  if (id == -1) return -1;
-
-  // Make new taint.
-
-  int newid = nshr_tid_new_id();
-
-  ids_[newid].uid      = ID2UID(id);
-  ids_[newid].ops_size = 0;
-  ids_[newid].size     = REGSIZE(reg);
-
-  LDEBUG("Utils:\t\tFIXING SIZE: Created new id %d from uid %d size %d.\n", newid, ids_[newid].uid, REGSIZE(reg));
-
-  for (unsigned int i = 0; i < REGSIZE(reg); i++)
-  {
-    int newiid = nshr_tid_new_iid(newid, i);
-
-    if (i == 0)
-    {
-      LDEBUG("Utils:\t\tCreated new iid %d for reg %s byte %d, to id %d size %d index %d\n", 
-              newiid, REGNAME(reg), REGSTART(reg) + i, newid, ID2SIZE(newid), IID2INDEX(newiid));
-    }
-
-    SETREGTAINTVAL(reg, i, index, newiid);
-  }
-
-  return newid;
-}
-
-
 int nshr_tid_modify_id_by_symbol(int dst_taint, int byte, enum prop_type operation, int src_taint)
 {
   int newid = nshr_tid_copy_id(dst_taint);
@@ -202,11 +149,43 @@ int nshr_tid_new_uid(int fd)
   return newiid;
 }
 
+static uint64_t *string_args[10];
+static int num_string_args;
+
 void nshr_pre_scanf(void *wrapcxt, OUT void **user_data)
 {
+  num_string_args = 1;
+
   const char *format = (const char *) drwrap_get_arg(wrapcxt, 0);
 
-  LTEST("DRWRAP:\t\tGoing into scanf.\n");
+  LTEST("DRWRAP:\t\tGoing into scanf with %s.\n", format);
+
+  for (unsigned int i = 0; i < strlen(format) - 1; i++)
+  {
+  	if (format[i] == '%')
+  	{
+  	  if (format[i+1] == '*')
+  	  {
+        num_string_args++;
+        i++;
+  	  }
+
+  	  // ignore width specifier.
+  	  while(isdigit(format[i+1]))
+  	  {
+        i++;
+  	  }
+
+  	  if (format[i+1] == 'd')
+  	  {
+  	  	dr_printf("gotcha!.\n\n\n");
+
+        int *f = (int *) drwrap_get_arg(wrapcxt, num_string_args);
+
+        nshr_taint((reg_t) &f, 4, 0);
+  	  }
+  	}
+  }
 
   started_ = MODE_IN_LIBC;
 }
@@ -258,7 +237,7 @@ int mem_taint_find_index(uint64_t addr, int i)
 
   if (index == TAINTMAP_NUM)
   {
-    FAIL();
+    DIE("ERROR! Shadow memory failure at [A]\n");
   }
 
   return index;
@@ -298,7 +277,7 @@ instr_t *instr_dupl(instr_t *instr)
 
   if (instr_next_pointer >= 1024*16)
   {
-    FAIL();
+    DIE("ERROR! instr. dumpl. failure at [A]\n");
   }
 
   return copy;
@@ -516,7 +495,7 @@ int check_bounds_separately(int id DBG_END_TAINTING_FUNC)
 void vulnerability_detected()
 {
   // Whatever we wanna do if we detect it.
-  FAIL();
+  exit(0);
 }
 
 void check_bounds_id(int id DBG_END_TAINTING_FUNC)
