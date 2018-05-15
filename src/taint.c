@@ -95,8 +95,8 @@ void nshr_taint_mv_constmem2regsx(uint64 addr, int dst_reg, int extended_from_si
     int index = mem_taint_find_index(addr, i);
 
   	/*
-  	FIXME: Quite tricky, try this before we see it fail.
-  	       This just puts last byte's taint ID to all 'extended' bytes. 
+  	 Quite tricky, try this before we see it fail.
+  	 This just puts last byte's taint ID to all 'extended' bytes. 
   	*/
 
   	MEMTAINT2REGTAINT(dst_reg, i, index, addr + extended_from_size - 1);
@@ -191,20 +191,34 @@ void nshr_taint_cond_jmp(enum cond_type type DBG_END_TAINTING_FUNC)
     FAIL();
   }
 
-
-  if (t1 != NULL || t2 != NULL)
+  // This case should be covered by !is_valid_eflags()
+  if (t1 == NULL && t2 == NULL)
   {
-  	LDUMP_TAINT(0, true, "Updating bounds (taken=%d).\n", taken);
+    FAIL();
   }
+
+  LDUMP_TAINT(0, true, "Updating bounds (taken=%d).\n", taken);
 
   if (taken) // taken.
   {
-    if (t2 == NULL)
+    if (t1 != NULL && t2 != NULL)
+    {
+      FAIL();
+    }
+    else if (t2 == NULL)
     {
       if      (type == COND_LESS)    bound(t1, TAINT_BOUND_LOW);
       else if (type == COND_MORE)    bound(t1, TAINT_BOUND_HIGH);
       else if (type == COND_NONZERO) {} // Gives no info.
       else if (type == COND_ZERO)    bound(t1, TAINT_BOUND_FIX);
+      else                           FAIL();
+    }
+    else if (t1 == NULL)
+    {
+      if      (type == COND_LESS)    bound(t2, TAINT_BOUND_HIGH);
+      else if (type == COND_MORE)    bound(t2, TAINT_BOUND_LOW);
+      else if (type == COND_NONZERO) {} // Gives no info.
+      else if (type == COND_ZERO)    bound(t2, TAINT_BOUND_FIX);
       else                           FAIL();
     }
     else
@@ -214,11 +228,23 @@ void nshr_taint_cond_jmp(enum cond_type type DBG_END_TAINTING_FUNC)
   }
   else
   {
-    if (t2 == NULL)
+    if (t1 != NULL && t2 != NULL)
+    {
+      FAIL();
+    }
+    else if (t2 == NULL)
     {
       if      (type == COND_LESS)    bound(t1, TAINT_BOUND_HIGH);
       else if (type == COND_MORE)    bound(t1, TAINT_BOUND_LOW);
       else if (type == COND_NONZERO) bound(t1, TAINT_BOUND_FIX);
+      else if (type == COND_ZERO)    {} // Gives no info.
+      else                           FAIL();
+    }
+    else if (t1 == NULL)
+    {
+      if      (type == COND_LESS)    bound(t2, TAINT_BOUND_LOW);
+      else if (type == COND_MORE)    bound(t2, TAINT_BOUND_HIGH);
+      else if (type == COND_NONZERO) bound(t2, TAINT_BOUND_FIX);
       else if (type == COND_ZERO)    {} // Gives no info.
       else                           FAIL();
     }
@@ -471,6 +497,25 @@ void nshr_taint_mv_reg2regzx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
   }
 }
 
+
+void nshr_taint_mv_regbyte2regsx(int src_reg, int src_index, int dst_reg DBG_END_TAINTING_FUNC)
+{
+  LDEBUG_TAINT(false, "REG %s byte %d copied to whole REG %s size %d.\n", 
+             REGNAME(src_reg), src_index, REGNAME(dst_reg), REGSIZE(dst_reg));  
+
+  for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
+  {
+    LDUMP_TAINT(i, (REGTAINTED(dst_reg, i) || REGTAINTED(src_reg, src_index)), 
+                     "  REG %s byte %d TAINT#[%d %d %d %d] -> REG %s byte %d TAINT#[%d %d %d %d] TOTAL %d.\n", 
+                           REGNAME(src_reg), src_index, REGTAINTVALS_LOG(src_reg, src_index),
+                               REGNAME(dst_reg), i,
+                                   REGTAINTVALS_LOG(dst_reg, i), REGSIZE(dst_reg));
+
+
+    REGTAINT2REGTAINT(dst_reg, i, src_reg, src_index);
+  }
+}
+
 void nshr_taint_mv_reg2regsx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
 {
   // mask1 -> mask2
@@ -494,8 +539,8 @@ void nshr_taint_mv_reg2regsx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
   {
 
   	/*
-  	FIXME: Quite tricky, try this before we see it fail.
-  	       This just puts last byte's taint ID to all 'extended' bytes. 
+  	 Quite tricky, try this before we see it fail.
+  	 This just puts last byte's taint ID to all 'extended' bytes. 
   	*/
 
     REGTAINT2REGTAINT(dst_reg, i, src_reg, REGSIZE(src_reg) - 1);

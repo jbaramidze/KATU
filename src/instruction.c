@@ -876,7 +876,7 @@ static void process_conditional_jmp(void *drcontext, instr_t *instr, instrlist_t
 {
   int opcode = instr_get_opcode(instr);
 
-  if (opcode == OP_call || opcode == OP_ret)
+  if (opcode == OP_call || opcode == OP_ret || opcode == OP_jmp || opcode == OP_jmp_short)
   {
     // Do nothing.
   }
@@ -906,6 +906,61 @@ static void process_conditional_jmp(void *drcontext, instr_t *instr, instrlist_t
   	{
   	  FAIL();
   	}
+  }
+}
+
+static void opcode_convert(void *drcontext, instr_t *instr, instrlist_t *ilist)
+{
+  if (instr_num_srcs(instr) != 1 || instr_num_dsts(instr) != 1) FAIL();
+
+  opnd_t src = instr_get_src(instr, 0);
+  opnd_t dst = instr_get_dst(instr, 0);
+
+  if (!opnd_is_reg(src) || !opnd_is_reg(dst)) FAIL();
+
+  int src_reg   = opnd_get_reg(src);
+  int dst_reg   = opnd_get_reg(dst);
+
+  int opcode = instr_get_opcode(instr);
+  dr_printf("regs: %s to %s\n", REGNAME(src_reg), REGNAME(dst_reg));
+
+  if (opcode == OP_cwde)
+  {
+  	if (src_reg != DR_REG_AX) FAIL();
+
+    // sign extend AL -> AX
+  	if (dst_reg == DR_REG_AX)
+  	{
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regsx, false, DBG_TAINT_NUM_PARAMS(2),
+                             OPND_CREATE_INT32(DR_REG_AL), OPND_CREATE_INT32(DR_REG_AX) DBG_END_DR_CLEANCALL);
+  	}
+  	// sign extend AX -> EAX
+  	else if (dst_reg == DR_REG_EAX)
+  	{
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regsx, false, DBG_TAINT_NUM_PARAMS(2),
+                             OPND_CREATE_INT32(DR_REG_AX), OPND_CREATE_INT32(DR_REG_EAX) DBG_END_DR_CLEANCALL);
+  	}
+  	// sign extend EAX -> RAX
+  	else if (dst_reg == DR_REG_RAX)
+  	{
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regsx, false, DBG_TAINT_NUM_PARAMS(2),
+                             OPND_CREATE_INT32(DR_REG_EAX), OPND_CREATE_INT32(DR_REG_RAX) DBG_END_DR_CLEANCALL);
+  	}
+  	else
+  	{
+  	  FAIL();
+  	}
+  }
+  else if (opcode == OP_cdq)
+  {
+  	// sign extend AX -> DX:AX
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_regbyte2regsx, false, DBG_TAINT_NUM_PARAMS(3),
+                           OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(REGSIZE(src_reg) - 1), OPND_CREATE_INT32(dst_reg) 
+                                DBG_END_DR_CLEANCALL);
+  }
+  else
+  {
+  	FAIL();
   }
 }
 
@@ -991,10 +1046,10 @@ static void opcode_ignore(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
 static void wrong_opcode(void *drcontext, instr_t *instr, instrlist_t *ilist)
 { 
-//  LERROR("ERROR! instruction not implemented.\n");
+  LERROR("ERROR! instruction not implemented.\n");
 
-  LWARNING("Warning! unknown opcode.\n");
-//  FAIL();
+//  LWARNING("Warning! unknown opcode.\n");
+  FAIL();
 }
 
 static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
@@ -1116,7 +1171,10 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_jmp_ind]		= opcode_call;		// 48
   instrFunctions[OP_jmp_far]		= opcode_call;		// 49
   instrFunctions[OP_jmp_far_ind]	= opcode_call;		// 50
-
+  instrFunctions[OP_loopne]			= wrong_opcode;		// 51
+  instrFunctions[OP_loope]			= wrong_opcode;		// 52
+  instrFunctions[OP_loop]			= wrong_opcode;		// 53
+  instrFunctions[OP_jecxz]			= wrong_opcode;		// 54
   instrFunctions[OP_mov_ld]			= opcode_mov;		// 55	Can be: mem2reg
   instrFunctions[OP_mov_st]			= opcode_mov;		// 56	Can be: imm2mem, reg2mem, reg2reg.
   instrFunctions[OP_mov_imm]		= opcode_mov;		// 57   Can be: imm2reg.
@@ -1125,10 +1183,16 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_test]			= opcode_cmp;		// 60 
   instrFunctions[OP_lea]			= opcode_lea;		// 61
 
+  instrFunctions[OP_cwde]			= opcode_convert;   // 64
+  instrFunctions[OP_cdq]			= opcode_convert;   // 65
+
   instrFunctions[OP_ret]			= opcode_call;		// 70
+  instrFunctions[OP_ret_far]		= opcode_call;		// 71
+
+  instrFunctions[OP_enter]			= opcode_ignore; 	// 74
+  instrFunctions[OP_leave]			= opcode_ignore;	// 75
 
   instrFunctions[OP_syscall]		= opcode_ignore;	// 95 syscall processed by dr_register_post_syscall_event.
-
 
   instrFunctions[OP_jo]				= opcode_call; 		// 152
   instrFunctions[OP_jno]			= opcode_call; 		// 153

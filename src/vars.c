@@ -346,7 +346,7 @@ reg_t decode_addr(int seg_reg, int base_reg, int index_reg, int scale, int disp)
 
   reg_t addr = base + index*scale + disp;
 
-  LDUMP("DECODED: base %p index %d scale %d disp %d.\n", 
+  LDUMP("Decoder:\t\tDecoded base %p index %d scale %d disp %d.\n", 
                      base, index, scale, disp);
 
   return addr;
@@ -354,6 +354,8 @@ reg_t decode_addr(int seg_reg, int base_reg, int index_reg, int scale, int disp)
 
 void update_eflags(int opcode, int index, int t1, int t2)
 {
+  LDUMP("EFLAGS:\t\tUpdating eflags with opcode %d index %d t1 %d t2 %d.\n", opcode, index, t1, t2);
+
   eflags_.type = opcode;
 
   eflags_.taint1[index] = t1;
@@ -364,6 +366,8 @@ void update_eflags(int opcode, int index, int t1, int t2)
 
 void invalidate_eflags()
 {
+  LDUMP("EFLAGS:\t\tInvalidating eflags.\n");
+
   eflags_.valid = 0;
 }
 

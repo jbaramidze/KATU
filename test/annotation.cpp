@@ -4,19 +4,20 @@
 
 const char *path = "/home/zhani/Thesis/test/zaza";
 
-extern "C"
-{
-  void func()
-  {    
 
-  }
-}
+void sum(int a, int b) {}
+void subtract(int a, int b) {}
+void mul(int a, int b) {}
+void ddiv(int a, int b) {}
 
-int A[20];
+void (*p[4]) (int x, int y);
 
 int main()
 {
-  int a = 1;
+asm volatile ( "cbw \t\n cwde \t\n cdqe \t\n" ::: );
+asm volatile ( "cwd \t\n cdq \t\n cqo \t\n" ::: );
+  
+/*  int a = 1;
   int b = 3;
   int c = 3;
 
@@ -24,12 +25,12 @@ int main()
   nshrtaint((long long int) &b, 4);
   nshrtaint((long long int) &c, 4);
 
-  int d = a + b;
-  int e = d + c;
+  p[0] = sum; 
+  p[1] = subtract; 
+  p[2] = mul; 
+  p[3] = ddiv;
 
-  if (d > 0 && d < 100 && c > 0)
-  {
-  	int h = A[e];
-  }
+  (*p[a]) (2, 3);
+  */
   
 }
