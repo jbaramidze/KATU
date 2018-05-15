@@ -497,7 +497,6 @@ int check_bounds_separately(int id DBG_END_TAINTING_FUNC)
   // only one uid participating, and it's not bounded.
   if (ID2OPSIZE(id) == 0 && vuln1 == 1)
   {
-
     #ifdef DBG_PASS_INSTR
     drsym_info_t *func = get_func(instr_get_app_pc(instr));
     LWARNING("!!!WARNING!!! Detected unbounded access for ID#%d (UID#%d), at %s  %s:%d\n", 
@@ -506,14 +505,48 @@ int check_bounds_separately(int id DBG_END_TAINTING_FUNC)
     LWARNING("!!!WARNING!!! Detected unbounded access for ID#%d (UID#%d)\n", id, ID2UID(id));
     #endif
 
+    vulnerability_detected();
+
   	return -1;
   }
 
   return 0;
 }
 
+void vulnerability_detected()
+{
+  // Whatever we wanna do if we detect it.
+  FAIL();
+}
 
-void check_bounds(int reg DBG_END_TAINTING_FUNC)
+void check_bounds_id(int id DBG_END_TAINTING_FUNC)
+{
+  if (check_bounds_separately(id DGB_END_CALL_ARG) != 0) // if 0 we need ILP to solve.
+  {
+    return;
+  }
+  else
+  {
+    solve_ilp(id DGB_END_CALL_ARG);
+  }
+}
+
+void check_bounds_mem(uint64_t addr, int size DBG_END_TAINTING_FUNC)
+{
+  for (int i = 0; i < size; i++)
+  {
+  	int index = mem_taint_find_index(addr, i);
+
+  	int id = MEMTAINTVAL1(index, addr + i);
+
+    if (id > 0)
+    {
+      check_bounds_id(id DGB_END_CALL_ARG);
+    }
+  }
+}
+
+void check_bounds_reg(int reg DBG_END_TAINTING_FUNC)
 {
   if (reg == DR_REG_NULL)
   {
@@ -523,17 +556,10 @@ void check_bounds(int reg DBG_END_TAINTING_FUNC)
   for (unsigned int i = 0; i < REGSIZE(reg); i++)
   {
     int id = REGTAINTVAL1(reg, i);
-
+  
     if (id > 0)
     {
-      if (check_bounds_separately(id DGB_END_CALL_ARG) != 0) // if 0 we need ILP to solve.
-      {
-        return;
-      }
-      else
-      {
-      	solve_ilp(id DGB_END_CALL_ARG);
-      }
+      check_bounds_id(id DGB_END_CALL_ARG);
     }
   }
 }

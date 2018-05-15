@@ -447,7 +447,9 @@ int *get_taint2_eflags();
 int get_eflags_type();
 
 void bound(int *ids, int mask);
-void check_bounds(int reg DBG_END_TAINTING_FUNC);
+void check_bounds_reg(int reg DBG_END_TAINTING_FUNC);
+void check_bounds_mem(uint64_t addr, int size DBG_END_TAINTING_FUNC);
+void check_bounds_id(int id DBG_END_TAINTING_FUNC);
 int solve_ilp(int id DBG_END_TAINTING_FUNC);
 
 drsym_info_t *get_func(app_pc pc);
@@ -477,6 +479,7 @@ int nshr_reg_get_or_fix_sized_taint(int index_reg);
 //
 
 void dump();
+void vulnerability_detected();
 
 // syscalls.
 void nshr_event_post_syscall(void *drcontext, int id);
@@ -514,6 +517,8 @@ void nshr_taint_cmp_constmem2reg(uint64_t addr, int size, int reg, int type DBG_
 void nshr_taint_cmp_constmem2imm(uint64_t addr, int size, int type DBG_END_TAINTING_FUNC);
 
 void nshr_taint_cond_jmp(enum cond_type type DBG_END_TAINTING_FUNC);
+void nshr_taint_ind_jmp_reg(int src_reg DBG_END_TAINTING_FUNC);
+void nshr_taint_ind_jmp_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp, int size DBG_END_TAINTING_FUNC);
 
 // e.g dst_reg=src_reg+dst_reg, dst_reg=src_reg^dst_reg.....
 void nshr_taint_mix_regNreg2reg(int src1_reg, int src2_reg, int dst_reg, int type DBG_END_TAINTING_FUNC);

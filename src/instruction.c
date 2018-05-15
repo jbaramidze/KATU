@@ -869,16 +869,59 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
   {
   	FAIL();
   }
-
 }
 
 static void process_conditional_jmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
+  STOP_IF_NOT_ACTIVE();
+
   int opcode = instr_get_opcode(instr);
 
   if (opcode == OP_call || opcode == OP_ret || opcode == OP_jmp || opcode == OP_jmp_short)
   {
     // Do nothing.
+  }
+  else if (opcode == OP_call_ind)
+  {
+  	if (instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 2) FAIL();
+
+  	if (!opnd_is_reg(instr_get_dst(instr, 0)) || opnd_get_reg(instr_get_dst(instr, 0)) != DR_REG_RSP) FAIL();
+  	if (!opnd_is_reg(instr_get_src(instr, 1)) || opnd_get_reg(instr_get_src(instr, 1)) != DR_REG_RSP) FAIL();
+  	if (!opnd_is_base_disp(instr_get_dst(instr, 1)) || opnd_get_base(instr_get_dst(instr, 1)) != DR_REG_RSP) FAIL();
+
+    opnd_t src = instr_get_src(instr, 0);
+
+    if (opnd_is_reg(src))
+    {
+      int src_reg = opnd_get_reg(src);
+
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_ind_jmp_reg, false, DBG_TAINT_NUM_PARAMS(1),
+                           OPND_CREATE_INT32(src_reg)  DBG_END_DR_CLEANCALL);
+    }
+    else if (opnd_is_base_disp(src))
+    {
+      reg_id_t base_reg  = opnd_get_base(src);
+      reg_id_t index_reg = opnd_get_index(src);
+      reg_id_t seg_reg   = opnd_get_segment(src);
+      int scale          = opnd_get_scale(src);
+      int disp           = opnd_get_disp(src);
+
+      int size = opnd_size_in_bytes(opnd_get_size(src));
+
+      if (size != 8)
+      {
+      	FAIL();
+      }
+
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_ind_jmp_mem, false, DBG_TAINT_NUM_PARAMS(6),
+                               OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
+                                     OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), OPND_CREATE_INT32(size)
+                                          DBG_END_DR_CLEANCALL);
+    }
+    else
+    {
+      FAIL();
+    }
   }
   else if (opcode == OP_jle_short || opcode == OP_jle || opcode == OP_jl_short || opcode == OP_jl)
   {
@@ -922,7 +965,6 @@ static void opcode_convert(void *drcontext, instr_t *instr, instrlist_t *ilist)
   int dst_reg   = opnd_get_reg(dst);
 
   int opcode = instr_get_opcode(instr);
-  dr_printf("regs: %s to %s\n", REGNAME(src_reg), REGNAME(dst_reg));
 
   if (opcode == OP_cwde)
   {

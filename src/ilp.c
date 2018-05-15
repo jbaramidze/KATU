@@ -283,6 +283,8 @@ int solve_ilp(int id DBG_END_TAINTING_FUNC)
     LWARNING("!!!WARNING!!! ILP Detected unbounded access for ID#%d (UID#%d)\n", id, ID2UID(id));
     #endif
 
+    vulnerability_detected();
+
   	return 0;
   }
 }

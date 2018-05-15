@@ -124,8 +124,8 @@ void nshr_taint_mv_constmem2reg(uint64 addr, int dst_reg DBG_END_TAINTING_FUNC)
 
 void nshr_taint_mv_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg DBG_END_TAINTING_FUNC)
 {
-  check_bounds(base_reg  DGB_END_CALL_ARG);
-  check_bounds(index_reg DGB_END_CALL_ARG);
+  check_bounds_reg(base_reg  DGB_END_CALL_ARG);
+  check_bounds_reg(index_reg DGB_END_CALL_ARG);
 
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp);
 
@@ -134,9 +134,8 @@ void nshr_taint_mv_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, 
 
 void nshr_taint_mv_mem2regzx(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC)
 {
-
-  check_bounds(base_reg DGB_END_CALL_ARG);
-  check_bounds(index_reg DGB_END_CALL_ARG);
+  check_bounds_reg(base_reg DGB_END_CALL_ARG);
+  check_bounds_reg(index_reg DGB_END_CALL_ARG);
 
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp);
 
@@ -145,12 +144,30 @@ void nshr_taint_mv_mem2regzx(int seg_reg, int base_reg, int index_reg, int scale
 
 void nshr_taint_mv_mem2regsx(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC)
 {
-  check_bounds(base_reg DGB_END_CALL_ARG);
-  check_bounds(index_reg DGB_END_CALL_ARG);
+  check_bounds_reg(base_reg DGB_END_CALL_ARG);
+  check_bounds_reg(index_reg DGB_END_CALL_ARG);
   
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp);
 
   nshr_taint_mv_constmem2regsx(addr, dst_reg, extended_from_size DGB_END_CALL_ARG);
+}
+
+void nshr_taint_ind_jmp_reg(int src_reg DBG_END_TAINTING_FUNC)
+{
+  check_bounds_reg(src_reg DGB_END_CALL_ARG);
+}
+
+void nshr_taint_ind_jmp_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp, int size DBG_END_TAINTING_FUNC)
+{
+  // First, we check if any memory can be referenced.
+  // Second, we check if memory that we referenced is (tained || bounded)
+
+  check_bounds_reg(base_reg DGB_END_CALL_ARG);
+  check_bounds_reg(index_reg DGB_END_CALL_ARG);
+
+  reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp);
+
+  check_bounds_mem(addr, size DGB_END_CALL_ARG);
 }
 
 void nshr_taint_cond_jmp(enum cond_type type DBG_END_TAINTING_FUNC)
