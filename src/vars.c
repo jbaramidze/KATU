@@ -316,6 +316,24 @@ drsym_info_t *get_func(app_pc pc)
   return &sym;
 }
 
+void *get_tls_at_offset(int off)
+{
+  GET_CONTEXT();
+
+  dr_switch_to_app_state(drcontext);
+
+  uint64_t a;
+  
+  asm volatile ("mov    %%fs:0x0, %%rax" :"=a" (a) :: );
+
+  dr_switch_to_dr_state(drcontext);
+
+  a += off;
+
+  return (void *) a;
+}
+
+
 reg_t decode_addr(int seg_reg, int base_reg, int index_reg, int scale, int disp)
 {
   GET_CONTEXT();
@@ -324,6 +342,15 @@ reg_t decode_addr(int seg_reg, int base_reg, int index_reg, int scale, int disp)
   reg_t index = reg_get_value(index_reg, &mcontext);
 
   reg_t addr = base + index*scale + disp;
+
+  if (seg_reg != DR_REG_NULL)
+  {
+    FAILIF(seg_reg != DR_SEG_FS);
+
+    reg_t segoff = (reg_t ) get_tls_at_offset(addr);
+
+    addr += segoff;
+  }
 
   LDUMP("Decoder:\t\tDecoded base %p index %d scale %d disp %d.\n", 
                      base, index, scale, disp);

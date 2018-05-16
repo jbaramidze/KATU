@@ -241,21 +241,13 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       { 
       	FAILIF(!opnd_same(src2, dst));
 
-        if (seg_reg == DR_REG_NULL)
-        {
-          LDUMP("InsDetail:\tRemove taint at base+disp %s: %s + %d*%s + %d, %d bytes.\n",
-                                     REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, access_size);
+        LDUMP("InsDetail:\tRemove taint at base+disp %s: %s + %d*%s + %d, %d bytes.\n",
+                                   REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, access_size);
 
-          dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_baseindexmem_rm, false, DBG_TAINT_NUM_PARAMS(6),
-        	                       OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
-                                       OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), 
-                                           OPND_CREATE_INT32(access_size) DBG_END_DR_CLEANCALL);
-        }
-        else if (seg_reg != DR_SEG_FS && seg_reg != DR_SEG_GS)
-        {
-          // Temporarily ignore all memory accesses in FS and GS seg_regs.
-        	FAIL();
-        }
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_baseindexmem_rm, false, DBG_TAINT_NUM_PARAMS(6),
+      	                       OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
+                                     OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), 
+                                         OPND_CREATE_INT32(access_size) DBG_END_DR_CLEANCALL);
       }
       else if (prop_is_binary(type))
       {

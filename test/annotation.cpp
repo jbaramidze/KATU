@@ -9,9 +9,11 @@ int A[10];
 int main()
 {
   int a;
-  scanf("%d", &a);
 
+  scanf("%d", &a);
+ 
   int b = A[a];
 
-  
+  nshrtaint((long long int) &a, 4);
+
 }
