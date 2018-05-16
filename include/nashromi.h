@@ -275,70 +275,24 @@ static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 
 #define ADDR(address) ((address) % TAINTMAP_SIZE)
 
-#define MEMTAINTISEMPTY(index, address)              mem_taint_is_empty(index, address)
-#define MEMTAINTADDR(index, address)                 mem_taint_get_addr(index, address)
-#define SETMEMTAINTADDR(index, address, value)       mem_taint_set_addr(index, address, value)
-#define MEMTAINTVAL1(index, address)                 mem_taint_get_value(index, address, 0)
-#define MEMTAINTVAL2(index, address)                 mem_taint_get_value(index, address, 1)
-#define MEMTAINTVAL4(index, address)                 mem_taint_get_value(index, address, 2)
-#define MEMTAINTVAL8(index, address)                 mem_taint_get_value(index, address, 3)
-#define MEMTAINTVAL(index, address, size)            mem_taint_get_value(index, address, size)
-#define SETMEMTAINTVAL1(index, address, value)       mem_taint_set_value(index, address, 0, value)
-#define SETMEMTAINTVAL2(index, address, value)       mem_taint_set_value(index, address, 1, value)
-#define SETMEMTAINTVAL4(index, address, value)       mem_taint_set_value(index, address, 2, value)
-#define SETMEMTAINTVAL8(index, address, value)       mem_taint_set_value(index, address, 3, value)
-#define SETMEMTAINTVAL(index, address, size, value)  mem_taint_set_value(index, address, size, value)
+#define MEMTAINTISEMPTY(index, address)              mem_taint_is_empty(index,  address)
+#define MEMTAINTADDR(index, address)                 mem_taint_get_addr(index,  address)
+#define SETMEMTAINTADDR(index, address, value)       mem_taint_set_addr(index,  address, value)
+#define MEMTAINTVAL(index, address)                  mem_taint_get_value(index, address)
+#define SETMEMTAINTVAL(index, address, value)        mem_taint_set_value(index, address, value)
 
-#define REGTAINTVAL1(reg, offset)                   reg_taint_get_value(reg, offset, 0) 
-#define REGTAINTVAL2(reg, offset)                   reg_taint_get_value(reg, offset, 1) 
-#define REGTAINTVAL4(reg, offset)                   reg_taint_get_value(reg, offset, 2) 
-#define REGTAINTVAL8(reg, offset)                   reg_taint_get_value(reg, offset, 3)
-#define REGTAINTVAL(reg, offset, size)              reg_taint_get_value(reg, offset, size)
-#define SETREGTAINTVAL(reg, offset, size, value)    reg_taint_set_value(reg, offset, size, value)
+#define REGTAINTVAL(reg, offset)                     reg_taint_get_value(reg, offset)
+#define SETREGTAINTVAL(reg, offset, value)           reg_taint_set_value(reg, offset, value)
 
+#define REGTAINT2MEMTAINT(mask, offset, index, address)   mem_taint_set_value(index, address, reg_taint_get_value(mask, offset))
+#define MEMTAINT2REGTAINT(mask, offset, index, address)   reg_taint_set_value(mask,  offset,  mem_taint_get_value(index, address));
+#define REGTAINT2REGTAINT(mask1, offset1, mask2, offset2) reg_taint_set_value(mask1, offset1, reg_taint_get_value(mask2, offset2));
 
-#define REGTAINTVALS_LOG(reg, offset)       reg_taint_get_value(reg, offset, 0), reg_taint_get_value(reg, offset, 1), reg_taint_get_value(reg, offset, 2), reg_taint_get_value(reg, offset, 3)
-#define MEMTAINTVALS_LOG(index, address)    mem_taint_get_value(index, address, 0), mem_taint_get_value(index, address, 1), mem_taint_get_value(index, address, 2), mem_taint_get_value(index, address, 3)
- 
-#define REGTAINT2MEMTAINT(mask, offset, index, address) mem_taint_set_value(index, address, 0, reg_taint_get_value(mask, offset, 0)); \
-                                                        mem_taint_set_value(index, address, 1, reg_taint_get_value(mask, offset, 1)); \
-                                                        mem_taint_set_value(index, address, 2, reg_taint_get_value(mask, offset, 2)); \
-                                                        mem_taint_set_value(index, address, 3, reg_taint_get_value(mask, offset, 3));
+#define REGTAINTRM(mask, offset)   reg_taint_set_value(mask,  offset, -1);
+#define MEMTAINTRM(index, address) mem_taint_set_value(index, address, -1);
 
-#define MEMTAINT2REGTAINT(mask, offset, index, address) reg_taint_set_value(mask, offset, 0, mem_taint_get_value(index, address, 0)); \
-                                                        reg_taint_set_value(mask, offset, 1, mem_taint_get_value(index, address, 1)); \
-                                                        reg_taint_set_value(mask, offset, 2, mem_taint_get_value(index, address, 2)); \
-                                                        reg_taint_set_value(mask, offset, 3, mem_taint_get_value(index, address, 3));
-
-#define REGTAINT2REGTAINT(mask1, offset1, mask2, offset2) reg_taint_set_value(mask1, offset1, 0, reg_taint_get_value(mask2, offset2, 0)); \
-                                                          reg_taint_set_value(mask1, offset1, 1, reg_taint_get_value(mask2, offset2, 1)); \
-                                                          reg_taint_set_value(mask1, offset1, 2, reg_taint_get_value(mask2, offset2, 2)); \
-                                                          reg_taint_set_value(mask1, offset1, 3, reg_taint_get_value(mask2, offset2, 3));
-
-
-#define REGTAINTRM(mask, offset) reg_taint_set_value(mask, offset, 0, -1); \
-                                 reg_taint_set_value(mask, offset, 1, -1); \
-                                 reg_taint_set_value(mask, offset, 2, -1); \
-                                 reg_taint_set_value(mask, offset, 3, -1);
-
-#define MEMTAINTRM(index, address) mem_taint_set_value(index, address, 0, -1); \
-                                   mem_taint_set_value(index, address, 1, -1); \
-                                   mem_taint_set_value(index, address, 2, -1); \
-                                   mem_taint_set_value(index, address, 3, -1);
-
-
-
-#define MEMTAINTED(index, address)          (mem_taint_get_value(index, address, 0) > 0 || \
-                                             mem_taint_get_value(index, address, 1) > 0 || \
-                                             mem_taint_get_value(index, address, 2) > 0 || \
-                                             mem_taint_get_value(index, address, 3) > 0)
-
-#define REGTAINTED(mask, offset)            (reg_taint_get_value(mask, offset, 0) > 0 || \
-                                             reg_taint_get_value(mask, offset, 1) > 0 || \
-                                             reg_taint_get_value(mask, offset, 2) > 0 || \
-                                             reg_taint_get_value(mask, offset, 3) > 0)
-
-
+#define MEMTAINTED(index, address)          (mem_taint_get_value(index, address) > 0)
+#define REGTAINTED(mask, offset)            (reg_taint_get_value(mask, offset) > 0)
 
 #define REGTAINTID(mask, offset)            (iids_[(taintReg_[(mask & 0xFF0000) >> 16][((mask & 0xFF00) >> 8) + offset])].id)
 #define MEMTAINTID(index, address)          (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].id)
@@ -411,7 +365,7 @@ typedef struct _TaintMemStruct
   int64_t address[TAINTMAP_NUM][TAINTMAP_SIZE];
 
   // This one marks taint markings.
-  int64_t value[TAINTMAP_NUM][TAINTMAP_SIZE][4];
+  int64_t value[TAINTMAP_NUM][TAINTMAP_SIZE];
 
 } TaintMemStruct;
 
@@ -421,8 +375,8 @@ int mem_taint_is_empty(int index, uint64_t addr);
 int mem_taint_find_index(uint64_t addr, int i);
 uint64_t mem_taint_get_addr(int index, uint64_t addr);
 void    mem_taint_set_addr(int index, uint64_t addr, uint64_t value);
-int64_t mem_taint_get_value(int index, uint64_t addr, int size);
-void    mem_taint_set_value(int index, uint64_t addr, int size, uint64_t value);
+int64_t mem_taint_get_value(int index, uint64_t addr);
+void    mem_taint_set_value(int index, uint64_t addr, uint64_t value);
 
 
 /****************************************************
@@ -432,19 +386,19 @@ void    mem_taint_set_value(int index, uint64_t addr, int size, uint64_t value);
 typedef struct _TaintRegStruct
 {
   // [which_reg][which_byte]
-  int64_t value[16][8][4];
+  int64_t value[16][8];
 
 }  TaintRegStruct;
 
 extern TaintRegStruct taint_reg_;
 
-int64_t reg_taint_get_value(int reg, int offset, int size);
-void    reg_taint_set_value(int reg, int offset, int size, uint64_t value);
+int64_t reg_taint_get_value(int reg, int offset);
+void    reg_taint_set_value(int reg, int offset, uint64_t value);
 
 void log_instr(instr_t *instr);
 instr_t *instr_dupl(instr_t *instr);
 
-reg_t decode_addr(int seg_reg, int base_reg, int index_reg, int scale, int disp);
+reg_t decode_addr(int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC);
 void update_eflags(int opcode, int index, int taint1, int taint2);
 void invalidate_eflags();
 int is_valid_eflags();
@@ -476,8 +430,6 @@ int nshr_tid_new_iid_get();
 int nshr_tid_new_uid(int fd);
 int nshr_tid_copy_id(int id);
 int nshr_tid_modify_id_by_symbol(int dst_taint, int byte, enum prop_type operation, int src_taint);
-
-int nshr_reg_taint_any(int reg);
 
 //
 // Function declarations.
@@ -520,6 +472,8 @@ void nshr_taint_cmp_mem2reg(int seg_reg, int base_reg, int index_reg, int scale,
 void nshr_taint_cmp_mem2imm(int seg_reg, int base_reg, int index_reg, int scale, int disp, int size, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_cmp_constmem2reg(uint64_t addr, int size, int reg, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_cmp_constmem2imm(uint64_t addr, int size, int type DBG_END_TAINTING_FUNC);
+
+void nshr_taint_rest_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dest_reg, int type DBG_END_TAINTING_FUNC);
 
 void nshr_taint_cond_jmp(enum cond_type type DBG_END_TAINTING_FUNC);
 void nshr_taint_ind_jmp_reg(int src_reg DBG_END_TAINTING_FUNC);

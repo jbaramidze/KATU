@@ -14,6 +14,4 @@ int main()
  
   int b = A[a];
 
-  nshrtaint((long long int) &a, 4);
-
 }

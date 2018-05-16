@@ -77,13 +77,10 @@ static void nshr_handle_dump(long long addr)
     	return;
     }
 
-    int id1 = MEMTAINTVAL1(index, addr);
-    int id2 = MEMTAINTVAL2(index, addr);
-    int id3 = MEMTAINTVAL4(index, addr);
-    int id4 = MEMTAINTVAL8(index, addr);
+    int id = MEMTAINTVAL(index, addr);
 
-	dr_printf("Helper:\t\tChecking taint for 0x%llx: TAINT#[%d, %d, %d, %d], index %d.\n", 
-		          addr, id1, id2, id3, id4, index);
+	dr_printf("Helper:\t\tChecking taint for 0x%llx: TAINT#%d, index %d.\n", 
+		          addr, id, index);
 
 }
 
@@ -118,11 +115,7 @@ void init(void)
   {
     for (int j = 0; j < TAINTMAP_SIZE; j++)
     {
-      SETMEMTAINTVAL(i, j, 0, -1);
-      SETMEMTAINTVAL(i, j, 1, -1);
-      SETMEMTAINTVAL(i, j, 2, -1);
-      SETMEMTAINTVAL(i, j, 3, -1);
-
+      SETMEMTAINTVAL(i, j, -1);
       SETMEMTAINTADDR(i, j, 0);
     }
   }
@@ -131,10 +124,7 @@ void init(void)
   {
     for (int j = 0; j < 8; j++)
     {
-      taint_reg_.value[i][j][0] = -1;
-      taint_reg_.value[i][j][1] = -1;
-      taint_reg_.value[i][j][2] = -1;
-      taint_reg_.value[i][j][3] = -1;
+      taint_reg_.value[i][j] = -1;
     }
   }
 

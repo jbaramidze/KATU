@@ -100,23 +100,6 @@ int nshr_tid_copy_id(int id)
   return newid;
 }
 
-
-// Return if any byte in reg is tainted.
-int nshr_reg_taint_any(int reg)
-{
-  int size = REGSIZE(reg);
-
-  for (int i = 0; i < size; i++)
-  {
-    if (REGTAINTVAL8(reg, 0) > 0) return IID2ID(REGTAINTVAL8(reg, 0));
-    if (REGTAINTVAL4(reg, 0) > 0) return IID2ID(REGTAINTVAL4(reg, 0));
-    if (REGTAINTVAL2(reg, 0) > 0) return IID2ID(REGTAINTVAL2(reg, 0));
-    if (REGTAINTVAL1(reg, 0) > 0) return IID2ID(REGTAINTVAL1(reg, 0));
-  }
-
-  return -1;
-}
-
 int nshr_tid_modify_id_by_symbol(int dst_taint, int byte, enum prop_type operation, int src_taint)
 {
   int newid = nshr_tid_copy_id(dst_taint);
@@ -197,10 +180,7 @@ void nshr_post_scanf(void *wrapcxt, void *user_data)
 
 int mem_taint_is_empty(int index, uint64_t addr)
 {
-  return (taint_mem_.value[index][(addr) % TAINTMAP_SIZE][0] == -1 && 
-          taint_mem_.value[index][(addr) % TAINTMAP_SIZE][1] == -1 && 
-          taint_mem_.value[index][(addr) % TAINTMAP_SIZE][2] == -1 && 
-          taint_mem_.value[index][(addr) % TAINTMAP_SIZE][3] == -1);
+  return (taint_mem_.value[index][(addr) % TAINTMAP_SIZE] == -1);
 }  
 
 uint64_t mem_taint_get_addr(int index, uint64_t addr)
@@ -213,15 +193,15 @@ void mem_taint_set_addr(int index, uint64_t addr, uint64_t value)
   taint_mem_.address[index][(addr) % TAINTMAP_SIZE] = value;
 }
 
-int64_t mem_taint_get_value(int index, uint64_t addr, int size)
+int64_t mem_taint_get_value(int index, uint64_t addr)
 {
-  return taint_mem_.value[index][(addr) % TAINTMAP_SIZE][size];
+  return taint_mem_.value[index][(addr) % TAINTMAP_SIZE];
 }
 
-void mem_taint_set_value(int index, uint64_t addr, int size, uint64_t value)
+void mem_taint_set_value(int index, uint64_t addr, uint64_t value)
 {
   taint_mem_.address[index][(addr) % TAINTMAP_SIZE]     = addr;
-  taint_mem_.value[index][(addr) % TAINTMAP_SIZE][size] = value;
+  taint_mem_.value[index][(addr) % TAINTMAP_SIZE]       = value;
 }
 
 int mem_taint_find_index(uint64_t addr, int i)
@@ -243,14 +223,14 @@ int mem_taint_find_index(uint64_t addr, int i)
   return index;
 }
 
-int64_t reg_taint_get_value(int reg, int offset, int size)
+int64_t reg_taint_get_value(int reg, int offset)
 {
-  return taint_reg_.value[REGINDEX(reg)][REGSTART(reg) + offset][size];
+  return taint_reg_.value[REGINDEX(reg)][REGSTART(reg) + offset];
 }
 
-void    reg_taint_set_value(int reg, int offset, int size, uint64_t value)
+void    reg_taint_set_value(int reg, int offset, uint64_t value)
 {
-  taint_reg_.value[REGINDEX(reg)][REGSTART(reg) + offset][size] = value;
+  taint_reg_.value[REGINDEX(reg)][REGSTART(reg) + offset] = value;
 }
 
 
@@ -334,10 +314,13 @@ void *get_tls_at_offset(int off)
 }
 
 
-reg_t decode_addr(int seg_reg, int base_reg, int index_reg, int scale, int disp)
+reg_t decode_addr(int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC)
 {
+  check_bounds_reg(base_reg  DGB_END_CALL_ARG);
+  check_bounds_reg(index_reg DGB_END_CALL_ARG);
+
   GET_CONTEXT();
-  
+
   reg_t base  = reg_get_value(base_reg, &mcontext);
   reg_t index = reg_get_value(index_reg, &mcontext);
 
@@ -543,7 +526,7 @@ void check_bounds_mem(uint64_t addr, int size DBG_END_TAINTING_FUNC)
   {
   	int index = mem_taint_find_index(addr, i);
 
-  	int id = MEMTAINTVAL1(index, addr + i);
+  	int id = MEMTAINTVAL(index, addr + i);
 
     if (id > 0)
     {
@@ -561,7 +544,7 @@ void check_bounds_reg(int reg DBG_END_TAINTING_FUNC)
 
   for (unsigned int i = 0; i < REGSIZE(reg); i++)
   {
-    int id = REGTAINTVAL1(reg, i);
+    int id = REGTAINTVAL(reg, i);
   
     if (id > 0)
     {
@@ -569,3 +552,4 @@ void check_bounds_reg(int reg DBG_END_TAINTING_FUNC)
     }
   }
 }
+
