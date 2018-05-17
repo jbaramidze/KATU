@@ -223,6 +223,16 @@ int mem_taint_find_index(uint64_t addr, int i)
   return index;
 }
 
+
+char    reg_get_byte_value(int reg, int offset)
+{
+  GET_CONTEXT();
+  
+  char *pc = (char *) reg_get_value(reg, &mcontext);
+
+  return pc[offset];
+}
+
 int64_t reg_taint_get_value(int reg, int offset)
 {
   return taint_reg_.value[REGINDEX(reg)][REGSTART(reg) + offset];

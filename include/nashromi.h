@@ -281,6 +281,9 @@ static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 #define MEMTAINTVAL(index, address)                  mem_taint_get_value(index, address)
 #define SETMEMTAINTVAL(index, address, value)        mem_taint_set_value(index, address, value)
 
+#define REGVAL(reg, offset)                          reg_get_byte_value(reg, offset)
+#define MEMVAL(address)                              (*(char *) address)
+
 #define REGTAINTVAL(reg, offset)                     reg_taint_get_value(reg, offset)
 #define SETREGTAINTVAL(reg, offset, value)           reg_taint_set_value(reg, offset, value)
 
@@ -392,6 +395,7 @@ typedef struct _TaintRegStruct
 
 extern TaintRegStruct taint_reg_;
 
+char    reg_get_byte_value(int reg, int offset);
 int64_t reg_taint_get_value(int reg, int offset);
 void    reg_taint_set_value(int reg, int offset, uint64_t value);
 

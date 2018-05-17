@@ -123,10 +123,53 @@ void nshr_taint_mv_constmem2reg(uint64 addr, int dst_reg DBG_END_TAINTING_FUNC)
 }
 
 
-void nshr_taint_rest_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dest_reg, int type DBG_END_TAINTING_FUNC)
+int process_restrictor_id(int id1, int id2, int type)
+{
+   FAIL();
+}
+
+int process_restrictor_imm(int id1, int imm2, int type)
+{
+   FAIL();
+}
+
+
+void nshr_taint_rest_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int type DBG_END_TAINTING_FUNC)
 {
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
+
+  int found = 0;
+
+  for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
+  {
+    int index = mem_taint_find_index(addr, i);
+
+    int src_id   = MEMTAINTVAL(index, addr + i);
+    int dst_id   = REGTAINTVAL(dst_reg, i);
+
+    if (src_id > 0 || dst_id > 0)
+    {
+      found = 1;
+
+      int newid;
+
+      if (src_id > 0 && dst_id > 0)      newid = process_restrictor_id(src_id, dst_id, type);
+      else if (src_id > 0 && dst_id < 0) newid = process_restrictor_imm(src_id, REGVAL(dst_reg, i), type);
+      else if (src_id < 0 && dst_id > 0) newid = process_restrictor_imm(dst_id, MEMVAL(addr + i),   type);
+      else                               FAIL();
+
+      SETREGTAINTVAL(dst_reg, i, newid);
+
+      update_eflags(type, i, src_id, newid);
+    }
+  }
+
+  if (!found)
+  {
+    invalidate_eflags();
+  }
 }
+
 
 void nshr_taint_mv_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg DBG_END_TAINTING_FUNC)
 {

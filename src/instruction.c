@@ -169,11 +169,12 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_restrictor(type))
       {
+      	FAILIF(!opnd_same(src2, dst));
+
         LDUMP("InsDetail:\tDoing '%s' to taint from base+disp %s:%s + %d*%s + %d and %s -> %s %d bytes.\n", PROP_NAMES[type], 
         	        REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, 
-                        REGNAME(src2_reg), REGNAME(dst_reg), REGSIZE(dst_reg));
+                        REGNAME(dst_reg), REGNAME(dst_reg), REGSIZE(dst_reg));
 
-      	FAILIF(!opnd_same(src2, dst));
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_rest_mem2reg, false, DBG_TAINT_NUM_PARAMS(7),
                                  OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
@@ -225,13 +226,12 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_restrictor(type))
       {
-      	/*
-      	FIXME: what if e.g AND 00000011000 was done? it can be limiting. Fix later.
-      	*/
         int64 value = opnd_get_immed_int(src1);
 
         LDUMP("InsDetail:\tDoing '%s' to taint at %s, by 0x%x, %d bytes\n", PROP_NAMES[type], 
         	             REGNAME(dst_reg), value, REGSIZE(dst_reg));
+
+        FAIL();
       }
     }
     else if (opnd_is_base_disp(dst))
@@ -267,14 +267,13 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_restrictor(type))
       {
-      	/*
-      	FIXME: what if e.g AND 00000011000 was done? it can be limiting. Fix later.
-      	*/
         int64 value = opnd_get_immed_int(src1);
 
         LDUMP("InsDetail:\tDoing '%s' to taint at base+disp %s: %s + %d*%s + %d, by 0x%x, %d bytes\n", 
                   PROP_NAMES[type], REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp,
                          value, access_size);
+
+        FAIL();
       }
       else
       {
@@ -308,14 +307,13 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       	// Nothing to do in this case.
       }
       else if (prop_is_restrictor(type))
-      {      	
-        /*
-      	FIXME: what if e.g AND 00000011000 was done? it can be limiting. Fix later.
-      	*/
+      {
         int64 value = opnd_get_immed_int(src1);
 
         LDUMP("InsDetail:\tDoing '%s' to taint at pc-relative %llx, by 0x%x, %d bytes\n", 
                   PROP_NAMES[type], addr, value, access_size);
+
+        FAIL();
       }
       else
       {
@@ -383,8 +381,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_restrictor(type))
       {
-      	// FIXME: MISSING RESTRICTOR IMPLEMENTATION
-
+      	FAIL();
       }
       else
       {
@@ -490,7 +487,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_restrictor(type))
       {
-      	//FIXME: implement it.
+      	FAIL();
       }
       else
       {
@@ -519,7 +516,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_restrictor(type))
       {
-      	//FIXME: implement it.
+      	FAIL();
       }
       else
       {
@@ -586,7 +583,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_restrictor(type))
       {
-      	//FIXME: implement it.
+      	FAIL();
       }
       else
       {
