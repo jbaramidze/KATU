@@ -8,6 +8,7 @@
 #include "core/unix/include/syscall.h"
 #include "nashromi.h"
 #include <stddef.h>
+#include <ctype.h>
 
 static uint64_t *string_args[10];
 static int num_string_args;
@@ -19,8 +20,6 @@ static int num_string_args;
 int get_format_size(const char *format, int *advance)
 {
   int remaining = strlen(format);
-
-  dr_printf("Starting get_format_size with %c and rem %d.\n", format[0], remaining);
 
   // %[some_stuff]
   if (format[0] == '[')
@@ -138,11 +137,16 @@ int get_format_size(const char *format, int *advance)
     if (format[0] == 'p') { *advance = 1; return sizeof(void *); }
     if (format[0] == 'n') { *advance = 1; return -1; }
   }
+
+  FAIL();
+
+  return -1;
 }
 
 void nshr_pre_scanf(void *wrapcxt, OUT void **user_data)
 {
-  num_string_args = 1;
+  int num_arg = 1;
+  num_string_args = 0;
 
   const char *format = (const char *) drwrap_get_arg(wrapcxt, 0);
 
@@ -160,7 +164,7 @@ void nshr_pre_scanf(void *wrapcxt, OUT void **user_data)
 
   	  if (format[i+1] == '*')
   	  {
-        num_string_args++;
+        num_arg++;
         i++;
   	  }
 
@@ -176,26 +180,20 @@ void nshr_pre_scanf(void *wrapcxt, OUT void **user_data)
 
   	  if (size == 0)
   	  {
-  	  	// Deal with string.
-
-  	  	FAIL();
+  	  	string_args[num_string_args++] = drwrap_get_arg(wrapcxt, num_arg);
   	  }
   	  else if (size == -1)
   	  {
   	  	i+= proceed_by;
 
-        num_string_args++;
-
         FAIL();
   	  }
   	  else
   	  {
-        void *f = drwrap_get_arg(wrapcxt, num_string_args);
-        
-        nshr_taint((reg_t) f, size, 0);
-
-        num_string_args++;
+        nshr_taint((reg_t) drwrap_get_arg(wrapcxt, num_arg), size, 0);
   	  }
+
+      num_arg++;
   	}
   }
 
@@ -204,5 +202,14 @@ void nshr_pre_scanf(void *wrapcxt, OUT void **user_data)
 
 void nshr_post_scanf(void *wrapcxt, void *user_data)
 {
+  for (int i = 0; i < num_string_args; i++)
+  {
+    const char *s = (const char *) string_args[i];
 
+    int size = strlen(s);
+
+    dr_printf("DRWRAP:\t\tDetected scanf'd string, %d bytes.\n", size);
+
+    nshr_taint((reg_t) s, size, 0);
+  }
 }

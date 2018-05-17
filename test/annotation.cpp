@@ -8,12 +8,10 @@ int A[10];
 
 int main()
 {
-  int a = 19;
+  char data[10];
 
-  printf("addrrr: %p.\n", &a);
-
-  //scanf("%d", &a);
+  scanf("%s", data);
  
-  int b = A[a];
+  int b = A[data[2]];
 
 }

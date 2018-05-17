@@ -169,7 +169,9 @@ dr_init(client_id_t client_id)
 
   disassemble_set_syntax(DR_DISASM_INTEL);
 
-  drmgr_register_bb_instrumentation_event(NULL, nshr_event_bb, NULL);
+  drmgr_priority_t pri_replace = {sizeof(pri_replace), "nashromi", NULL, NULL, 800};
+
+  drmgr_register_bb_instrumentation_event(NULL, nshr_event_bb, &pri_replace);
   drmgr_register_module_load_event(module_load_event);
   drmgr_register_post_syscall_event(nshr_event_post_syscall);
   drmgr_register_pre_syscall_event(nshr_event_pre_syscall);
