@@ -1115,6 +1115,9 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
   else if (opnd_is_base_disp(t))
   {
+  	// We know, jump to main will be to *$rax
+    STOP_IF_NOT_ACTIVE();
+
     reg_id_t base_reg  = opnd_get_base(t);
     reg_id_t index_reg = opnd_get_index(t);
     reg_id_t seg_reg   = opnd_get_segment(t);
@@ -1127,6 +1130,9 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
     return;
   }
+
+  // We know, jump to main will be to *$rax
+  STOP_IF_NOT_ACTIVE();
 
   app_pc pc;
 
@@ -1276,10 +1282,10 @@ dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr
   if (started_ == MODE_ACTIVE || 
   	     (instr_is_cti(instr) && started_ != MODE_IGNORING))
   {
-    instr_disassemble_to_buffer(drcontext, instr, instruction, 64);
-
     if (started_ == MODE_ACTIVE)
     {
+      instr_disassemble_to_buffer(drcontext, instr, instruction, 64);
+
       LDEBUG("\t\t(opcode %d)\t%s.\n", opcode, instruction);
     }
 

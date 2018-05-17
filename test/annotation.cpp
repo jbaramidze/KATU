@@ -12,7 +12,7 @@ int main()
 
   printf("addrrr: %p.\n", &a);
 
-  scanf("%d", &a);
+  //scanf("%d", &a);
  
   int b = A[a];
 
