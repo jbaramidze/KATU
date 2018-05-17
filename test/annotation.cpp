@@ -8,9 +8,11 @@ int A[10];
 
 int main()
 {
-  int a;
+  int a = 19;
 
-  scanf("%lld", &a);
+  printf("addrrr: %p.\n", &a);
+
+  scanf("%d", &a);
  
   int b = A[a];
 

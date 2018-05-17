@@ -815,10 +815,11 @@ void nshr_taint(reg_t addr, unsigned int size, int fd)
     }
     else
     {
+      int newid = nshr_tid_new_uid(fd);
       dr_printf("  ADD MEM %p mark %d TAINT#%d INDEX %d TOTAL %d.\n", 
-      	                 ADDR(addr + i), nshr_tid_new_iid_get(), MEMTAINTVAL(index, addr + i), index, size);
+      	                 ADDR(addr + i), nshr_tid_new_iid_get(), newid, index, size);
 
-      SETMEMTAINTVAL(index, addr + i, nshr_tid_new_uid(fd));
+      SETMEMTAINTVAL(index, addr + i, newid);
     }
   }
 }
