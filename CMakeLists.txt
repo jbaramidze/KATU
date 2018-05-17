@@ -81,6 +81,7 @@ set(nashromi_sources
     src/syscall.c
     src/taint.c
     src/vars.c
-    src/ilp.c)
+    src/ilp.c
+    src/skip.c)
 # Use ;-separated lists for source files and extensions.
 add_dr_client(nashromi "${nashromi_sources}" "drmgr;drsyms;drwrap")

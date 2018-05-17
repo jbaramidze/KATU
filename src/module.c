@@ -152,7 +152,7 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
 
      dr_printf("Info:\t\tfound 'scanf' at %llx.\n", scanf_addr);
 
-     //drwrap_wrap(scanf_addr, nshr_pre_scanf, nshr_post_scanf);
+     drwrap_wrap(scanf_addr, nshr_pre_scanf, nshr_post_scanf);
    }
 }
 

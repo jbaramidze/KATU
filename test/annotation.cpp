@@ -10,7 +10,7 @@ int main()
 {
   int a;
 
-  scanf("%d", &a);
+  scanf("%lld", &a);
  
   int b = A[a];
 
