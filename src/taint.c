@@ -207,18 +207,12 @@ void nshr_taint_ind_jmp_mem(int seg_reg, int base_reg, int index_reg, int scale,
   check_bounds_mem(addr, size DGB_END_CALL_ARG);
 }
 
-void nshr_taint_cond_jmp(enum cond_type type DBG_END_TAINTING_FUNC)
-{
-  STOP_IF_NOT_ACTIVE();
-
+static void process_cond_statement(int type, int taken DBG_END_TAINTING_FUNC)
+{  
   if (!is_valid_eflags())
   {
-  	return;
+    FAIL();
   }
-  
-  GET_CONTEXT();
-
-  int taken = instr_jcc_taken(instr, mcontext.xflags);
 
   int eflags_type = get_eflags_type();
 
@@ -302,6 +296,22 @@ void nshr_taint_cond_jmp(enum cond_type type DBG_END_TAINTING_FUNC)
       FAIL();
     }
   }
+}
+
+void nshr_taint_cond_jmp(instr_t *instr, int type DBG_END_TAINTING_FUNC)
+{
+  STOP_IF_NOT_ACTIVE();
+
+  if (!is_valid_eflags())
+  {
+  	return;
+  }
+  
+  GET_CONTEXT();
+
+  int taken = instr_jcc_taken(instr, mcontext.xflags);
+
+  process_cond_statement(type, taken DGB_END_CALL_ARG);
 }
 
 void nshr_taint_cmp_reg2mem(int reg1, int seg_reg, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC)
@@ -470,6 +480,27 @@ void nshr_taint_mv_baseindexmem_rm(int seg_reg, int base_reg, int index_reg, int
                            ADDR(addr + i), MEMTAINTVAL(index, addr + i), index, access_size);
 
     MEMTAINTRM(index, addr + i);
+  }
+}
+
+void nshr_taint_condmv_reg2reg(int src_reg, int dst_reg, instr_t *instr, int type DBG_END_TAINTING_FUNC)
+{
+  if (!is_valid_eflags())
+  {
+    return;
+  }
+
+  GET_CONTEXT();  
+
+  int taken = instr_cmovcc_triggered(instr, mcontext.xflags);
+  
+  dr_printf("taken: %d.\n", taken);
+
+  process_cond_statement(type, taken DGB_END_CALL_ARG);
+
+  if (taken)
+  {
+    nshr_taint_mv_reg2reg(src_reg, dst_reg DGB_END_CALL_ARG);
   }
 }
 

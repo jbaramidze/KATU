@@ -30,12 +30,8 @@ int             nextIID                      = 1;
 
 lprec           *lp;
 
-#ifdef DBG_PASS_INSTR
-
 instr_t *instr_pointers[1024*16];
 int instr_next_pointer = 0;
-
-#endif
 
 int prop_is_binary(enum prop_type type )
 {
@@ -50,6 +46,11 @@ int prop_is_mov(enum prop_type type )
 int prop_is_restrictor(enum prop_type type )
 {
   return type >= PROP_OR && type <= PROP_AND;
+}
+
+int prop_is_cond_mov(enum prop_type type )
+{
+  return type >= COND_LESS && type <= COND_ZERO;
 }
 
 int nshr_tid_new_id()
@@ -451,7 +452,7 @@ int check_bounds_separately(int id DBG_END_TAINTING_FUNC)
   if (ID2OPSIZE(id) == 0 && vuln1 == 1)
   {
     #ifdef DBG_PASS_INSTR
-    drsym_info_t *func = get_func(instr_get_app_pc(instr));
+    drsym_info_t *func = get_func(instr_get_app_pc(dbg_instr));
     LWARNING("!!!WARNING!!! Detected unbounded access for ID#%d (UID#%d), at %s  %s:%d\n", 
     	              id, ID2UID(id), func -> name, func -> file, func -> line);
     #else

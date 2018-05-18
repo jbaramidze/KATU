@@ -274,7 +274,7 @@ int solve_ilp(int id DBG_END_TAINTING_FUNC)
   else
   {
     #ifdef DBG_PASS_INSTR
-    drsym_info_t *func = get_func(instr_get_app_pc(instr));
+    drsym_info_t *func = get_func(instr_get_app_pc(dbg_instr));
     LWARNING("!!!WARNING!!! ILP Detected unbounded access for ID#%d (UID#%d), at %s  %s:%d\n", 
     	               id, ID2UID(id), func -> name, func -> file, func -> line);
     #else

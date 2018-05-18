@@ -16,6 +16,48 @@
 
 */
 
+
+static int opcode2cond(int opcode)
+{
+  switch(opcode)
+  {
+  	case OP_jl:
+  	case OP_jl_short:
+  	case OP_jle:
+  	case OP_jle_short:
+  	case OP_cmovl:
+  	case OP_cmovle:
+  	    return COND_LESS;
+  	    break;
+
+  	case OP_jnl:
+  	case OP_jnl_short:
+  	case OP_jnle:
+  	case OP_jnle_short:
+  	case OP_cmovnl:
+  	case OP_cmovnle:
+        return COND_MORE;
+        break;
+
+    case OP_jnz:
+    case OP_jnz_short:
+  	case OP_cmovnz:
+        return COND_NONZERO;
+        break;
+
+    case OP_jz:
+    case OP_jz_short:
+  	case OP_cmovz:
+        return COND_ZERO;
+        break;
+
+    default:
+        FAIL();
+  }
+
+  return -1;
+}
+
 static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
   opnd_t src = instr_get_src(instr, 0);
@@ -487,7 +529,18 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_restrictor(type))
       {
-      	FAIL();
+        FAIL();
+      }
+      else if (prop_is_cond_mov(type))
+      {      	
+      	FAILIF(!opnd_same(src2, dst));
+
+        LDUMP("InsDetail:\tCongitional taint of '%s' from %s to %s.\n", PROP_NAMES[type], 
+        	                 REGNAME(src1_reg), REGNAME(dst_reg));
+
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_condmv_reg2reg, false, DBG_TAINT_NUM_PARAMS(4),
+                               OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT64(instr_dupl(instr)),
+                                   OPND_CREATE_INT32(type)   DBG_END_DR_CLEANCALL);
       }
       else
       {
@@ -847,6 +900,7 @@ static void process_conditional_jmp(void *drcontext, instr_t *instr, instrlist_t
   {
     // Do nothing.
   }
+  // No bounds upgrade, just need to do bound checking before jumps.
   else if (opcode == OP_call_ind || opcode == OP_jmp_ind)
   {
     // Just some tests, to be sure we catch all cases.
@@ -904,32 +958,23 @@ static void process_conditional_jmp(void *drcontext, instr_t *instr, instrlist_t
       FAIL();
     }
   }
-  else if (opcode == OP_jle_short || opcode == OP_jle || opcode == OP_jl_short || opcode == OP_jl)
-  {
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cond_jmp, false, DBG_TAINT_NUM_PARAMS(1),
-                           OPND_CREATE_INT32(COND_LESS)  DBG_END_DR_CLEANCALL);
-  }
-  else if (opcode == OP_jnl_short || opcode == OP_jnl || opcode == OP_jnle_short || opcode == OP_jnle)
-  {
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cond_jmp, false, DBG_TAINT_NUM_PARAMS(1),
-                            OPND_CREATE_INT32(COND_MORE) DBG_END_DR_CLEANCALL);
-  }
-  else if (opcode == OP_jnz || opcode == OP_jnz_short)
-  {
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cond_jmp, false, DBG_TAINT_NUM_PARAMS(1),
-                            OPND_CREATE_INT32(COND_NONZERO) DBG_END_DR_CLEANCALL);
-  }
-  else if (opcode == OP_jz || opcode == OP_jz_short)
-  {
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cond_jmp, false, DBG_TAINT_NUM_PARAMS(1),
-                            OPND_CREATE_INT32(COND_ZERO) DBG_END_DR_CLEANCALL);
-  }
   else
   {
-  	if (started_ == MODE_ACTIVE)  // Ignore other cases for now, since we cannot debug.
+  	int cond = opcode2cond(opcode);
+
+  	if (cond != -1)
   	{
-  	  FAIL();
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cond_jmp, false, DBG_TAINT_NUM_PARAMS(2),
+                           OPND_CREATE_INT64(instr_dupl(instr)), OPND_CREATE_INT32(cond)  
+                                  DBG_END_DR_CLEANCALL);
   	}
+    else
+    {
+  	  if (started_ == MODE_ACTIVE)  // Ignore other cases for now, since we cannot debug.
+      {
+  	    FAIL();
+  	  }
+    }
   }
 }
 
@@ -1093,6 +1138,28 @@ static void opcode_ret(void *drcontext, instr_t *instr, instrlist_t *ilist)
                           DBG_END_DR_CLEANCALL);
 }
 
+static void opcode_cond_mov(void *drcontext, instr_t *instr, instrlist_t *ilist)
+{
+  int opcode = instr_get_opcode(instr);
+
+  int type = opcode2cond(opcode);
+
+  if (type != -1)
+  {
+    opnd_t src = instr_get_src(instr, 0);
+    opnd_t dst = instr_get_dst(instr, 0);
+    
+    propagate(drcontext, instr, ilist, src, dst, dst, type);
+  }
+  else
+  {
+    if (started_ == MODE_ACTIVE)  // Ignore other cases for now, since we cannot debug.
+    {
+      FAIL();
+  	}
+  }
+}
+
 static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
   /*
@@ -1239,6 +1306,23 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_leave]			= opcode_ignore;	// 75
 
   instrFunctions[OP_syscall]		= opcode_ignore;	// 95 syscall processed by dr_register_post_syscall_event.
+
+  instrFunctions[OP_cmovo]			= opcode_cond_mov;  // 110
+  instrFunctions[OP_cmovno]			= opcode_cond_mov;  // 111
+  instrFunctions[OP_cmovb]			= opcode_cond_mov;  // 112
+  instrFunctions[OP_cmovnb]			= opcode_cond_mov;  // 113
+  instrFunctions[OP_cmovz]          = opcode_cond_mov;  // 114
+  instrFunctions[OP_cmovnz]			= opcode_cond_mov;  // 115
+  instrFunctions[OP_cmovbe]			= opcode_cond_mov;  // 116
+  instrFunctions[OP_cmovnbe]		= opcode_cond_mov;  // 117
+  instrFunctions[OP_cmovs]			= opcode_cond_mov;  // 118
+  instrFunctions[OP_cmovns]			= opcode_cond_mov;  // 119
+  instrFunctions[OP_cmovp]			= opcode_cond_mov;  // 120
+  instrFunctions[OP_cmovnp]			= opcode_cond_mov;  // 121
+  instrFunctions[OP_cmovl]			= opcode_cond_mov;  // 122
+  instrFunctions[OP_cmovnl]			= opcode_cond_mov;  // 123
+  instrFunctions[OP_cmovle]			= opcode_cond_mov;  // 124
+  instrFunctions[OP_cmovnle]		= opcode_cond_mov;  // 125
 
   instrFunctions[OP_jo]				= opcode_call; 		// 152
   instrFunctions[OP_jno]			= opcode_call; 		// 153

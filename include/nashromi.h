@@ -11,16 +11,17 @@
 // Pass instruction among other params when tainting, to debug.
 #define DBG_PASS_INSTR
 
+extern instr_t *instr_pointers[1024*16];
+extern int instr_next_pointer;
+
 #ifdef DBG_PASS_INSTR
 
   #define DBG_TAINT_NUM_PARAMS(x) (x+1)
-  #define DGB_END_CALL_ARG , instr
+  #define DGB_END_CALL_ARG , dbg_instr
   #define DBG_END_DR_CLEANCALL , OPND_CREATE_INT64(instr_dupl(instr))
-  #define DBG_END_TAINTING_FUNC , instr_t *instr
-  #define DBG_END_TAINTING_FUNC_ALONE instr_t *instr
+  #define DBG_END_TAINTING_FUNC , instr_t *dbg_instr
+  #define DBG_END_TAINTING_FUNC_ALONE instr_t *dbg_instr
   
-  extern instr_t *instr_pointers[1024*16];
-  extern int instr_next_pointer;
   
   
   /*
@@ -28,17 +29,17 @@
   */
   
   #if defined LOGDEBUG
-  #define LDEBUG_TAINT(A, ...) { log_instr(instr); dr_printf(__VA_ARGS__); }
+  #define LDEBUG_TAINT(A, ...) { log_instr(dbg_instr); dr_printf(__VA_ARGS__); }
   #elif defined LOGTEST
-  #define LDEBUG_TAINT(A, ...) if (A) { log_instr(instr); dr_printf(__VA_ARGS__); }
+  #define LDEBUG_TAINT(A, ...) if (A) { log_instr(dbg_instr); dr_printf(__VA_ARGS__); }
   #else
   #define LDEBUG_TAINT(A, ...)
   #endif
   
   #if defined LOGDUMP
-  #define LDUMP_TAINT(i, A, ...) { log_instr(instr); dr_printf(__VA_ARGS__); }
+  #define LDUMP_TAINT(i, A, ...) { log_instr(dbg_instr); dr_printf(__VA_ARGS__); }
   #elif defined LOGTEST
-  #define LDUMP_TAINT(i, A, ...) if ((A) && i == 0) { log_instr(instr); dr_printf(__VA_ARGS__); }
+  #define LDUMP_TAINT(i, A, ...) if ((A) && i == 0) { log_instr(dbg_instr); dr_printf(__VA_ARGS__); }
   #else
   #define LDUMP_TAINT(i, A, ...)
   #endif
@@ -109,31 +110,31 @@ enum prop_type {
   PROP_AND,
   // Others
   PROP_CMP,
-  PROP_TEST
-
-};
-
-enum cond_type {
+  PROP_TEST,
+  // Conditions
   COND_LESS,
   COND_MORE,
   COND_EQ,
   COND_NEQ,
   COND_NONZERO,
-  COND_ZERO,
+  COND_ZERO
 
 };
+
 
 
 static const char *PROP_NAMES[] = {
     "mov", "movzx", "movsx", 
     "add", "sub", "add with carry", "sub with borrow", "imul", 
     "or", "xor", "and",
-    "cmp", "test"
+    "cmp", "test",
+    "if_less", "if_more", "if_equal", "if_notequal", "if_nonzero", "if_zero"
 };
 
 int prop_is_binary(enum prop_type type );
 int prop_is_mov(enum prop_type type );
 int prop_is_restrictor(enum prop_type type );
+int prop_is_cond_mov(enum prop_type type );
 
 
 enum mode {
@@ -469,6 +470,8 @@ void nshr_taint_mv_reg_rm(int dst_reg DBG_END_TAINTING_FUNC);
 void nshr_taint_mv_baseindexmem_rm(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size DBG_END_TAINTING_FUNC);
 void nshr_taint_mv_mem_rm(uint64 addr, int size DBG_END_TAINTING_FUNC);
 
+void nshr_taint_condmv_reg2reg(int src_reg, int dst_reg, instr_t *instr, int type DBG_END_TAINTING_FUNC);
+
 void nshr_taint_cmp_reg2reg(int reg1, int reg2, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_cmp_reg2mem(int reg1, int seg_reg, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_cmp_reg2imm(int reg1, int type DBG_END_TAINTING_FUNC);
@@ -479,7 +482,7 @@ void nshr_taint_cmp_constmem2imm(uint64_t addr, int size, int type DBG_END_TAINT
 
 void nshr_taint_rest_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dest_reg, int type DBG_END_TAINTING_FUNC);
 
-void nshr_taint_cond_jmp(enum cond_type type DBG_END_TAINTING_FUNC);
+void nshr_taint_cond_jmp(instr_t *instr, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_ind_jmp_reg(int src_reg DBG_END_TAINTING_FUNC);
 void nshr_taint_ind_jmp_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp, int size DBG_END_TAINTING_FUNC);
 
