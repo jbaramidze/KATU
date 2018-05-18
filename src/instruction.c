@@ -51,6 +51,24 @@ static int opcode2cond(int opcode)
         return COND_ZERO;
         break;
 
+    case OP_jb:
+    case OP_jb_short:
+    case OP_jbe:
+    case OP_jbe_short:
+    case OP_cmovb:
+    case OP_cmovbe:
+        return COND_LESS_UNSIGNED;
+        break;
+
+    case OP_jnb:
+    case OP_jnb_short:
+    case OP_jnbe:
+    case OP_jnbe_short:
+    case OP_cmovnb:
+    case OP_cmovnbe:
+        return COND_MORE_UNSIGNED;
+        break;
+
     default:
         FAIL();
   }
