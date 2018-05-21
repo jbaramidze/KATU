@@ -10,6 +10,63 @@
 #define LIBC_NAME "libc.so.6"
 #define LD_LINUX  "ld-linux-x86-64.so.2"
 
+static int setcc_to_jcc(int opcode)
+{
+  switch (opcode)
+  {
+    case OP_seto:
+    return OP_jo;
+    
+    case OP_setno:
+    return OP_jno;
+    
+    case OP_setb:
+    return OP_jb;
+    
+    case OP_setnb:
+    return OP_jnb;
+    
+    case OP_setz:
+    return OP_jz;
+    
+    case OP_setnz:
+    return OP_jnz;
+    
+    case OP_setbe:
+    return OP_jbe;
+    
+    case OP_setnbe:
+    return OP_jnbe;
+    
+    case OP_sets:
+    return OP_js;
+    
+    case OP_setns:
+    return OP_jns;
+    
+    case OP_setp:
+    return OP_jp;
+    
+    case OP_setnp:
+    return OP_jnp;
+    
+    case OP_setl:
+    return OP_jl;
+    
+    case OP_setnl:
+    return OP_jnl;
+    
+    case OP_setle:
+    return OP_jle;
+    
+    case OP_setnle:
+    return OP_jnle;
+    
+    default:
+    FAIL();
+  }
+}
+
 void nshr_taint_mv_reg2mem(int src_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC)
 {
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
@@ -128,11 +185,83 @@ int process_restrictor_id(int id1, int id2, int type)
    FAIL();
 }
 
-int process_restrictor_imm(int id1, int imm2, int type)
+int process_restrictor_imm(int id1, unsigned char imm2, int type)
 {
-   FAIL();
+  FAIL();
 }
 
+void nshr_taint_rest_imm2reg(uint64_t value, int dst_reg, int type DBG_END_TAINTING_FUNC)
+{
+  int found = 0;
+
+  unsigned char *val_bytes = (unsigned char *) &value;
+
+  for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
+  {
+    int dst_id   = REGTAINTVAL(dst_reg, i);
+
+    if (dst_id > 0)
+    {
+      found = 1;
+
+      int newid = process_restrictor_imm(dst_id, val_bytes[i], type);
+
+      SETREGTAINTVAL(dst_reg, i, newid);
+
+      update_eflags(type, i, newid, -1);
+    }
+  }
+
+  if (!found)
+  {
+    invalidate_eflags();
+  }
+}
+
+void nshr_taint_shift_reg(int dst_reg, int64 value, int type DBG_END_TAINTING_FUNC)
+{
+  for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
+  {
+    int id   = REGTAINTVAL(dst_reg, i);
+
+    if (id > 0)
+    {
+      FAIL();
+    }
+  }
+}
+
+void nshr_taint_rest_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING_FUNC)
+{
+  int found = 0;
+
+  for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
+  {
+    int src_id   = REGTAINTVAL(src_reg, i);
+    int dst_id   = REGTAINTVAL(dst_reg, i);
+
+    if (src_id > 0 || dst_id > 0)
+    {
+      found = 1;
+
+      int newid;
+
+      if (src_id > 0 && dst_id > 0)      newid = process_restrictor_id(src_id, dst_id, type);
+      else if (src_id > 0 && dst_id < 0) newid = process_restrictor_imm(src_id, REGVAL(dst_reg, i), type);
+      else if (src_id < 0 && dst_id > 0) newid = process_restrictor_imm(dst_id, REGVAL(src_reg, i), type);
+      else                               FAIL();
+
+      SETREGTAINTVAL(dst_reg, i, newid);
+
+      update_eflags(type, i, src_id, newid);
+    }
+  }
+
+  if (!found)
+  {
+    invalidate_eflags();
+  }
+}
 
 void nshr_taint_rest_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int type DBG_END_TAINTING_FUNC)
 {
@@ -159,6 +288,8 @@ void nshr_taint_rest_mem2reg(int seg_reg, int base_reg, int index_reg, int scale
       else                               FAIL();
 
       SETREGTAINTVAL(dst_reg, i, newid);
+
+      FAIL(); // JUST don't remember if I should put (src_id, newid) or (newid, src_id) in update_eflags
 
       update_eflags(type, i, src_id, newid);
     }
@@ -303,6 +434,35 @@ static void process_cond_statement(int type, int taken DBG_END_TAINTING_FUNC)
     {
       FAIL();
     }
+  }
+}
+
+void nshr_taint_cond_set_reg(int dst_reg, int type, instr_t *instr DBG_END_TAINTING_FUNC)
+{
+  if (is_valid_eflags())
+  {
+    FAIL(); // Not yet tested!
+
+    GET_CONTEXT();
+
+    int opcode_old = instr_get_opcode(instr);
+    
+    int opcode = setcc_to_jcc(opcode_old);
+
+    /*
+    FIXME: Workaround because DR is missing correct functionality.
+    */
+
+    instr_set_opcode(instr, opcode);
+
+    int taken = instr_jcc_taken(instr, mcontext.xflags);
+
+    process_cond_statement(type, taken DGB_END_CALL_ARG);
+  }
+
+  for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
+  {
+    REGTAINTRM(dst_reg, i);
   }
 }
 
@@ -491,7 +651,7 @@ void nshr_taint_mv_baseindexmem_rm(int seg_reg, int base_reg, int index_reg, int
   }
 }
 
-void nshr_taint_condmv_reg2reg(int src_reg, int dst_reg, instr_t *instr, int type DBG_END_TAINTING_FUNC)
+void nshr_taint_cond_mv_reg2reg(int src_reg, int dst_reg, instr_t *instr, int type DBG_END_TAINTING_FUNC)
 {
   if (!is_valid_eflags())
   {
@@ -1009,7 +1169,8 @@ static void process_jump(app_pc pc DBG_END_TAINTING_FUNC)
 
   if (symres == DRSYM_SUCCESS)
   {
-  	LDUMP_TAINT(0, true, "Detected call to %s[%s] at %s.\n", sym.name, modname, data -> full_path);
+  	LDUMP_TAINT(0, true, "Detected call to %s[%s] at %s  %s:%d.\n", sym.name, modname, data -> full_path, 
+                                          sym.file, sym.line);
   }
   else
   {

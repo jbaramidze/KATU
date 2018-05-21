@@ -27,6 +27,8 @@ static int opcode2cond(int opcode)
   	case OP_jle_short:
   	case OP_cmovl:
   	case OP_cmovle:
+  	case OP_setl:
+  	case OP_setle:
   	    return COND_LESS;
   	    break;
 
@@ -36,18 +38,22 @@ static int opcode2cond(int opcode)
   	case OP_jnle_short:
   	case OP_cmovnl:
   	case OP_cmovnle:
+  	case OP_setnl:
+  	case OP_setnle:
         return COND_MORE;
         break;
 
     case OP_jnz:
     case OP_jnz_short:
   	case OP_cmovnz:
+  	case OP_setnz:
         return COND_NONZERO;
         break;
 
     case OP_jz:
     case OP_jz_short:
   	case OP_cmovz:
+  	case OP_setz:
         return COND_ZERO;
         break;
 
@@ -57,6 +63,8 @@ static int opcode2cond(int opcode)
     case OP_jbe_short:
     case OP_cmovb:
     case OP_cmovbe:
+  	case OP_setb:
+  	case OP_setbe:
         return COND_LESS_UNSIGNED;
         break;
 
@@ -66,6 +74,8 @@ static int opcode2cond(int opcode)
     case OP_jnbe_short:
     case OP_cmovnb:
     case OP_cmovnbe:
+  	case OP_setnb:
+  	case OP_setnbe:
         return COND_MORE_UNSIGNED;
         break;
 
@@ -291,7 +301,9 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
         LDUMP("InsDetail:\tDoing '%s' to taint at %s, by 0x%x, %d bytes\n", PROP_NAMES[type], 
         	             REGNAME(dst_reg), value, REGSIZE(dst_reg));
 
-        FAIL();
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_rest_imm2reg, false, DBG_TAINT_NUM_PARAMS(3),
+                                 OPND_CREATE_INT64(value), OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(type) 
+                                      DBG_END_DR_CLEANCALL);
       }
     }
     else if (opnd_is_base_disp(dst))
@@ -547,16 +559,22 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_restrictor(type))
       {
-        FAIL();
+      	FAILIF(!opnd_same(src2, dst));
+
+        LDUMP("InsDetail:\tDoing '%s' to taint from %s and %s -> %s.\n", PROP_NAMES[type], REGNAME(src1_reg), REGNAME(src2_reg), REGNAME(dst_reg));
+
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_rest_reg2reg, false, DBG_TAINT_NUM_PARAMS(2),
+                                 OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(type) 
+                                     DBG_END_DR_CLEANCALL);
       }
       else if (prop_is_cond_mov(type))
       {      	
       	FAILIF(!opnd_same(src2, dst));
 
-        LDUMP("InsDetail:\tCongitional taint of '%s' from %s to %s.\n", PROP_NAMES[type], 
+        LDUMP("InsDetail:\tConditional taint of '%s' from %s to %s.\n", PROP_NAMES[type], 
         	                 REGNAME(src1_reg), REGNAME(dst_reg));
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_condmv_reg2reg, false, DBG_TAINT_NUM_PARAMS(4),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cond_mv_reg2reg, false, DBG_TAINT_NUM_PARAMS(4),
                                OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT64(instr_dupl(instr)),
                                    OPND_CREATE_INT32(type)   DBG_END_DR_CLEANCALL);
       }
@@ -982,6 +1000,9 @@ static void process_conditional_jmp(void *drcontext, instr_t *instr, instrlist_t
 
   	if (cond != -1)
   	{
+  	  /*
+  	  FIXME: we don't need whole instr, but only opcode.
+  	  */
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cond_jmp, false, DBG_TAINT_NUM_PARAMS(2),
                            OPND_CREATE_INT64(instr_dupl(instr)), OPND_CREATE_INT32(cond)  
                                   DBG_END_DR_CLEANCALL);
@@ -1047,6 +1068,40 @@ static void opcode_convert(void *drcontext, instr_t *instr, instrlist_t *ilist)
   else
   {
   	FAIL();
+  }
+}
+
+static void opcode_shift(void *drcontext, instr_t *instr, instrlist_t *ilist)
+{
+  FAILIF(instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 1);
+
+  opnd_t src = instr_get_src(instr, 0);
+  opnd_t src1 = instr_get_src(instr, 0);
+  opnd_t dst = instr_get_dst(instr, 0);
+
+  FAILIF(!opnd_is_immed(src) || !opnd_is_immed(src1) || !opnd_is_reg(dst));
+  FAILIF(opnd_get_immed_int(src) != opnd_get_immed_int(src1));
+  
+  int dst_reg = opnd_get_reg(dst);
+  int opcode  = instr_get_opcode(instr);
+    
+  int64 value = opnd_get_immed_int(src);
+
+  if (opcode == OP_shl)
+  {
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_reg, false, DBG_TAINT_NUM_PARAMS(3),
+                               OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT64(value), OPND_CREATE_INT32(0)
+                                   DBG_END_DR_CLEANCALL);
+  }
+  else if (opcode == OP_shr)
+  {
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_reg, false, DBG_TAINT_NUM_PARAMS(3),
+                               OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT64(value), OPND_CREATE_INT32(1)
+                                   DBG_END_DR_CLEANCALL);
+  }
+  else
+  {
+    FAIL();
   }
 }
 
@@ -1134,7 +1189,6 @@ static void wrong_opcode(void *drcontext, instr_t *instr, instrlist_t *ilist)
 { 
   LERROR("ERROR! instruction not implemented.\n");
 
-//  LWARNING("Warning! unknown opcode.\n");
   FAIL();
 }
 
@@ -1154,6 +1208,29 @@ static void opcode_ret(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
   dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_check_ret, false, DBG_TAINT_NUM_PARAMS(0)
                           DBG_END_DR_CLEANCALL);
+}
+
+static void opcode_cond_set(void *drcontext, instr_t *instr, instrlist_t *ilist)
+{
+  int opcode = instr_get_opcode(instr);
+
+  int type = opcode2cond(opcode);
+
+  FAILIF(instr_num_srcs(instr) != 0 || instr_num_dsts(instr) != 1);
+
+  opnd_t dst = instr_get_dst(instr, 0);
+
+  if (opnd_is_reg(dst))
+  {
+    int dst_reg = opnd_get_reg(dst);
+
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cond_set_reg, false, DBG_TAINT_NUM_PARAMS(3),
+                          OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(type), OPND_CREATE_INT64(instr_dupl(instr)) DBG_END_DR_CLEANCALL);
+  }
+  else
+  {
+  	FAIL();
+  }
 }
 
 static void opcode_cond_mov(void *drcontext, instr_t *instr, instrlist_t *ilist)
@@ -1325,6 +1402,8 @@ void nshr_init_opcodes(void)
 
   instrFunctions[OP_syscall]		= opcode_ignore;	// 95 syscall processed by dr_register_post_syscall_event.
 
+  instrFunctions[OP_nop_modrm]      = opcode_ignore;    // 101
+
   instrFunctions[OP_cmovo]			= opcode_cond_mov;  // 110
   instrFunctions[OP_cmovno]			= opcode_cond_mov;  // 111
   instrFunctions[OP_cmovb]			= opcode_cond_mov;  // 112
@@ -1358,10 +1437,29 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_jnl]			= opcode_call; 		// 165
   instrFunctions[OP_jle]			= opcode_call; 		// 166
   instrFunctions[OP_jnle]			= opcode_call; 		// 167
+  instrFunctions[OP_seto]           = opcode_cond_set;  // 168
+  instrFunctions[OP_setno]			= opcode_cond_set;  // 169
+  instrFunctions[OP_setb]			= opcode_cond_set;  // 170
+  instrFunctions[OP_setnb]			= opcode_cond_set;  // 171
+  instrFunctions[OP_setz]			= opcode_cond_set;  // 172
+  instrFunctions[OP_setnz]			= opcode_cond_set;  // 173
+  instrFunctions[OP_setbe]			= opcode_cond_set;  // 174
+  instrFunctions[OP_setnbe]			= opcode_cond_set;  // 175
+  instrFunctions[OP_sets]			= opcode_cond_set;  // 176
+  instrFunctions[OP_setns]			= opcode_cond_set;  // 177
+  instrFunctions[OP_setp]			= opcode_cond_set;  // 178
+  instrFunctions[OP_setnp]			= opcode_cond_set;  // 179
+  instrFunctions[OP_setl]			= opcode_cond_set;  // 180
+  instrFunctions[OP_setnl]			= opcode_cond_set;  // 181
+  instrFunctions[OP_setle]			= opcode_cond_set;  // 182
+  instrFunctions[OP_setnle]			= opcode_cond_set;  // 183
 
   instrFunctions[OP_movzx]          = opcode_mov;		// 195
 
   instrFunctions[OP_movsx]          = opcode_mov;		// 200
+
+  instrFunctions[OP_shl]            = opcode_shift;     // 257
+  instrFunctions[OP_shr]            = opcode_shift;     // 258
 
   instrFunctions[OP_nop]            = opcode_ignore;	// 381
 
