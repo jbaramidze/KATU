@@ -16,15 +16,15 @@ int main()
    	"push $10 \n \t"
    	"push %%rax \n \t"
    	"push $10 \n \t"
-   	"pop %%rax \n \t"
+   	"pop %%rcx \n \t"
    	"pop %%rbx \n \t"
-   	"pop %%rax \n \t"
-   	"popq %%rax \n \t"
-   	:"=b"(b) : "a"(a) : 
+   	"pop %%rcx \n \t"
+   	"popq %%rcx \n \t"
+   	:"=b"(b) : "a"(a) : "rcx" 
    	);
 
   if (a > 10)
   {
-  	int h = A[b];
+    volatile int h = A[b];
   }
 }

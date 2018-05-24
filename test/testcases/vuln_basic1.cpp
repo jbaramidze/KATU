@@ -1,5 +1,5 @@
-#include "/custobuilds/include/stdio.h"
-#include "/custobuilds/include/stdlib.h"
+#include "stdio.h"
+#include "stdlib.h"
 #include "dr_annotations_zhani.h"
 
 int A[20];
@@ -10,5 +10,5 @@ int main()
 
   nshrtaint((long long int) &a, 4);
 
-  int b = A[a];
+  volatile int b = A[a];
 }

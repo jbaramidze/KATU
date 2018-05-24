@@ -16,10 +16,5 @@ int main(int argc, char **argv)
 
   scanf("%s", data);
 
-  if (strcmp(data, "qal"))
-  {
-  	printf(" ");
-  }
-
-  volatile int b = A[data[1]];
+  volatile int b = A[data[6]];
 }

@@ -1,5 +1,5 @@
-#include "/custobuilds/include/stdio.h"
-#include "/custobuilds/include/stdlib.h"
+#include "stdio.h"
+#include "stdlib.h"
 #include "dr_annotations_zhani.h"
 
 const char *path = "/home/zhani/Thesis/test/zaza";
@@ -29,7 +29,7 @@ int main()
 
   if (d > 0 && d < 100 && c > 0 && c < 10)
   {
-  	int h = A[e];
+    volatile int h = A[e];
   }
   
 }
