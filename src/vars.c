@@ -101,14 +101,48 @@ int nshr_tid_copy_id(int id)
   return newid;
 }
 
-int nshr_tid_modify_id_by_symbol(int dst_taint, int byte, enum prop_type operation, int src_taint)
+void nshr_id_add_op(int id, enum prop_type operation, int modify_by)
+{
+  ID2OP(id, ID2OPSIZE(id)).type  = operation;
+  ID2OP(id, ID2OPSIZE(id)).value = modify_by;
+
+  ID2OPSIZE(id)++;
+}
+
+int nshr_make_id_by_merging_all_ids_in2regs(int reg1, int reg2)
+{
+  FAILIF(REGSIZE(reg1) != REGSIZE(reg2));
+
+  int newid = nshr_tid_new_id();
+
+  for(unsigned int i = 0; i < REGSIZE(reg1); i++)
+  {
+    int t = REGTAINTVAL(reg1, i);
+
+    if (t > 0)
+    {
+      nshr_id_add_op(newid, PROP_ADD, t);
+    }
+  }
+
+  for(unsigned int i = 0; i < REGSIZE(reg1); i++)
+  {
+    int t = REGTAINTVAL(reg2, i);
+
+    if (t > 0)
+    {
+      nshr_id_add_op(newid, PROP_ADD, t);
+    }
+  }
+
+  return newid;
+}
+
+int nshr_tid_modify_id_by_symbol(int dst_taint, enum prop_type operation, int src_taint)
 {
   int newid = nshr_tid_copy_id(dst_taint);
 
-  ID2OP(newid, ID2OPSIZE(newid)).type  = operation;
-  ID2OP(newid, ID2OPSIZE(newid)).value = src_taint;
-
-  ID2OPSIZE(newid)++;
+  nshr_id_add_op(newid, operation, src_taint);
 
   LDEBUG("Utils:\t\tAppended operation '%s' to id %d by ID#%d.\n", PROP_NAMES[operation], newid, src_taint);
 

@@ -67,6 +67,20 @@ static int setcc_to_jcc(int opcode)
   }
 }
 
+int direction_clear(uint64 eflags)
+{
+  return (eflags & (1 << 10)) == 0;
+}
+
+static int get_A_of_size(int size)
+{
+  if (size == 1) return DR_REG_AL;
+  if (size == 2) return DR_REG_AX;
+  if (size == 4) return DR_REG_EAX;
+  if (size == 8) return DR_REG_RAX;
+
+  FAIL();
+}
 
 void nshr_taint_mv_constmem2mem(uint64 src_addr, int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size DBG_END_TAINTING_FUNC)
 {
@@ -240,11 +254,42 @@ void nshr_taint_rest_imm2reg(uint64_t value, int dst_reg, int type DBG_END_TAINT
   }
 }
 
+void nshr_taint_strsto_rep(int size DBG_END_TAINTING_FUNC)
+{
+  GET_CONTEXT();
+
+  if (!direction_clear(mcontext.xflags)) FAIL();
+
+  reg_t bytes = reg_get_value(DR_REG_ECX, &mcontext);
+
+  reg_t reg = get_A_of_size(size);
+
+  char *di = (char *) reg_get_value(DR_REG_RDI, &mcontext);
+  
+  uint64_t daddr = (uint64_t) di;
+
+  for (unsigned int i = 0; i < bytes; i++)
+  {
+    for (int j = 0; j < size; j++)
+    {
+      int index = mem_taint_find_index(daddr, i*size + j);
+
+      LDUMP_TAINT(i, (REGTAINTED(reg, j) || MEMTAINTED(index, daddr + i*size + j)), 
+                       "  REG %s byte %d TAINT#%d -> MEM %p TAINT#%d INDEX %d TOTAL %d.\n", 
+                           REGNAME(reg), j, REGTAINTVAL(reg, j), ADDR(daddr + i*size + j), 
+                                MEMTAINTVAL(index, daddr + i*size + j), index, bytes*size);
+
+      REGTAINT2MEMTAINT(reg, j, index, daddr + i*size + j);
+    }
+  }
+}
 
 // Proceeds before first non-equal or ecx
 void nshr_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC)
 {
   GET_CONTEXT();
+
+  if (!direction_clear(mcontext.xflags)) FAIL();
 
   reg_t bytes = reg_get_value(DR_REG_ECX, &mcontext);
 
@@ -776,6 +821,9 @@ void nshr_taint_mv_reg2reg(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
 
   if (REGSIZE(dst_reg) > REGSIZE(src_reg))
   {
+    FAIL(); // how does it come here?
+
+    /*
   	FAILIF(REGSIZE(dst_reg) != 2*REGSIZE(src_reg));
 
     for (unsigned int i = REGSIZE(src_reg); i < REGSIZE(dst_reg); i++)
@@ -788,6 +836,7 @@ void nshr_taint_mv_reg2reg(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
 
       REGTAINT2REGTAINT(src_reg, i - REGSIZE(src_reg), dst_reg, i);
     }
+    */
   }
 }
 
@@ -890,7 +939,7 @@ void nshr_taint_mix_constmem2reg(uint64 addr, int dst_reg, int type DBG_END_TAIN
       // else SPECIALCASE: taintID + taintID = taintID (taint stays the same)
       if (src_taint != dst_taint)
       {
-        int newid = nshr_tid_modify_id_by_symbol(dst_taint, i, type, src_taint);
+        int newid = nshr_tid_modify_id_by_symbol(dst_taint, type, src_taint);
 
         LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
                          newid, REGNAME(dst_reg), i, REGSIZE(dst_reg));
@@ -933,7 +982,7 @@ void nshr_taint_mix_reg2mem(int src_reg, int seg_reg, int base_reg, int index_re
       // else SPECIALCASE: taintID + taintID = taintID (taint stays the same)
       if (src_taint != dst_taint)
       {
-        int newid = nshr_tid_modify_id_by_symbol(dst_taint, i, type, src_taint);
+        int newid = nshr_tid_modify_id_by_symbol(dst_taint, type, src_taint);
 
         LDUMP_TAINT(i, true, "  Assign ID#%d to MEM %p TOTAL %d.\n", 
                          newid, addr + i, REGSIZE(src_reg));
@@ -974,7 +1023,7 @@ void nshr_taint_mix_memNreg2reg(int seg_reg, int base_reg, int index_reg, int sc
       // else SPECIALCASE: taintID + taintID = taintID (taint stays the same)
       if (src_taint != dst_taint)
       {
-        int newid = nshr_tid_modify_id_by_symbol(dst_taint, i, type, src_taint);
+        int newid = nshr_tid_modify_id_by_symbol(dst_taint, type, src_taint);
 
         LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
                          newid, REGNAME(dst_reg), i, REGSIZE(dst_reg));
@@ -1002,11 +1051,12 @@ void nshr_taint_mix_regNreg2reg(int src1_reg, int src2_reg, int dst_reg, int typ
 {
   // Make sure no such case leaks from instrumentation phase.
   FAILIF(src1_reg == dst_reg && src2_reg == dst_reg);
+  FAILIF(REGSIZE(src1_reg) != REGSIZE(src2_reg) || REGSIZE(src1_reg) != REGSIZE(dst_reg))
 
   LDEBUG_TAINT(false, "DOING '%s' by REG %s and REG %s to REG %s size %d\n", PROP_NAMES[type], 
   	               REGNAME(src1_reg), REGNAME(src2_reg), REGNAME(dst_reg), REGSIZE(dst_reg));
 
-  for (unsigned int i = 0; i < REGSIZE(src1_reg); i++)
+  for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
   {
     int src1_taint = REGTAINTVAL(src1_reg, i);
     int src2_taint = REGTAINTVAL(src2_reg, i);
@@ -1016,7 +1066,16 @@ void nshr_taint_mix_regNreg2reg(int src1_reg, int src2_reg, int dst_reg, int typ
     {
       if (src1_taint != src2_taint)
       {
-        int newid = nshr_tid_modify_id_by_symbol(src1_taint, i, type, src2_taint);
+        int newid;
+
+        if (type == PROP_IMUL)
+        {
+          newid = nshr_make_id_by_merging_all_ids_in2regs(src1_reg, src2_reg);
+        }
+        else
+        {
+          newid = nshr_tid_modify_id_by_symbol(src1_taint, type, src2_taint);
+        }
 
         LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
                          newid, REGNAME(dst_reg), i, REGSIZE(src1_reg));
@@ -1025,38 +1084,75 @@ void nshr_taint_mix_regNreg2reg(int src1_reg, int src2_reg, int dst_reg, int typ
       }
       else
       {
-        if (REGTAINTVAL(dst_reg, i) != src1_taint)
-        {
-           LDUMP_TAINT(i, true, "  REG %s byte %d TAINT#%d -> REG %s byte %d TAINT#%d TOTAL %d.\n", 
-                             REGNAME(src1_reg), i, REGTAINTVAL(src1_reg, i),
-                                 REGNAME(dst_reg), i,
-                                     REGTAINTVAL(dst_reg, i), REGSIZE(dst_reg));
+        int newid;
 
-          SETREGTAINTVAL(dst_reg, i, src1_taint);
+        if (type == PROP_IMUL)
+        {
+          newid = nshr_make_id_by_merging_all_ids_in2regs(src1_reg, src2_reg);
+
+          LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
+                         newid, REGNAME(dst_reg), i, REGSIZE(dst_reg));
         }
+        else
+        {
+          newid = src1_taint;
+
+          LDUMP_TAINT(i, true, "  REG %s byte %d TAINT#%d -> REG %s byte %d TAINT#%d TOTAL %d.\n", 
+                           REGNAME(src1_reg), i, REGTAINTVAL(src1_reg, i),
+                               REGNAME(dst_reg), i,
+                                   REGTAINTVAL(dst_reg, i), REGSIZE(dst_reg));
+        }
+
+        SETREGTAINTVAL(dst_reg, i, newid);
       }
     }
-    else if (src1_taint > 0 && src1_taint != dst_taint)  // dst_reg to src_reg
+    else if (src1_taint > 0 || src2_taint > 0)  // src1_reg/src2_reg to dst_reg
     {
-      LDUMP_TAINT(i, true, "  REG %s byte %d TAINT#%d -> REG %s byte %d TAINT#%d TOTAL %d.\n", 
-                             REGNAME(src1_reg), i, REGTAINTVAL(src1_reg, i),
-                                 REGNAME(dst_reg), i,
-                                     REGTAINTVAL(dst_reg, i), REGSIZE(dst_reg));
+      int newid;
 
-      REGTAINT2REGTAINT(src1_reg, i, dst_reg, i);
-    }
-    else if (src2_taint > 0 && src2_taint != dst_taint)  // dst_reg to src_reg
-    {
-      LDUMP_TAINT(i, true, "  REG %s byte %d TAINT#%d -> REG %s byte %d TAINT#%d TOTAL %d.\n", 
-                             REGNAME(src2_reg), i, REGTAINTVAL(src2_reg, i),
-                                 REGNAME(dst_reg), i,
-                                     REGTAINTVAL(dst_reg, i), REGSIZE(dst_reg));
+      if (type == PROP_IMUL)
+      {
+        newid = nshr_make_id_by_merging_all_ids_in2regs(src1_reg, src2_reg);
 
-      REGTAINT2REGTAINT(src2_reg, i, dst_reg, i);
+        LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
+                         newid, REGNAME(dst_reg), i, REGSIZE(dst_reg));
+
+      }
+      else
+      {
+        int active_reg;
+
+        if (src1_taint > 0)
+        {
+          active_reg = src1_reg;
+        }
+        else
+        {
+          active_reg = src2_reg;
+        }
+
+        newid = REGTAINTVAL(active_reg, i);
+
+
+        LDUMP_TAINT(i, true, "  REG %s byte %d TAINT#%d -> REG %s byte %d TAINT#%d TOTAL %d.\n", 
+                             REGNAME(active_reg), i, REGTAINTVAL(active_reg, i),
+                                 REGNAME(dst_reg), i, REGTAINTVAL(dst_reg, i), REGSIZE(dst_reg));
+
+      }
+
+      SETREGTAINTVAL(dst_reg, i, newid);
     }
     else
     {
-      // Do nothing.
+      if (type == PROP_IMUL)
+      {
+        int newid = nshr_make_id_by_merging_all_ids_in2regs(src1_reg, src2_reg);
+
+        LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
+                         newid, REGNAME(dst_reg), i, REGSIZE(dst_reg));
+
+        SETREGTAINTVAL(dst_reg, i, newid);
+      }
     }
   }
 }
@@ -1125,7 +1221,7 @@ void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_E
       // else SPECIALCASE: taintID + taintID = taintID (taint stays the same)
       if (t1 != t2)
       {
-        newid = nshr_tid_modify_id_by_symbol(t1, i, PROP_ADD, t2);
+        newid = nshr_tid_modify_id_by_symbol(t1, PROP_ADD, t2);
       }
       else
       {

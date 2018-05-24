@@ -438,7 +438,8 @@ int nshr_tid_new_iid(int id, int index);
 int nshr_tid_new_iid_get();
 int nshr_tid_new_uid(int fd);
 int nshr_tid_copy_id(int id);
-int nshr_tid_modify_id_by_symbol(int dst_taint, int byte, enum prop_type operation, int src_taint);
+int nshr_make_id_by_merging_all_ids_in2regs(int reg1, int reg2);
+int nshr_tid_modify_id_by_symbol(int dst_taint, enum prop_type operation, int src_taint);
 
 //
 // Function declarations.
@@ -504,6 +505,7 @@ void nshr_taint_rest_imm2reg(uint64_t value, int dst_reg, int type DBG_END_TAINT
 
 void nshr_taint_shift_reg(int dst_reg, int64 value, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC);
+void nshr_taint_strsto_rep(int size DBG_END_TAINTING_FUNC);
 
 void nshr_taint_check_ret(DBG_END_TAINTING_FUNC_ALONE);
 void nshr_taint_check_jmp_reg(int reg DBG_END_TAINTING_FUNC);

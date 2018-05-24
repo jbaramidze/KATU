@@ -561,6 +561,8 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
       	FAILIF(!opnd_same(src2, dst));
 
+      	int src2_reg = opnd_get_reg(src2);
+
         LDUMP("InsDetail:\tDoing '%s' to taint from %s and %s -> %s.\n", PROP_NAMES[type], REGNAME(src1_reg), REGNAME(src2_reg), REGNAME(dst_reg));
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_rest_reg2reg, false, DBG_TAINT_NUM_PARAMS(2),
@@ -777,7 +779,7 @@ static void opcode_push(void *drcontext, instr_t *instr, instrlist_t *ilist)
     int access_size = opnd_size_in_bytes(opnd_get_size(src));
 
     LDUMP("InsDetail:\tTaint from %llx to base+disp %s: %s + %d*%s + %d, %d bytes.\n", 
-                                addr, REGNAME(src_reg), REGNAME(seg_reg), REGNAME(base_reg), 
+                                addr, REGNAME(seg_reg), REGNAME(base_reg), 
                                 scale, REGNAME(index_reg), disp, access_size);
 
     dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_constmem2mem, false, DBG_TAINT_NUM_PARAMS(7), 
@@ -1098,9 +1100,20 @@ static void opcode_cmps(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
     int size = opnd_size_in_bytes(opnd_get_size(src1));
 
-    dr_printf("Doing repeated comparison of %d bytes.\n", size);
+    LDUMP("InsDetail:\tDoing strcmp of %d bytes.\n", size);
 
     dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_strcmp_rep, false, DBG_TAINT_NUM_PARAMS(1),
+                           OPND_CREATE_INT32(size)  DBG_END_DR_CLEANCALL);
+  }
+  else if (opcode == OP_rep_stos)
+  {
+    opnd_t src1 = instr_get_src(instr, 0);
+
+    int size = opnd_size_in_bytes(opnd_get_size(src1));
+
+    LDUMP("InsDetail:\tDoing memset of %d bytes.\n", size);
+
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_strsto_rep, false, DBG_TAINT_NUM_PARAMS(1),
                            OPND_CREATE_INT32(size)  DBG_END_DR_CLEANCALL);
   }
   else
@@ -1375,7 +1388,7 @@ void nshr_init_opcodes(void)
   // Add custom handlers for all known opcodes.
   //
 
-  instrFunctions[OP_LABEL]          = opcode_ignore;	// 3
+  instrFunctions[OP_LABEL]			= opcode_ignore;	// 3
   instrFunctions[OP_add]			= opcode_add;		// 4
   instrFunctions[OP_or]				= opcode_add;		// 5
   instrFunctions[OP_adc]			= opcode_add;		// 6
@@ -1392,11 +1405,11 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_dec]			= opcode_ignore;	// 17
   instrFunctions[OP_push]			= opcode_push;		// 18
   instrFunctions[OP_push_imm]		= opcode_push;		// 19
-  instrFunctions[OP_pop]            = opcode_pop;		// 20
-  instrFunctions[OP_pusha]          = wrong_opcode;		// 21
-  instrFunctions[OP_popa]           = wrong_opcode;		// 22
-  instrFunctions[OP_bound]          = wrong_opcode;		// 23
-  instrFunctions[OP_arpl]           = wrong_opcode;		// 24
+  instrFunctions[OP_pop]			= opcode_pop;		// 20
+  instrFunctions[OP_pusha]			= wrong_opcode;		// 21
+  instrFunctions[OP_popa]			= wrong_opcode;		// 22
+  instrFunctions[OP_bound]			= wrong_opcode;		// 23
+  instrFunctions[OP_arpl]			= wrong_opcode;		// 24
   instrFunctions[OP_imul]			= opcode_add;		// 25
   instrFunctions[OP_jo_short]		= opcode_call;		// 26
   instrFunctions[OP_jno_short]		= opcode_call;		// 27
@@ -1430,13 +1443,13 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_mov_ld]			= opcode_mov;		// 55	Can be: mem2reg
   instrFunctions[OP_mov_st]			= opcode_mov;		// 56	Can be: imm2mem, reg2mem, reg2reg.
   instrFunctions[OP_mov_imm]		= opcode_mov;		// 57   Can be: imm2reg.
-  instrFunctions[OP_mov_seg]	    = wrong_opcode;   	// 58
+  instrFunctions[OP_mov_seg]		= wrong_opcode;   	// 58
   instrFunctions[OP_mov_priv]		= wrong_opcode;		// 59
   instrFunctions[OP_test]			= opcode_cmp;		// 60 
   instrFunctions[OP_lea]			= opcode_lea;		// 61
 
-  instrFunctions[OP_cwde]			= opcode_convert;   // 64
-  instrFunctions[OP_cdq]			= opcode_convert;   // 65
+  instrFunctions[OP_cwde]			= opcode_convert;	// 64
+  instrFunctions[OP_cdq]			= opcode_convert;	// 65
 
   instrFunctions[OP_ret]			= opcode_ret;		// 70
   instrFunctions[OP_ret_far]		= opcode_ret;		// 71
@@ -1444,77 +1457,83 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_enter]			= opcode_ignore; 	// 74
   instrFunctions[OP_leave]			= opcode_ignore;	// 75
 
+  instrFunctions[OP_cld]            = opcode_ignore;    // 91
+  instrFunctions[OP_std]            = opcode_ignore;    // 92
+
   instrFunctions[OP_syscall]		= opcode_ignore;	// 95 syscall processed by dr_register_post_syscall_event.
 
-  instrFunctions[OP_nop_modrm]      = opcode_ignore;    // 101
+  instrFunctions[OP_nop_modrm]		= opcode_ignore;	// 101
 
-  instrFunctions[OP_cmovo]			= opcode_cond_mov;  // 110
-  instrFunctions[OP_cmovno]			= opcode_cond_mov;  // 111
-  instrFunctions[OP_cmovb]			= opcode_cond_mov;  // 112
-  instrFunctions[OP_cmovnb]			= opcode_cond_mov;  // 113
-  instrFunctions[OP_cmovz]          = opcode_cond_mov;  // 114
-  instrFunctions[OP_cmovnz]			= opcode_cond_mov;  // 115
-  instrFunctions[OP_cmovbe]			= opcode_cond_mov;  // 116
-  instrFunctions[OP_cmovnbe]		= opcode_cond_mov;  // 117
-  instrFunctions[OP_cmovs]			= opcode_cond_mov;  // 118
-  instrFunctions[OP_cmovns]			= opcode_cond_mov;  // 119
-  instrFunctions[OP_cmovp]			= opcode_cond_mov;  // 120
-  instrFunctions[OP_cmovnp]			= opcode_cond_mov;  // 121
-  instrFunctions[OP_cmovl]			= opcode_cond_mov;  // 122
-  instrFunctions[OP_cmovnl]			= opcode_cond_mov;  // 123
-  instrFunctions[OP_cmovle]			= opcode_cond_mov;  // 124
-  instrFunctions[OP_cmovnle]		= opcode_cond_mov;  // 125
+  instrFunctions[OP_cmovo]			= opcode_cond_mov;	// 110
+  instrFunctions[OP_cmovno]			= opcode_cond_mov;	// 111
+  instrFunctions[OP_cmovb]			= opcode_cond_mov;	// 112
+  instrFunctions[OP_cmovnb]			= opcode_cond_mov;	// 113
+  instrFunctions[OP_cmovz]			= opcode_cond_mov;	// 114
+  instrFunctions[OP_cmovnz]			= opcode_cond_mov;	// 115
+  instrFunctions[OP_cmovbe]			= opcode_cond_mov;	// 116
+  instrFunctions[OP_cmovnbe]		= opcode_cond_mov;	// 117
+  instrFunctions[OP_cmovs]			= opcode_cond_mov;	// 118
+  instrFunctions[OP_cmovns]			= opcode_cond_mov;	// 119
+  instrFunctions[OP_cmovp]			= opcode_cond_mov;	// 120
+  instrFunctions[OP_cmovnp]			= opcode_cond_mov;	// 121
+  instrFunctions[OP_cmovl]			= opcode_cond_mov;	// 122
+  instrFunctions[OP_cmovnl]			= opcode_cond_mov;	// 123
+  instrFunctions[OP_cmovle]			= opcode_cond_mov;	// 124
+  instrFunctions[OP_cmovnle]		= opcode_cond_mov;	// 125
 
-  instrFunctions[OP_jo]				= opcode_call; 		// 152
-  instrFunctions[OP_jno]			= opcode_call; 		// 153
-  instrFunctions[OP_jb]				= opcode_call; 		// 154
-  instrFunctions[OP_jnb]			= opcode_call; 		// 155
-  instrFunctions[OP_jz]				= opcode_call; 		// 156
-  instrFunctions[OP_jnz]			= opcode_call; 		// 157
-  instrFunctions[OP_jbe]			= opcode_call; 		// 158
-  instrFunctions[OP_jnbe]			= opcode_call; 		// 159
-  instrFunctions[OP_js]				= opcode_call; 		// 160
-  instrFunctions[OP_jns]			= opcode_call; 		// 161
-  instrFunctions[OP_jp]				= opcode_call; 		// 162
-  instrFunctions[OP_jnp]			= opcode_call; 		// 163
-  instrFunctions[OP_jl]				= opcode_call; 		// 164
-  instrFunctions[OP_jnl]			= opcode_call; 		// 165
-  instrFunctions[OP_jle]			= opcode_call; 		// 166
-  instrFunctions[OP_jnle]			= opcode_call; 		// 167
-  instrFunctions[OP_seto]           = opcode_cond_set;  // 168
-  instrFunctions[OP_setno]			= opcode_cond_set;  // 169
-  instrFunctions[OP_setb]			= opcode_cond_set;  // 170
-  instrFunctions[OP_setnb]			= opcode_cond_set;  // 171
-  instrFunctions[OP_setz]			= opcode_cond_set;  // 172
-  instrFunctions[OP_setnz]			= opcode_cond_set;  // 173
-  instrFunctions[OP_setbe]			= opcode_cond_set;  // 174
-  instrFunctions[OP_setnbe]			= opcode_cond_set;  // 175
-  instrFunctions[OP_sets]			= opcode_cond_set;  // 176
-  instrFunctions[OP_setns]			= opcode_cond_set;  // 177
-  instrFunctions[OP_setp]			= opcode_cond_set;  // 178
-  instrFunctions[OP_setnp]			= opcode_cond_set;  // 179
-  instrFunctions[OP_setl]			= opcode_cond_set;  // 180
-  instrFunctions[OP_setnl]			= opcode_cond_set;  // 181
-  instrFunctions[OP_setle]			= opcode_cond_set;  // 182
-  instrFunctions[OP_setnle]			= opcode_cond_set;  // 183
+  instrFunctions[OP_jo]				= opcode_call;		// 152
+  instrFunctions[OP_jno]			= opcode_call;		// 153
+  instrFunctions[OP_jb]				= opcode_call;		// 154
+  instrFunctions[OP_jnb]			= opcode_call;		// 155
+  instrFunctions[OP_jz]				= opcode_call;		// 156
+  instrFunctions[OP_jnz]			= opcode_call;		// 157
+  instrFunctions[OP_jbe]			= opcode_call;		// 158
+  instrFunctions[OP_jnbe]			= opcode_call;		// 159
+  instrFunctions[OP_js]				= opcode_call;		// 160
+  instrFunctions[OP_jns]			= opcode_call;		// 161
+  instrFunctions[OP_jp]				= opcode_call;		// 162
+  instrFunctions[OP_jnp]			= opcode_call;		// 163
+  instrFunctions[OP_jl]				= opcode_call;		// 164
+  instrFunctions[OP_jnl]			= opcode_call;		// 165
+  instrFunctions[OP_jle]			= opcode_call;		// 166
+  instrFunctions[OP_jnle]			= opcode_call;		// 167
+  instrFunctions[OP_seto]			= opcode_cond_set;	// 168
+  instrFunctions[OP_setno]			= opcode_cond_set;	// 169
+  instrFunctions[OP_setb]			= opcode_cond_set;	// 170
+  instrFunctions[OP_setnb]			= opcode_cond_set;	// 171
+  instrFunctions[OP_setz]			= opcode_cond_set;	// 172
+  instrFunctions[OP_setnz]			= opcode_cond_set;	// 173
+  instrFunctions[OP_setbe]			= opcode_cond_set;	// 174
+  instrFunctions[OP_setnbe]			= opcode_cond_set;	// 175
+  instrFunctions[OP_sets]			= opcode_cond_set;	// 176
+  instrFunctions[OP_setns]			= opcode_cond_set;	// 177
+  instrFunctions[OP_setp]			= opcode_cond_set;	// 178
+  instrFunctions[OP_setnp]			= opcode_cond_set;	// 179
+  instrFunctions[OP_setl]			= opcode_cond_set;	// 180
+  instrFunctions[OP_setnl]			= opcode_cond_set;	// 181
+  instrFunctions[OP_setle]			= opcode_cond_set;	// 182
+  instrFunctions[OP_setnle]			= opcode_cond_set;	// 183
 
-  instrFunctions[OP_movzx]          = opcode_mov;		// 195
+  instrFunctions[OP_movzx]			= opcode_mov;		// 195
 
-  instrFunctions[OP_movsx]          = opcode_mov;		// 200
+  instrFunctions[OP_movsx]			= opcode_mov;		// 200
 
-  instrFunctions[OP_shl]            = opcode_shift;     // 257
-  instrFunctions[OP_shr]            = opcode_shift;     // 258
-  instrFunctions[OP_sar]            = opcode_shift;     // 259
+  instrFunctions[OP_shl]			= opcode_shift;		// 257
+  instrFunctions[OP_shr]			= opcode_shift;		// 258
+  instrFunctions[OP_sar]			= opcode_shift;		// 259
 
-  instrFunctions[OP_movsd]          = opcode_ignore;    // 296
+  instrFunctions[OP_movsd]			= opcode_ignore;	// 296
 
-  instrFunctions[OP_nop]            = opcode_ignore;	// 381
+  instrFunctions[OP_nop]			= opcode_ignore;	// 381
 
 
-  instrFunctions[OP_cmps]			= opcode_cmps;      // 393
-  instrFunctions[OP_rep_cmps]		= opcode_cmps;      // 394
+  instrFunctions[OP_stos]			= opcode_cmps;		// 389 (memset)
+  instrFunctions[OP_rep_stos]		= opcode_cmps;      // 390 (memset)
 
-  instrFunctions[OP_movsxd]         = opcode_mov;		// 597
+  instrFunctions[OP_cmps]			= opcode_cmps;		// 393 (strcpy)
+  instrFunctions[OP_rep_cmps]		= opcode_cmps;		// 394 (strcpy)
+
+  instrFunctions[OP_movsxd]			= opcode_mov;		// 597
 }
 
 //

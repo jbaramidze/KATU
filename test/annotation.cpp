@@ -6,21 +6,17 @@
 #include "string.h" 
 #include "dr_annotations_zhani.h"
 
-int A[10];
+int A[50];
 
 int main(int argc, char **argv)
 {
-  char data[20];
+ 
+  char data[1000];
 
-  data[0] = 'a';
-  data[1] = 'b';
-  data[2] = 'c';
-  data[3] = 'd';
-  data[4] = '\0';
+  int t;
+  nshrtaint((long long int) &t, 4);
 
-  nshrtaint((long long int) &data, 20);
+  memset(data, t, 200);
 
-
-  int q = strcmp(data, "abed");
-  volatile int b = A[data[q+1]];
+  volatile int q = A[data[3]];
 }
