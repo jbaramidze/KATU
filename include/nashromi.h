@@ -501,6 +501,7 @@ void nshr_taint_rest_mem2reg(int seg_reg, int base_reg, int index_reg, int scale
 void nshr_taint_rest_imm2reg(uint64_t value, int dst_reg, int type DBG_END_TAINTING_FUNC);
 
 void nshr_taint_shift_reg(int dst_reg, int64 value, int type DBG_END_TAINTING_FUNC);
+void nshr_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC);
 
 void nshr_taint_check_ret(DBG_END_TAINTING_FUNC_ALONE);
 void nshr_taint_check_jmp_reg(int reg DBG_END_TAINTING_FUNC);

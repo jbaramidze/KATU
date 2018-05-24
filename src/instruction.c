@@ -1071,6 +1071,27 @@ static void opcode_convert(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
 }
 
+static void opcode_cmps(void *drcontext, instr_t *instr, instrlist_t *ilist)
+{ 
+  int opcode  = instr_get_opcode(instr);
+
+  if (opcode == OP_rep_cmps)
+  {
+    opnd_t src1 = instr_get_src(instr, 0);
+
+    int size = opnd_size_in_bytes(opnd_get_size(src1));
+
+    dr_printf("Doing repeated comparison of %d bytes.\n", size);
+
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_strcmp_rep, false, DBG_TAINT_NUM_PARAMS(1),
+                           OPND_CREATE_INT32(size)  DBG_END_DR_CLEANCALL);
+  }
+  else
+  {
+    FAIL();
+  }
+}
+
 static void opcode_shift(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
   FAILIF(instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 1);
@@ -1097,6 +1118,12 @@ static void opcode_shift(void *drcontext, instr_t *instr, instrlist_t *ilist)
   {
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_reg, false, DBG_TAINT_NUM_PARAMS(3),
                                OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT64(value), OPND_CREATE_INT32(1)
+                                   DBG_END_DR_CLEANCALL);
+  }
+  else if (opcode == OP_sar)
+  {
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_reg, false, DBG_TAINT_NUM_PARAMS(3),
+                               OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT64(value), OPND_CREATE_INT32(2)
                                    DBG_END_DR_CLEANCALL);
   }
   else
@@ -1460,8 +1487,15 @@ void nshr_init_opcodes(void)
 
   instrFunctions[OP_shl]            = opcode_shift;     // 257
   instrFunctions[OP_shr]            = opcode_shift;     // 258
+  instrFunctions[OP_sar]            = opcode_shift;     // 259
+
+  instrFunctions[OP_movsd]          = opcode_ignore;    // 296
 
   instrFunctions[OP_nop]            = opcode_ignore;	// 381
+
+
+  instrFunctions[OP_cmps]			= opcode_cmps;      // 393
+  instrFunctions[OP_rep_cmps]		= opcode_cmps;      // 394
 
   instrFunctions[OP_movsxd]         = opcode_mov;		// 597
 }

@@ -218,6 +218,64 @@ void nshr_taint_rest_imm2reg(uint64_t value, int dst_reg, int type DBG_END_TAINT
   }
 }
 
+
+// Proceeds before first non-equal or ecx
+void nshr_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC)
+{
+  GET_CONTEXT();
+
+  reg_t bytes = reg_get_value(DR_REG_ECX, &mcontext);
+
+  int equals = 1;
+
+  if (size == 1)
+  {
+    char *si = (char *) reg_get_value(DR_REG_RSI, &mcontext);
+    char *di = (char *) reg_get_value(DR_REG_RDI, &mcontext);
+
+
+    for (unsigned int i = 0; i < bytes; i++)
+    {
+      if (*(si + i) != *(di + i))
+      {
+        equals = 0;
+
+        break;
+      }
+    }
+
+    invalidate_eflags();
+
+    uint64_t saddr = (uint64_t) si;
+    uint64_t daddr = (uint64_t) di;
+
+    if (equals == 1)
+    {
+      for (unsigned int i = 0; i < bytes; i++)
+      {
+        int index1 = mem_taint_find_index(saddr, i);
+        int index2 = mem_taint_find_index(daddr, i);
+
+        LDUMP_TAINT(i, (MEMTAINTED(index1, saddr)), 
+                      "  REMOVE MEM %p TAINT#%d INDEX %d TOTAL %d.\n", 
+                           ADDR(saddr + i), MEMTAINTVAL(index1, saddr + i), index1, size);
+
+        MEMTAINTRM(index2, saddr + i);
+
+        LDUMP_TAINT(i, (MEMTAINTED(index2, daddr)), 
+                      "  REMOVE MEM %p TAINT#%d INDEX %d TOTAL %d.\n", 
+                           ADDR(daddr + i), MEMTAINTVAL(index2, daddr + i), index2, size);
+
+        MEMTAINTRM(index2, daddr + i);
+      }
+    }
+  }
+  else
+  {
+  	FAIL();
+  }
+}
+
 void nshr_taint_shift_reg(int dst_reg, int64 value, int type DBG_END_TAINTING_FUNC)
 {
   for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
