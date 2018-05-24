@@ -1,6 +1,3 @@
-//#include "/custobuilds/include/stdio.h"
-//#include "/custobuilds/include/stdlib.h"
-//#include "/custobuilds/include/string.h" 
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h" 
@@ -21,6 +18,6 @@ int main(int argc, char **argv)
   nshrtaint((long long int) &data, 20);
 
 
-  int q = strcmp(data, "abed");
+  int q = strcmp(data, "abcd");
   volatile int b = A[data[q+1]];
 }
