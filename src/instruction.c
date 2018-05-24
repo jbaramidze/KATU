@@ -768,6 +768,23 @@ static void opcode_push(void *drcontext, instr_t *instr, instrlist_t *ilist)
                                  OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), 
                                      OPND_CREATE_INT32(disp) DBG_END_DR_CLEANCALL);
   }
+  else if (opnd_is_rel_addr(src))
+  {
+    app_pc addr;
+
+    instr_get_rel_addr_target(instr, &addr);
+
+    int access_size = opnd_size_in_bytes(opnd_get_size(src));
+
+    LDUMP("InsDetail:\tTaint from %llx to base+disp %s: %s + %d*%s + %d, %d bytes.\n", 
+                                addr, REGNAME(src_reg), REGNAME(seg_reg), REGNAME(base_reg), 
+                                scale, REGNAME(index_reg), disp, access_size);
+
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_constmem2mem, false, DBG_TAINT_NUM_PARAMS(7), 
+                             OPND_CREATE_INT64(addr), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
+                                 OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp),
+                                      OPND_CREATE_INT32(access_size) DBG_END_DR_CLEANCALL);
+  }
   else
   {
   	FAIL();
