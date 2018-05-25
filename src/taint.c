@@ -499,12 +499,7 @@ static void process_cond_statement(int type, int taken DBG_END_TAINTING_FUNC)
   // Check all of them here.
   if (type == COND_SIGN_BIT || type == COND_NOT_SIGN_BIT)
   {
-    if (eflags_type == PROP_TEST)
-    {
-      // Do nothing, since in this case we only compare to 0.
-      return;
-    }
-    else
+    if (eflags_type != PROP_TEST)
     {
       FAIL();
     }
@@ -521,18 +516,20 @@ static void process_cond_statement(int type, int taken DBG_END_TAINTING_FUNC)
 
     if (t2 == NULL)
     {
-      if      (type == COND_LESS)           bound(t1, TAINT_BOUND_LOW);
-      else if (type == COND_MORE)           bound(t1, TAINT_BOUND_HIGH);
+      if      (type == COND_LESS)           bound(t1, TAINT_BOUND_HIGH);
+      else if (type == COND_MORE)           bound(t1, TAINT_BOUND_LOW);
       else if (type == COND_NONZERO)        {} // Gives no info.
       else if (type == COND_ZERO)           bound(t1, TAINT_BOUND_FIX);
       else if (type == COND_LESS_UNSIGNED)  bound(t1, TAINT_BOUND_LOW | TAINT_BOUND_HIGH);
       else if (type == COND_MORE_UNSIGNED)  {} // Gives no info
+      else if (type == COND_SIGN_BIT)       bound(t1, TAINT_BOUND_HIGH);
+      else if (type == COND_NOT_SIGN_BIT)   bound(t1, TAINT_BOUND_LOW);
       else                                  FAIL();
     }
     else if (t1 == NULL)
     {
-      if      (type == COND_LESS)           bound(t2, TAINT_BOUND_HIGH);
-      else if (type == COND_MORE)           bound(t2, TAINT_BOUND_LOW);
+      if      (type == COND_LESS)           bound(t2, TAINT_BOUND_LOW);
+      else if (type == COND_MORE)           bound(t2, TAINT_BOUND_HIGH);
       else if (type == COND_NONZERO)        {} // Gives no info.
       else if (type == COND_ZERO)           bound(t2, TAINT_BOUND_FIX);
       else if (type == COND_LESS_UNSIGNED)  {} // Gives no info
@@ -552,18 +549,20 @@ static void process_cond_statement(int type, int taken DBG_END_TAINTING_FUNC)
     }
     else if (t2 == NULL)
     {
-      if      (type == COND_LESS)           bound(t1, TAINT_BOUND_HIGH);
-      else if (type == COND_MORE)           bound(t1, TAINT_BOUND_LOW);
+      if      (type == COND_LESS)           bound(t1, TAINT_BOUND_LOW);
+      else if (type == COND_MORE)           bound(t1, TAINT_BOUND_HIGH);
       else if (type == COND_NONZERO)        bound(t1, TAINT_BOUND_FIX);
       else if (type == COND_ZERO)           {} // Gives no info.
       else if (type == COND_LESS_UNSIGNED)  {} // Gives no info
       else if (type == COND_MORE_UNSIGNED)  bound(t1, TAINT_BOUND_LOW | TAINT_BOUND_HIGH);
+      else if (type == COND_SIGN_BIT)       bound(t1, TAINT_BOUND_LOW);
+      else if (type == COND_NOT_SIGN_BIT)   bound(t1, TAINT_BOUND_HIGH);
       else                                  FAIL();
     }
     else if (t1 == NULL)
     {
-      if      (type == COND_LESS)           bound(t2, TAINT_BOUND_LOW);
-      else if (type == COND_MORE)           bound(t2, TAINT_BOUND_HIGH);
+      if      (type == COND_LESS)           bound(t2, TAINT_BOUND_HIGH);
+      else if (type == COND_MORE)           bound(t2, TAINT_BOUND_LOW);
       else if (type == COND_NONZERO)        bound(t2, TAINT_BOUND_FIX);
       else if (type == COND_ZERO)           {} // Gives no info.
       else if (type == COND_LESS_UNSIGNED)  bound(t2, TAINT_BOUND_LOW | TAINT_BOUND_HIGH);
