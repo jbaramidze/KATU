@@ -121,6 +121,26 @@ int nshr_make_id_by_merging_all_ids_in2regs(int reg1, int reg2)
 {
   FAILIF(REGSIZE(reg1) != REGSIZE(reg2));
 
+  // First, make sure at least one of them is tainted.
+  int tainted = 0;
+
+  for(unsigned int i = 0; i < REGSIZE(reg1); i++)
+  {
+    if (REGTAINTED(reg1, i))
+    {
+      tainted = 1;
+    }
+    if (REGTAINTED(reg2, i))
+    {
+      tainted = 1;
+    }
+  }
+
+  if (tainted == 0)
+  {
+    return -1;
+  }
+
   int newid = nshr_tid_new_id();
 
   for(unsigned int i = 0; i < REGSIZE(reg1); i++)

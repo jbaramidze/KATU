@@ -941,7 +941,7 @@ void nshr_taint_mix_constmem2reg(uint64 addr, int dst_reg, int type DBG_END_TAIN
       {
         int newid = nshr_tid_modify_id_by_symbol(dst_taint, type, src_taint);
 
-        LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
+        LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d [L8].\n", 
                          newid, REGNAME(dst_reg), i, REGSIZE(dst_reg));
 
         SETREGTAINTVAL(dst_reg, i, newid);
@@ -984,7 +984,7 @@ void nshr_taint_mix_reg2mem(int src_reg, int seg_reg, int base_reg, int index_re
       {
         int newid = nshr_tid_modify_id_by_symbol(dst_taint, type, src_taint);
 
-        LDUMP_TAINT(i, true, "  Assign ID#%d to MEM %p TOTAL %d.\n", 
+        LDUMP_TAINT(i, true, "  Assign ID#%d to MEM %p TOTAL %d [L1].\n", 
                          newid, addr + i, REGSIZE(src_reg));
 
         SETMEMTAINTVAL(index, addr + i, newid);
@@ -1025,7 +1025,7 @@ void nshr_taint_mix_memNreg2reg(int seg_reg, int base_reg, int index_reg, int sc
       {
         int newid = nshr_tid_modify_id_by_symbol(dst_taint, type, src_taint);
 
-        LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
+        LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d [L2].\n", 
                          newid, REGNAME(dst_reg), i, REGSIZE(dst_reg));
 
         SETREGTAINTVAL(dst_reg, i, newid);
@@ -1087,7 +1087,7 @@ void nshr_taint_mix_regNreg2reg(int src1_reg, int src2_reg, int dst_reg, int typ
           newid = nshr_tid_modify_id_by_symbol(src1_taint, type, src2_taint);
         }
 
-        LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
+        LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d [L3].\n", 
                          newid, REGNAME(dst_reg), i, REGSIZE(src1_reg));
 
         tmp_reg[i] = newid; //SETREGTAINTVAL(dst_reg, i, newid);
@@ -1100,7 +1100,7 @@ void nshr_taint_mix_regNreg2reg(int src1_reg, int src2_reg, int dst_reg, int typ
         {
           newid = nshr_make_id_by_merging_all_ids_in2regs(src1_reg, src2_reg);
 
-          LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
+          LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d [L4].\n", 
                          newid, REGNAME(dst_reg), i, REGSIZE(dst_reg));
         }
         else
@@ -1124,7 +1124,7 @@ void nshr_taint_mix_regNreg2reg(int src1_reg, int src2_reg, int dst_reg, int typ
       {
         newid = nshr_make_id_by_merging_all_ids_in2regs(src1_reg, src2_reg);
 
-        LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
+        LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d [L5].\n", 
                          newid, REGNAME(dst_reg), i, REGSIZE(dst_reg));
 
       }
@@ -1158,7 +1158,7 @@ void nshr_taint_mix_regNreg2reg(int src1_reg, int src2_reg, int dst_reg, int typ
       {
         int newid = nshr_make_id_by_merging_all_ids_in2regs(src1_reg, src2_reg);
 
-        LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
+        LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d [L6].\n", 
                          newid, REGNAME(dst_reg), i, REGSIZE(dst_reg));
 
         tmp_reg[i] = newid; //SETREGTAINTVAL(dst_reg, i, newid);
@@ -1243,7 +1243,7 @@ void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_E
       	newid = t1;
       }
 
-      LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
+      LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d [L7].\n", 
                        newid, REGNAME(dst_reg), i, size);
 
       SETREGTAINTVAL(dst_reg, i, newid);
