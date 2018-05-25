@@ -103,12 +103,20 @@ int nshr_tid_copy_id(int id)
 
 void nshr_id_add_op(int id, enum prop_type operation, int modify_by)
 {
+  // First make sure id is not already in operations list;
+  for (int i = 0; i < ID2OPSIZE(id); i++)
+  {
+    if (ID2OP(id, i).value == modify_by) return;
+  }
+
   ID2OP(id, ID2OPSIZE(id)).type  = operation;
   ID2OP(id, ID2OPSIZE(id)).value = modify_by;
 
   ID2OPSIZE(id)++;
 }
 
+
+// first copy to a teporary register.
 int nshr_make_id_by_merging_all_ids_in2regs(int reg1, int reg2)
 {
   FAILIF(REGSIZE(reg1) != REGSIZE(reg2));

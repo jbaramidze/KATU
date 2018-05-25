@@ -1056,6 +1056,16 @@ void nshr_taint_mix_regNreg2reg(int src1_reg, int src2_reg, int dst_reg, int typ
   LDEBUG_TAINT(false, "DOING '%s' by REG %s and REG %s to REG %s size %d\n", PROP_NAMES[type], 
   	               REGNAME(src1_reg), REGNAME(src2_reg), REGNAME(dst_reg), REGSIZE(dst_reg));
 
+  // We need temporary register, because we need to update destination 
+  // at the end, together.
+
+  int tmp_reg[16];
+
+  for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
+  {
+    tmp_reg[i] = REGTAINTVAL(dst_reg, i);
+  }
+
   for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
   {
     int src1_taint = REGTAINTVAL(src1_reg, i);
@@ -1080,7 +1090,7 @@ void nshr_taint_mix_regNreg2reg(int src1_reg, int src2_reg, int dst_reg, int typ
         LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
                          newid, REGNAME(dst_reg), i, REGSIZE(src1_reg));
 
-        SETREGTAINTVAL(dst_reg, i, newid);
+        tmp_reg[i] = newid; //SETREGTAINTVAL(dst_reg, i, newid);
       }
       else
       {
@@ -1103,7 +1113,7 @@ void nshr_taint_mix_regNreg2reg(int src1_reg, int src2_reg, int dst_reg, int typ
                                    REGTAINTVAL(dst_reg, i), REGSIZE(dst_reg));
         }
 
-        SETREGTAINTVAL(dst_reg, i, newid);
+        tmp_reg[i] = newid; //SETREGTAINTVAL(dst_reg, i, newid);
       }
     }
     else if (src1_taint > 0 || src2_taint > 0)  // src1_reg/src2_reg to dst_reg
@@ -1140,7 +1150,7 @@ void nshr_taint_mix_regNreg2reg(int src1_reg, int src2_reg, int dst_reg, int typ
 
       }
 
-      SETREGTAINTVAL(dst_reg, i, newid);
+      tmp_reg[i] = newid; //SETREGTAINTVAL(dst_reg, i, newid);
     }
     else
     {
@@ -1151,9 +1161,14 @@ void nshr_taint_mix_regNreg2reg(int src1_reg, int src2_reg, int dst_reg, int typ
         LDUMP_TAINT(i, true, "  Assign ID#%d to REG %s byte %d TOTAL %d.\n", 
                          newid, REGNAME(dst_reg), i, REGSIZE(dst_reg));
 
-        SETREGTAINTVAL(dst_reg, i, newid);
+        tmp_reg[i] = newid; //SETREGTAINTVAL(dst_reg, i, newid);
       }
     }
+  }
+
+  for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
+  {
+    SETREGTAINTVAL(dst_reg, i, tmp_reg[i]);
   }
 }
 

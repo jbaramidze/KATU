@@ -10,13 +10,15 @@ int A[50];
 
 int main(int argc, char **argv)
 {
- 
-  char data[1000];
+  volatile int a = 3;
 
-  int t;
-  nshrtaint((long long int) &t, 4);
+  nshrtaint((long long int) &a, 4);
 
-  memset(data, t, 200);
+  a = a + a;
+  a = a*a;
+  a = a + 2;
+  a = a - 1;
+    
 
-  volatile int q = A[data[3]];
+  volatile int q = A[a];
 }
