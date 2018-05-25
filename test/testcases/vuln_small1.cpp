@@ -14,18 +14,14 @@ int main(int argc, char **argv)
 
   nshrtaint((long long int) &a, 4);
 
-  if (a > 0 && a < 10)
-  {
+  a = a + a;
+  a = a*a;
+  a = a + 5;
+  a = a - 4;
+  a++;
+  a--;
+  volatile int b = a;
+    
 
-    a = a + a;
-    a = a*a;
-    a = a + 5;
-    a = a - 4;
-    a++;
-    a--;
-    volatile int b = a;
-      
-  
-    volatile int q = A[b];
-  }
+  volatile int q = A[b];
 }
