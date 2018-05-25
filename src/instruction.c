@@ -79,6 +79,19 @@ static int opcode2cond(int opcode)
         return COND_MORE_UNSIGNED;
         break;
 
+    case OP_js:
+    case OP_js_short:
+    case OP_cmovs:
+    case OP_sets:
+        return COND_SIGN_BIT;
+
+    case OP_jns:
+    case OP_jns_short:
+    case OP_cmovns:
+    case OP_setns:
+        return COND_NOT_SIGN_BIT;
+
+
     default:
         FAIL();
   }

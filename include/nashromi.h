@@ -119,7 +119,9 @@ enum prop_type {
   COND_NONZERO,
   COND_ZERO,
   COND_LESS_UNSIGNED,
-  COND_MORE_UNSIGNED
+  COND_MORE_UNSIGNED,
+  COND_SIGN_BIT,
+  COND_NOT_SIGN_BIT
 
 };
 
@@ -131,7 +133,7 @@ static const char *PROP_NAMES[] = {
     "or", "xor", "and",
     "cmp", "test",
     "if_less", "if_more", "if_equal", "if_notequal", "if_nonzero", "if_zero", 
-    "if_less_unsigned", "if_more_unsigned"
+    "if_less_unsigned", "if_more_unsigned", "if_sign_bit", "if_not_sign_bit"
 };
 
 int prop_is_binary(enum prop_type type );

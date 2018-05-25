@@ -495,6 +495,21 @@ static void process_cond_statement(int type, int taken DBG_END_TAINTING_FUNC)
     FAIL();
   }
 
+  // For some conditions we only know about special cases.
+  // Check all of them here.
+  if (type == COND_SIGN_BIT || type == COND_NOT_SIGN_BIT)
+  {
+    if (eflags_type == PROP_TEST)
+    {
+      // Do nothing, since in this case we only compare to 0.
+      return;
+    }
+    else
+    {
+      FAIL();
+    }
+  }
+
   // This case should be covered by !is_valid_eflags()
   FAILIF(t1 == NULL && t2 == NULL);
 
