@@ -388,6 +388,39 @@ void nshr_taint_rest_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING
   }
 }
 
+
+void nshr_taint_rest_imm2mem(uint64_t value, int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int type DBG_END_TAINTING_FUNC)
+{
+  reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
+  
+  int found = 0;
+
+  unsigned char *val_bytes = (unsigned char *) &value;
+
+  for (int i = 0; i < access_size; i++)
+  {    
+    int index = mem_taint_find_index(addr, i);
+
+    int dst_id   = MEMTAINTVAL(index, addr + i);
+
+    if (dst_id > 0)
+    {
+      found = 1;
+
+      int newid = process_restrictor_imm(dst_id, val_bytes[i], type);
+
+      SETMEMTAINTVAL(index, addr + i, newid);
+
+      update_eflags(type, i, newid, -1);
+    }
+  }
+
+  if (!found)
+  {
+    invalidate_eflags();
+  }
+}
+
 void nshr_taint_rest_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int type DBG_END_TAINTING_FUNC)
 {
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);

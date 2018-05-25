@@ -358,7 +358,10 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
                   PROP_NAMES[type], REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp,
                          value, access_size);
 
-        FAIL();
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_rest_imm2mem, false, DBG_TAINT_NUM_PARAMS(8),
+                                 OPND_CREATE_INT64(value), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
+                                     OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp),
+                                          OPND_CREATE_INT32(access_size), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
       }
       else
       {
