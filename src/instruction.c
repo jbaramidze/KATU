@@ -117,18 +117,20 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
     if (base_reg > 0 && index_reg > 0)
     {
-      LDUMP("InsDetail:\tTaint %s + %d*%s + %d to %s, %d bytes.\n", REGNAME(base_reg), 
-                       scale, REGNAME(index_reg), disp, REGNAME(dst_reg), REGSIZE(dst_reg));
-
       FAILIF(scale == 0);
 
       if (base_reg == index_reg)
       {
+        LDUMP("InsDetail:\tZero extend %s to %s.\n", REGNAME(base_reg), REGNAME(dst_reg));
+
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regzx, false, DBG_TAINT_NUM_PARAMS(2),
                                OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       }
       else
       {
+        LDUMP("InsDetail:\tTaint combination of %s, and %s to %s.\n", REGNAME(base_reg), REGNAME(index_reg),
+        	                                REGNAME(dst_reg));
+
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_2coeffregs2reg, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(base_reg),
                                         OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
@@ -136,18 +138,14 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
     }
     else if (index_reg > 0 && scale > 0) 
     {
-
-      LDUMP("InsDetail:\tTaint %s to %s, %d bytes.\n", REGNAME(index_reg), 
-                       REGNAME(dst_reg), REGSIZE(dst_reg));
+      LDUMP("InsDetail:\tZero extend %s to %s.\n", REGNAME(index_reg), REGNAME(dst_reg));
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regzx, false, DBG_TAINT_NUM_PARAMS(2),
                              OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
     }
     else if (base_reg > 0) // dst = base + disp
     {
-      LDUMP("InsDetail:\tTaint %s + %d to %s, %d bytes.\n", REGNAME(base_reg), disp,
-                       REGNAME(dst_reg), REGSIZE(dst_reg));
-
+      LDUMP("InsDetail:\tZero extend %s to %s.\n", REGNAME(base_reg), REGNAME(dst_reg));
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regzx, false, DBG_TAINT_NUM_PARAMS(2),
                              OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
@@ -159,7 +157,7 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
   else if (opnd_is_rel_addr(src))
   {
-    LDUMP("InsDetail:\tRemove taint at %s, %d bytes\n", REGNAME(dst_reg), REGSIZE(dst_reg));
+    LDUMP("InsDetail:\tRemove taint at %s.\n", REGNAME(dst_reg));
 
     dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, DBG_TAINT_NUM_PARAMS(1),
                              OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
@@ -196,9 +194,9 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
       	FAILIF(!opnd_same(src2, dst));
 
-        LDUMP("InsDetail:\tTaint from base+disp %s:%s + %d*%s + %d to %s %d bytes.\n", 
+        LDUMP("InsDetail:\tTaint from [%s:%s + %d*%s + %d] to %s.\n", 
                                            REGNAME(seg_reg), REGNAME(base_reg), scale, 
-                                                REGNAME(index_reg), disp, REGNAME(dst_reg), REGSIZE(dst_reg));
+                                                REGNAME(index_reg), disp, REGNAME(dst_reg));
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_mem2reg, false, DBG_TAINT_NUM_PARAMS(6),
                                  OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
@@ -208,7 +206,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
       	FAILIF(!opnd_same(src2, dst));
 
-        LDUMP("InsDetail:\tTaint from base+disp %s:%s + %d*%s + %d to %s zero extend %d bytes to %d bytes.\n", 
+        LDUMP("InsDetail:\tTaint from [%s:%s + %d*%s + %d] to %s zero extend %d bytes to %d bytes.\n", 
                                            REGNAME(seg_reg), REGNAME(base_reg), scale, 
                                                 REGNAME(index_reg), disp, REGNAME(dst_reg), extend_from, REGSIZE(dst_reg));
 
@@ -221,7 +219,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
       	FAILIF(!opnd_same(src2, dst));
 
-        LDUMP("InsDetail:\tTaint from base+disp %s:%s + %d*%s + %d to %s sign extend %d bytes to %d bytes.\n", 
+        LDUMP("InsDetail:\tTaint from [%s:%s + %d*%s + %d] to %s sign extend %d bytes to %d bytes.\n", 
                                            REGNAME(seg_reg), REGNAME(base_reg), scale, 
                                                 REGNAME(index_reg), disp, REGNAME(dst_reg), extend_from, REGSIZE(dst_reg));
 
@@ -236,9 +234,9 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       	{
           reg_id_t src2_reg = opnd_get_reg(src2);
 
-          LDUMP("InsDetail:\tDoing '%s' to taint from base+disp %s:%s + %d*%s + %d and %s -> %s %d bytes.\n", PROP_NAMES[type], 
+          LDUMP("InsDetail:\tDoing '%s' at taint from [%s:%s + %d*%s + %d] and %s to %s.\n", PROP_NAMES[type], 
         	        REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, 
-                        REGNAME(src2_reg), REGNAME(dst_reg), REGSIZE(dst_reg));
+                        REGNAME(src2_reg), REGNAME(dst_reg));
 
           dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_memNreg2reg, false, DBG_TAINT_NUM_PARAMS(8),
                                  OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
@@ -254,9 +252,9 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
       	FAILIF(!opnd_same(src2, dst));
 
-        LDUMP("InsDetail:\tDoing '%s' to taint from base+disp %s:%s + %d*%s + %d and %s -> %s %d bytes.\n", PROP_NAMES[type], 
+        LDUMP("InsDetail:\tRestricting by '%s' at taint from [%s:%s + %d*%s + %d] and %s to %s.\n", PROP_NAMES[type], 
         	        REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, 
-                        REGNAME(dst_reg), REGNAME(dst_reg), REGSIZE(dst_reg));
+                        REGNAME(dst_reg), REGNAME(dst_reg));
 
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_rest_mem2reg, false, DBG_TAINT_NUM_PARAMS(7),
@@ -290,7 +288,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
       	FAILIF(!opnd_same(src2, dst));
 
-        LDUMP("InsDetail:\tRemove taint at %s, %d bytes\n", REGNAME(dst_reg), REGSIZE(dst_reg));
+        LDUMP("InsDetail:\tRemove taint at %s\n", REGNAME(dst_reg));
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, DBG_TAINT_NUM_PARAMS(1),
                                  OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
@@ -311,8 +309,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
         int64 value = opnd_get_immed_int(src1);
 
-        LDUMP("InsDetail:\tDoing '%s' to taint at %s, by 0x%x, %d bytes\n", PROP_NAMES[type], 
-        	             REGNAME(dst_reg), value, REGSIZE(dst_reg));
+        LDUMP("InsDetail:\tRestricting by '%s' taint at %s by 0x%x\n", PROP_NAMES[type], REGNAME(dst_reg), value);
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_rest_imm2reg, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT64(value), OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(type) 
@@ -336,7 +333,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       { 
       	FAILIF(!opnd_same(src2, dst));
 
-        LDUMP("InsDetail:\tRemove taint at base+disp %s: %s + %d*%s + %d, %d bytes.\n",
+        LDUMP("InsDetail:\tRemove taint at [%s: %s + %d*%s + %d], %d bytes.\n",
                                    REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, access_size);
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_baseindexmem_rm, false, DBG_TAINT_NUM_PARAMS(6),
@@ -354,7 +351,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
         int64 value = opnd_get_immed_int(src1);
 
-        LDUMP("InsDetail:\tDoing '%s' to taint at base+disp %s: %s + %d*%s + %d, by 0x%x, %d bytes\n", 
+        LDUMP("InsDetail:\tRestricting by '%s' taint at [%s:%s + %d*%s + %d], by 0x%x, %d bytes\n", 
                   PROP_NAMES[type], REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp,
                          value, access_size);
 
@@ -398,7 +395,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
         int64 value = opnd_get_immed_int(src1);
 
-        LDUMP("InsDetail:\tDoing '%s' to taint at pc-relative %llx, by 0x%x, %d bytes\n", 
+        LDUMP("InsDetail:\tRestricting by '%s' taint at pc-relative %llx, by 0x%x, %d bytes\n", 
                   PROP_NAMES[type], addr, value, access_size);
 
         FAIL();
@@ -433,9 +430,9 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
       	FAILIF(!opnd_same(src2, dst));
 
-        LDUMP("InsDetail:\tTaint from %s to base+disp %s: %s + %d*%s + %d, %d bytes.\n", 
+        LDUMP("InsDetail:\tTaint from %s to [%s: %s + %d*%s + %d].\n", 
                                         REGNAME(src1_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, 
-                                            REGNAME(index_reg), disp, REGSIZE(src1_reg));
+                                            REGNAME(index_reg), disp);
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2mem, false, DBG_TAINT_NUM_PARAMS(6), 
                                  OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
@@ -453,9 +450,9 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
           FAILIF(opnd_get_scale(src2)   != scale);
           FAILIF(opnd_get_disp(src2)    != disp);
 
-      	  LDUMP("InsDetail:\tDoing '%s' to taint from %s and base+disp %s:%s + %d*%s + %d to same mem., %d bytes.\n", PROP_NAMES[type], 
+      	  LDUMP("InsDetail:\tDoing '%s' to taint at %s and [%s:%s + %d*%s + %d] to same mem.\n", PROP_NAMES[type], 
           	                      REGNAME(src1_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), 
-          	                           disp, REGSIZE(src1_reg));
+          	                           disp);
 
           dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_reg2mem, false, DBG_TAINT_NUM_PARAMS(7),
                                    OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
@@ -495,8 +492,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
       	FAILIF(!opnd_same(src2, dst));
 
-        LDUMP("InsDetail:\tTaint from %s to %s zero extend %d bytes to %d bytes.\n", REGNAME(src1_reg), 
-        	             REGNAME(dst_reg), REGSIZE(src1_reg), REGSIZE(dst_reg));
+        LDUMP("InsDetail:\tZero extend %s to %s.\n", REGNAME(src1_reg), REGNAME(dst_reg));
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regzx, false, DBG_TAINT_NUM_PARAMS(2),
                                OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
@@ -505,8 +501,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
       	FAILIF(!opnd_same(src2, dst));
 
-        LDUMP("InsDetail:\tTaint from %s to %s sign extend %d bytes to %d bytes.\n", REGNAME(src1_reg), 
-        	             REGNAME(dst_reg), REGSIZE(src1_reg), REGSIZE(dst_reg));
+        LDUMP("InsDetail:\tSign extend %s to %s.\n", REGNAME(src1_reg), REGNAME(dst_reg));
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regsx, false, DBG_TAINT_NUM_PARAMS(2),
                                OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
@@ -533,8 +528,10 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       	    {
       	      if (!opnd_same(src2, dst))
       	      {
-                  dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2reg, false, DBG_TAINT_NUM_PARAMS(2),
-                               OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
+                LDUMP("InsDetail:\tTaint from %s to %s.\n", REGNAME(src1_reg), REGNAME(dst_reg));
+
+                dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2reg, false, DBG_TAINT_NUM_PARAMS(2),
+                                          OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       	      }
       	      else
       	      {
@@ -556,7 +553,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       	  }
       	  else
       	  {
-            LDUMP("InsDetail:\tDoing '%s' to taint from %s and %s -> %s.\n", PROP_NAMES[type], REGNAME(src1_reg), REGNAME(src2_reg), REGNAME(dst_reg));
+            LDUMP("InsDetail:\tDoing '%s' at taint from %s and %s to %s.\n", PROP_NAMES[type], REGNAME(src1_reg), REGNAME(src2_reg), REGNAME(dst_reg));
 
             dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_regNreg2reg, false, DBG_TAINT_NUM_PARAMS(4),
                                    OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(src2_reg), OPND_CREATE_INT32(dst_reg),
@@ -565,7 +562,9 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
         }
         else if (opnd_is_immed(src2))
         {
-            dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2reg, false, DBG_TAINT_NUM_PARAMS(2),
+          LDUMP("InsDetail:\tTaint from %s to %s.\n", REGNAME(src1_reg), REGNAME(dst_reg));
+
+          dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2reg, false, DBG_TAINT_NUM_PARAMS(2),
                             OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
         }
         else
@@ -579,7 +578,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
       	int src2_reg = opnd_get_reg(src2);
 
-        LDUMP("InsDetail:\tDoing '%s' to taint from %s and %s -> %s.\n", PROP_NAMES[type], REGNAME(src1_reg), REGNAME(src2_reg), REGNAME(dst_reg));
+        LDUMP("InsDetail:\tRestricting by '%s' taint at %s and %s to %s.\n", PROP_NAMES[type], REGNAME(src1_reg), REGNAME(src2_reg), REGNAME(dst_reg));
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_rest_reg2reg, false, DBG_TAINT_NUM_PARAMS(2),
                                  OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(type) 
@@ -615,8 +614,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
       	FAILIF(!opnd_same(src2, dst));
 
-        LDUMP("InsDetail:\tTaint %s to pc-relative %llx, %d bytes.\n", 
-                                        REGNAME(src1_reg), addr, REGSIZE(src1_reg));
+        LDUMP("InsDetail:\tTaint from %s to pc-relative %llx.\n", REGNAME(src1_reg), addr);
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2constmem, false, DBG_TAINT_NUM_PARAMS(2), 
                                  OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT64(addr) DBG_END_DR_CLEANCALL);
@@ -656,15 +654,15 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
       if (type == PROP_MOV)
       {
-        LDUMP("InsDetail:\tTaint from pc-relative %llx to %s %d bytes.\n", addr, REGNAME(dst_reg), REGSIZE(dst_reg));
+        LDUMP("InsDetail:\tTaint from pc-relative %llx to %s.\n", addr, REGNAME(dst_reg));
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_constmem2reg, false, DBG_TAINT_NUM_PARAMS(2),
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       }
       else if (prop_is_binary(type))
       {
-      	LDUMP("InsDetail:\tDoing '%s' to taint from pc-relative %llx to %s %d bytes.\n", PROP_NAMES[type], 
-                  addr, REGNAME(dst_reg), REGSIZE(dst_reg));
+      	LDUMP("InsDetail:\tDoing '%s' to taint at pc-relative %llx and %s to %s.\n", PROP_NAMES[type], 
+                  addr, REGNAME(dst_reg), REGNAME(dst_reg));
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_constmem2reg, false, DBG_TAINT_NUM_PARAMS(3),
                                 OPND_CREATE_INT64(addr), OPND_CREATE_INT32(dst_reg),
@@ -672,17 +670,17 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (type == PROP_MOVZX)
       {
-      	LDUMP("InsDetail:\tTaint from pc-relative %llx to %s %d bytes zero extended to %d bytes.\n", 
-      		      addr, REGNAME(dst_reg), extend_from, REGSIZE(dst_reg));
-
+      	LDUMP("InsDetail:\tZero extend %d bytes from %llx to %s, %d bytes.\n", 
+      		                    extend_from, addr, REGNAME(dst_reg), REGSIZE(dst_reg));
+ 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_constmem2regzx, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(dst_reg),
                                    OPND_CREATE_INT32(extend_from) DBG_END_DR_CLEANCALL);
       }
       else if (type == PROP_MOVSX)
       {
-      	LDUMP("InsDetail:\tTaint from pc-relative %llx to %s %d bytes sign extended to %d bytes.\n", 
-      		      addr, REGNAME(dst_reg), extend_from, REGSIZE(dst_reg));
+      	LDUMP("InsDetail:\tSign extend %d bytes from %llx to %s, %d bytes.\n", 
+      		                    extend_from, addr, REGNAME(dst_reg), REGSIZE(dst_reg));
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_constmem2regsx, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(dst_reg),
@@ -729,9 +727,9 @@ static void opcode_pop(void *drcontext, instr_t *instr, instrlist_t *ilist)
   {
     int dst_reg = opnd_get_reg(dst);
 
-    LDUMP("InsDetail:\tTaint from base+disp %s:%s + %d*%s + %d to %s %d bytes.\n", 
+    LDUMP("InsDetail:\tTaint from base+disp %s:%s + %d*%s + %d to %s.\n", 
                                        REGNAME(seg_reg), REGNAME(base_reg), scale, 
-                                            REGNAME(index_reg), disp, REGNAME(dst_reg), REGSIZE(dst_reg));
+                                            REGNAME(index_reg), disp, REGNAME(dst_reg));
 
     dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_mem2reg, false, DBG_TAINT_NUM_PARAMS(6),
                              OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
@@ -741,7 +739,6 @@ static void opcode_pop(void *drcontext, instr_t *instr, instrlist_t *ilist)
   {
   	FAIL();
   }
-
 }
 
 static void opcode_push(void *drcontext, instr_t *instr, instrlist_t *ilist)
@@ -777,9 +774,9 @@ static void opcode_push(void *drcontext, instr_t *instr, instrlist_t *ilist)
   {
   	int src_reg = opnd_get_reg(src);
 
-    LDUMP("InsDetail:\tTaint from %s to base+disp %s: %s + %d*%s + %d, %d bytes.\n", 
+    LDUMP("InsDetail:\tTaint from %s to [%s:%s + %d*%s + %d]\n", 
                                 REGNAME(src_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, 
-                                     REGNAME(index_reg), disp, REGSIZE(src_reg));
+                                     REGNAME(index_reg), disp);
 
     dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2mem, false, DBG_TAINT_NUM_PARAMS(6), 
                              OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
@@ -794,9 +791,9 @@ static void opcode_push(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
     int access_size = opnd_size_in_bytes(opnd_get_size(src));
 
-    LDUMP("InsDetail:\tTaint from %llx to base+disp %s: %s + %d*%s + %d, %d bytes.\n", 
+    LDUMP("InsDetail:\tTaint from %llx to [%s:%s + %d*%s + %d], %d bytes.\n", 
                                 addr, REGNAME(seg_reg), REGNAME(base_reg), 
-                                scale, REGNAME(index_reg), disp, access_size);
+                                     scale, REGNAME(index_reg), disp, access_size);
 
     dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_constmem2mem, false, DBG_TAINT_NUM_PARAMS(7), 
                              OPND_CREATE_INT64(addr), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
@@ -870,12 +867,16 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
   	{
       int reg2 = opnd_get_reg(second);
 
+      LDUMP("InsDetail:\tUpdating eflags by comparing %s and %s via '%s'.\n", REGNAME(reg1), REGNAME(reg2), PROP_NAMES[type]);
+
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_reg2reg, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT32(reg1), OPND_CREATE_INT32(reg2), OPND_CREATE_INT32(type)
                                       DBG_END_DR_CLEANCALL);
   	}
   	else if (opnd_is_immed(second))
   	{
+       LDUMP("InsDetail:\tUpdating eflags by comparing %s and immediate via '%s'.\n", REGNAME(reg1), PROP_NAMES[type]);
+
        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_reg2imm, false, DBG_TAINT_NUM_PARAMS(1),
                                  OPND_CREATE_INT32(reg1), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
   	}
@@ -886,6 +887,10 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
       reg_id_t seg_reg   = opnd_get_segment(second);
       int scale          = opnd_get_scale(second);
       int disp           = opnd_get_disp(second);
+
+      LDUMP("InsDetail:\tUpdating eflags by comparing %s and [%s:%s + %d*%s + %d] via '%s'.\n", REGNAME(reg1), 
+                                 REGNAME(seg_reg), REGNAME(base_reg), scale, 
+                                        REGNAME(index_reg), disp, PROP_NAMES[type]);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_reg2mem, false, DBG_TAINT_NUM_PARAMS(6),
                                  OPND_CREATE_INT32(reg1), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
@@ -912,6 +917,10 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
   	{
       int reg2 = opnd_get_reg(second);
 
+      LDUMP("InsDetail:\tUpdating eflags by comparing [%s:%s + %d*%s + %d] and %s via '%s'.\n", 
+                           REGNAME(seg_reg), REGNAME(base_reg), scale, 
+                                  REGNAME(index_reg), disp, REGNAME(reg1), PROP_NAMES[type]);
+
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_mem2reg, false, DBG_TAINT_NUM_PARAMS(7),
                                  OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                      OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(size),
@@ -919,7 +928,11 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
   	}
   	else if (opnd_is_immed(second))
   	{
-       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_mem2imm, false, DBG_TAINT_NUM_PARAMS(6),
+      LDUMP("InsDetail:\tUpdating eflags by comparing [%s:%s + %d*%s + %d] and immediate via '%s'.\n", 
+                           REGNAME(seg_reg), REGNAME(base_reg), scale, 
+                                  REGNAME(index_reg), disp, PROP_NAMES[type]);
+
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_mem2imm, false, DBG_TAINT_NUM_PARAMS(6),
                                  OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                      OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), OPND_CREATE_INT32(size),
                                          OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
@@ -941,13 +954,17 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
   	{
       int reg2 = opnd_get_reg(second);
 
+      LDUMP("InsDetail:\tUpdating eflags by comparing [%llx] and %s via '%s'.\n", addr, REGNAME(reg2), PROP_NAMES[type]);
+
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_constmem2reg, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(size), OPND_CREATE_INT32(reg2), 
                                      OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
   	}
   	else if (opnd_is_immed(second))
-  	{
-       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_constmem2imm, false, DBG_TAINT_NUM_PARAMS(2),
+  	{      
+  	  LDUMP("InsDetail:\tUpdating eflags by comparing [%llx] and immediate via '%s'.\n", addr, PROP_NAMES[type]);
+
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_constmem2imm, false, DBG_TAINT_NUM_PARAMS(2),
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(size), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
   	}
   	else
@@ -995,7 +1012,9 @@ static void process_conditional_jmp(void *drcontext, instr_t *instr, instrlist_t
 
     if (opnd_is_reg(src))
     {
-      int src_reg = opnd_get_reg(src);
+      int src_reg = opnd_get_reg(src);      
+
+      LDUMP("InsDetail:\tChecking bounds for indirect jump via %s.\n", REGNAME(src_reg));
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_ind_jmp_reg, false, DBG_TAINT_NUM_PARAMS(1),
                            OPND_CREATE_INT32(src_reg)  DBG_END_DR_CLEANCALL);
@@ -1014,6 +1033,9 @@ static void process_conditional_jmp(void *drcontext, instr_t *instr, instrlist_t
       {
       	FAIL();
       }
+
+      LDUMP("InsDetail:\tChecking bounds for indirect jump to [%s:%s + %d*%s + %d].\n", REGNAME(seg_reg), 
+      	                     REGNAME(base_reg), scale, REGNAME(index_reg), disp);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_ind_jmp_mem, false, DBG_TAINT_NUM_PARAMS(6),
                                OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
@@ -1038,6 +1060,10 @@ static void process_conditional_jmp(void *drcontext, instr_t *instr, instrlist_t
   	  /*
   	  FIXME: we don't need whole instr, but only opcode.
   	  */
+
+      LDUMP("InsDetail:\tUpdate bounds by conditional jump %s.\n", PROP_NAMES[cond]);
+
+
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cond_jmp, false, DBG_TAINT_NUM_PARAMS(2),
                            OPND_CREATE_INT64(instr_dupl(instr)), OPND_CREATE_INT32(cond)  
                                   DBG_END_DR_CLEANCALL);
@@ -1052,6 +1078,8 @@ static void process_conditional_jmp(void *drcontext, instr_t *instr, instrlist_t
   }
 }
 
+
+/////// CONTINUE ADDING LOGS FROM HERE, THEN DO THE NEG!
 static void opcode_convert(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
   FAILIF(instr_num_srcs(instr) != 1 || instr_num_dsts(instr) != 1);
@@ -1262,6 +1290,11 @@ static void wrong_opcode(void *drcontext, instr_t *instr, instrlist_t *ilist)
 { 
   LERROR("ERROR! instruction not implemented.\n");
 
+  FAIL();
+}
+
+static void opcode_neg(void *drcontext, instr_t *instr, instrlist_t *ilist)
+{
   FAIL();
 }
 
@@ -1537,6 +1570,8 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_shl]			= opcode_shift;		// 257
   instrFunctions[OP_shr]			= opcode_shift;		// 258
   instrFunctions[OP_sar]			= opcode_shift;		// 259
+
+  instrFunctions[OP_neg]            = opcode_neg;       // 261
 
   instrFunctions[OP_movsd]			= opcode_ignore;	// 296
 
