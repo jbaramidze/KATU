@@ -132,7 +132,7 @@ int solve_ilp(int id DBG_END_TAINTING_FUNC)
   */
 
   for(int i = 0; i < MAX_UID; i++) 
-  	       uids_objective_map[i] = -1;
+           uids_objective_map[i] = -1;
   uids_objective_vector_size = 0;
 
   recursively_get_uids_objective(id);
@@ -141,8 +141,8 @@ int solve_ilp(int id DBG_END_TAINTING_FUNC)
 
   for (int i = 0; i < MAX_UID; i++)
   {
-  	uids_total_map[i]    = uids_objective_map[i];
-  	uids_total_vector[i] = uids_objective_vector[i];
+    uids_total_map[i]    = uids_objective_map[i];
+    uids_total_vector[i] = uids_objective_vector[i];
   }
 
   LDUMP("ILP:\tPrinting objective: \n");
@@ -167,17 +167,17 @@ int solve_ilp(int id DBG_END_TAINTING_FUNC)
 
   while (uids_total_vector_size > 0)
   {
-  	int curr_uid = uids_total_vector[--uids_total_vector_size];
+    int curr_uid = uids_total_vector[--uids_total_vector_size];
 
-  	Group_restriction *gr = uids_[curr_uid].gr;
+    Group_restriction *gr = uids_[curr_uid].gr;
 
     while (gr != NULL)
     {
-  	  // Add this gr as a constraint.
-  	  int constrained_id = gr -> id;
+      // Add this gr as a constraint.
+      int constrained_id = gr -> id;
 
       for(int i = 0; i < MAX_UID; i++) 
-  	          uids_constr_map[i] = -1;
+              uids_constr_map[i] = -1;
       uids_constr_vector_size = 0;
 
       recursively_get_uids_constr(constrained_id);
@@ -209,15 +209,15 @@ int solve_ilp(int id DBG_END_TAINTING_FUNC)
         ilp_bound(uids_t, uids_constr_vector_size, GE);
       }
 
-  	  gr = gr -> next;
-  	}
+      gr = gr -> next;
+    }
   }
 
   LDUMP("ILP:\tPrinting total: \n");
 
   for (int i = 1; i < uids_counter; i++) 
   {
-  	LDUMP("%d (%d)  ", uids_total[i], uids_total_map[uids_total[i]]);
+    LDUMP("%d (%d)  ", uids_total[i], uids_total_map[uids_total[i]]);
   }
 
   LDUMP("\n");
@@ -241,7 +241,7 @@ int solve_ilp(int id DBG_END_TAINTING_FUNC)
 
   if (get_objective(lp) > 10 || get_objective(lp) < -10)
   {
-  	unbound = 1;
+    unbound = 1;
   }
 
   set_minim(lp);
@@ -259,7 +259,7 @@ int solve_ilp(int id DBG_END_TAINTING_FUNC)
 
   if (get_objective(lp) > 10 || get_objective(lp) < -10)
   {
-  	unbound = 1;
+    unbound = 1;
   }
 
   while (get_Nrows(lp) > 0)
@@ -269,20 +269,20 @@ int solve_ilp(int id DBG_END_TAINTING_FUNC)
 
   if (unbound == 0)
   {
-  	return 1;
+    return 1;
   }
   else
   {
     #ifdef DBG_PASS_INSTR
     drsym_info_t *func = get_func(instr_get_app_pc(dbg_instr));
     LWARNING("!!!WARNING!!! ILP Detected unbounded access for ID#%d (UID#%d), at %s  %s:%d\n", 
-    	               id, ID2UID(id), func -> name, func -> file, func -> line);
+                     id, ID2UID(id), func -> name, func -> file, func -> line);
     #else
     LWARNING("!!!WARNING!!! ILP Detected unbounded access for ID#%d (UID#%d)\n", id, ID2UID(id));
     #endif
 
     vulnerability_detected();
 
-  	return 0;
+    return 0;
   }
 }

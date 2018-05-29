@@ -228,23 +228,23 @@ typedef struct {
 # define MIN(x, y) ((x) <= (y) ? (x) : (y))
 #endif
 
-#define STOP_IF_NOT_ACTIVE(retval)    if (started_ != MODE_ACTIVE)  {  return retval;  }
+#define STOP_IF_NOT_ACTIVE(retval)  if (started_ != MODE_ACTIVE)  {  return retval;  }
 #define STOP_IF_IGNORING(retval)    if (started_ == MODE_IGNORING)  {  return retval;  }
-#define UNUSED(expr) 			do { (void)(expr); } while (0)
+#define UNUSED(expr)                do { (void)(expr); } while (0)
 
 #define FAIL() { dr_printf("FAIL! at %s:%d.\n", __FILE__, __LINE__); \
-                   dump(); \
-                 				exit(-1); }
+                 dump(); \
+                 exit(-1); }
 
 #define FAILIF(statement) { if (statement) { dr_printf("FAIL! at %s:%d.\n", __FILE__, __LINE__); \
-                               dump(); \
-                                 exit(-1); } }
+                                             dump(); \
+                                             exit(-1); } }
 
 #define DIE(text) { dr_printf(text); exit(-1); }
 
-#define GET_CONTEXT()			dr_mcontext_t mcontext = {sizeof(mcontext),DR_MC_ALL}; \
-					void *drcontext = dr_get_current_drcontext(); \
-					dr_get_mcontext(drcontext, &mcontext)
+#define GET_CONTEXT()      dr_mcontext_t mcontext = {sizeof(mcontext),DR_MC_ALL}; \
+                           void *drcontext = dr_get_current_drcontext(); \
+                           dr_get_mcontext(drcontext, &mcontext)
 
 
 //  AX AX
@@ -517,11 +517,10 @@ void nshr_taint_check_jmp_immed(uint64_t pc DBG_END_TAINTING_FUNC);
 
 // instructions.
 dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr_t *inst, bool for_trace, 
-	                              bool translating, void *user_data);
+                                bool translating, void *user_data);
 void nshr_init_opcodes(void);
 
 void nshr_pre_scanf(void *wrapcxt, OUT void **user_data);
 void nshr_post_scanf(void *wrapcxt, void *user_data);
-
 
 #endif

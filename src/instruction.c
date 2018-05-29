@@ -21,39 +21,39 @@ static int opcode2cond(int opcode)
 {
   switch(opcode)
   {
-  	case OP_jl:
-  	case OP_jl_short:
-  	case OP_jle:
-  	case OP_jle_short:
-  	case OP_cmovl:
-  	case OP_cmovle:
-  	case OP_setl:
-  	case OP_setle:
-  	    return COND_LESS;
-  	    break;
+    case OP_jl:
+    case OP_jl_short:
+    case OP_jle:
+    case OP_jle_short:
+    case OP_cmovl:
+    case OP_cmovle:
+    case OP_setl:
+    case OP_setle:
+        return COND_LESS;
+        break;
 
-  	case OP_jnl:
-  	case OP_jnl_short:
-  	case OP_jnle:
-  	case OP_jnle_short:
-  	case OP_cmovnl:
-  	case OP_cmovnle:
-  	case OP_setnl:
-  	case OP_setnle:
+    case OP_jnl:
+    case OP_jnl_short:
+    case OP_jnle:
+    case OP_jnle_short:
+    case OP_cmovnl:
+    case OP_cmovnle:
+    case OP_setnl:
+    case OP_setnle:
         return COND_MORE;
         break;
 
     case OP_jnz:
     case OP_jnz_short:
-  	case OP_cmovnz:
-  	case OP_setnz:
+    case OP_cmovnz:
+    case OP_setnz:
         return COND_NONZERO;
         break;
 
     case OP_jz:
     case OP_jz_short:
-  	case OP_cmovz:
-  	case OP_setz:
+    case OP_cmovz:
+    case OP_setz:
         return COND_ZERO;
         break;
 
@@ -63,8 +63,8 @@ static int opcode2cond(int opcode)
     case OP_jbe_short:
     case OP_cmovb:
     case OP_cmovbe:
-  	case OP_setb:
-  	case OP_setbe:
+    case OP_setb:
+    case OP_setbe:
         return COND_LESS_UNSIGNED;
         break;
 
@@ -74,8 +74,8 @@ static int opcode2cond(int opcode)
     case OP_jnbe_short:
     case OP_cmovnb:
     case OP_cmovnbe:
-  	case OP_setnb:
-  	case OP_setnbe:
+    case OP_setnb:
+    case OP_setnbe:
         return COND_MORE_UNSIGNED;
         break;
 
@@ -129,7 +129,7 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
       else
       {
         LDUMP("InsDetail:\tTaint combination of %s, and %s to %s.\n", REGNAME(base_reg), REGNAME(index_reg),
-        	                                REGNAME(dst_reg));
+                                          REGNAME(dst_reg));
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_2coeffregs2reg, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(base_reg),
@@ -164,12 +164,12 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
   else
   {
-  	FAIL();
+    FAIL();
   }
 }
 
 static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist, 
-	                      opnd_t src1, opnd_t src2, opnd_t dst, enum prop_type type)
+                        opnd_t src1, opnd_t src2, opnd_t dst, enum prop_type type)
 {
   // src: base+index
   if (opnd_is_base_disp(src1))
@@ -192,7 +192,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
       if (type == PROP_MOV)
       {
-      	FAILIF(!opnd_same(src2, dst));
+        FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tTaint from [%s:%s + %d*%s + %d] to %s.\n", 
                                            REGNAME(seg_reg), REGNAME(base_reg), scale, 
@@ -204,7 +204,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (type == PROP_MOVZX)
       {
-      	FAILIF(!opnd_same(src2, dst));
+        FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tTaint from [%s:%s + %d*%s + %d] to %s zero extend %d bytes to %d bytes.\n", 
                                            REGNAME(seg_reg), REGNAME(base_reg), scale, 
@@ -217,7 +217,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (type == PROP_MOVSX)
       {
-      	FAILIF(!opnd_same(src2, dst));
+        FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tTaint from [%s:%s + %d*%s + %d] to %s sign extend %d bytes to %d bytes.\n", 
                                            REGNAME(seg_reg), REGNAME(base_reg), scale, 
@@ -230,12 +230,12 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_binary(type))
       {
-      	if (opnd_is_reg(src2))
-      	{
+        if (opnd_is_reg(src2))
+        {
           reg_id_t src2_reg = opnd_get_reg(src2);
 
           LDUMP("InsDetail:\tDoing '%s' at taint from [%s:%s + %d*%s + %d] and %s to %s.\n", PROP_NAMES[type], 
-        	        REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, 
+                  REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, 
                         REGNAME(src2_reg), REGNAME(dst_reg));
 
           dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_memNreg2reg, false, DBG_TAINT_NUM_PARAMS(8),
@@ -250,10 +250,10 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_restrictor(type))
       {
-      	FAILIF(!opnd_same(src2, dst));
+        FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tRestricting by '%s' at taint from [%s:%s + %d*%s + %d] and %s to %s.\n", PROP_NAMES[type], 
-        	        REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, 
+                  REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, 
                         REGNAME(dst_reg), REGNAME(dst_reg));
 
 
@@ -265,7 +265,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else
       {
-      	FAIL();
+        FAIL();
       }
     }
     else
@@ -286,7 +286,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
       if (prop_is_mov(type))
       {
-      	FAILIF(!opnd_same(src2, dst));
+        FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tRemove taint at %s\n", REGNAME(dst_reg));
 
@@ -295,14 +295,14 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_binary(type))
       {
-      	if (opnd_is_reg(src2))
-      	{
-      	  FAILIF(!opnd_same(src2, dst));   // if it fails implement, but hope it's never used.
-      	}
-      	else
-      	{
-      		FAIL();
-      	}
+        if (opnd_is_reg(src2))
+        {
+          FAILIF(!opnd_same(src2, dst));   // if it fails implement, but hope it's never used.
+        }
+        else
+        {
+          FAIL();
+        }
         // Nothing to do in this case.
       }
       else if (prop_is_restrictor(type))
@@ -331,19 +331,19 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
       if (prop_is_mov(type))
       { 
-      	FAILIF(!opnd_same(src2, dst));
+        FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tRemove taint at [%s: %s + %d*%s + %d], %d bytes.\n",
                                    REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, access_size);
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_baseindexmem_rm, false, DBG_TAINT_NUM_PARAMS(6),
-      	                       OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
+                               OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                      OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), 
                                          OPND_CREATE_INT32(access_size) DBG_END_DR_CLEANCALL);
       }
       else if (prop_is_binary(type))
       {
-      	FAILIF(!opnd_same(src2, dst));
+        FAILIF(!opnd_same(src2, dst));
 
         // Nothing to do in this case.
       }
@@ -362,7 +362,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else
       {
-      	FAIL();
+        FAIL();
       }
     }
     else if (opnd_is_rel_addr(dst))
@@ -378,7 +378,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
       if (prop_is_mov(type))
       {
-      	FAILIF(!opnd_same(src2, dst));
+        FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tRemove taint at pc-relative %llx, %d bytes.\n", addr, access_size);
 
@@ -387,9 +387,9 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_binary(type))
       {
-      	FAILIF(!opnd_same(src2, dst));
+        FAILIF(!opnd_same(src2, dst));
 
-      	// Nothing to do in this case.
+        // Nothing to do in this case.
       }
       else if (prop_is_restrictor(type))
       {
@@ -402,7 +402,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else
       {
-      	FAIL();
+        FAIL();
       }
     }
     else
@@ -428,7 +428,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
       if (type == PROP_MOV)
       {
-      	FAILIF(!opnd_same(src2, dst));
+        FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tTaint from %s to [%s: %s + %d*%s + %d].\n", 
                                         REGNAME(src1_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, 
@@ -441,18 +441,18 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_binary(type))
       { 
-      	if (opnd_is_base_disp(src2))
-      	{
-      	  // make sure it's the same:
+        if (opnd_is_base_disp(src2))
+        {
+          // make sure it's the same:
           FAILIF(opnd_get_base(src2)    != base_reg);
           FAILIF(opnd_get_index(src2)   != index_reg);
           FAILIF(opnd_get_segment(src2) != seg_reg);
           FAILIF(opnd_get_scale(src2)   != scale);
           FAILIF(opnd_get_disp(src2)    != disp);
 
-      	  LDUMP("InsDetail:\tDoing '%s' to taint at %s and [%s:%s + %d*%s + %d] to same mem.\n", PROP_NAMES[type], 
-          	                      REGNAME(src1_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), 
-          	                           disp);
+          LDUMP("InsDetail:\tDoing '%s' to taint at %s and [%s:%s + %d*%s + %d] to same mem.\n", PROP_NAMES[type], 
+                                  REGNAME(src1_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), 
+                                       disp);
 
           dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_reg2mem, false, DBG_TAINT_NUM_PARAMS(7),
                                    OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
@@ -466,11 +466,11 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_restrictor(type))
       {
-      	FAIL();
+        FAIL();
       }
       else
       {
-      	FAIL();
+        FAIL();
       }
     }
     else if (opnd_is_reg(dst))
@@ -490,7 +490,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (type == PROP_MOVZX)
       {
-      	FAILIF(!opnd_same(src2, dst));
+        FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tZero extend %s to %s.\n", REGNAME(src1_reg), REGNAME(dst_reg));
 
@@ -499,7 +499,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (type == PROP_MOVSX)
       {
-      	FAILIF(!opnd_same(src2, dst));
+        FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tSign extend %s to %s.\n", REGNAME(src1_reg), REGNAME(dst_reg));
 
@@ -508,7 +508,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (type == PROP_MOV)
       {
-      	FAILIF(!opnd_same(src2, dst));
+        FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tTaint from %s to %s.\n", REGNAME(src1_reg), REGNAME(dst_reg));
 
@@ -517,42 +517,42 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_binary(type))
       {
-      	if (opnd_is_reg(src2))
-      	{
-      	  int src2_reg = opnd_get_reg(src2);
+        if (opnd_is_reg(src2))
+        {
+          int src2_reg = opnd_get_reg(src2);
 
-      	  if (src1_reg == src2_reg) // a = a + a
-      	  {
+          if (src1_reg == src2_reg) // a = a + a
+          {
             // SPECIALCASE: a + a = 2*a (taint stays the same)
-      	    if (type == PROP_ADD || type == PROP_ADC || type == PROP_IMUL)
-      	    {
-      	      if (!opnd_same(src2, dst))
-      	      {
+            if (type == PROP_ADD || type == PROP_ADC || type == PROP_IMUL)
+            {
+              if (!opnd_same(src2, dst))
+              {
                 LDUMP("InsDetail:\tTaint from %s to %s.\n", REGNAME(src1_reg), REGNAME(dst_reg));
 
                 dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2reg, false, DBG_TAINT_NUM_PARAMS(2),
                                           OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
-      	      }
-      	      else
-      	      {
-      	      	// Nothing to do.
-      	      }
-      	    }
-      	    // SPECIALCASE: a - a = 0 (taint removed)
-      	    else if (type == PROP_SUB || type == PROP_SBB)
-      	    {
+              }
+              else
+              {
+                // Nothing to do.
+              }
+            }
+            // SPECIALCASE: a - a = 0 (taint removed)
+            else if (type == PROP_SUB || type == PROP_SBB)
+            {
               LDUMP("InsDetail:\tRemoving taint from %s.\n", REGNAME(dst_reg));
 
               dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, DBG_TAINT_NUM_PARAMS(1),
                                    OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
-      	    }
-      	    else
-      	    {
-      	      FAIL();
-      	    }
-      	  }
-      	  else
-      	  {
+            }
+            else
+            {
+              FAIL();
+            }
+          }
+          else
+          {
             LDUMP("InsDetail:\tDoing '%s' at taint from %s and %s to %s.\n", PROP_NAMES[type], REGNAME(src1_reg), REGNAME(src2_reg), REGNAME(dst_reg));
 
             dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_regNreg2reg, false, DBG_TAINT_NUM_PARAMS(4),
@@ -574,9 +574,9 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_restrictor(type))
       {
-      	FAILIF(!opnd_same(src2, dst));
+        FAILIF(!opnd_same(src2, dst));
 
-      	int src2_reg = opnd_get_reg(src2);
+        int src2_reg = opnd_get_reg(src2);
 
         LDUMP("InsDetail:\tRestricting by '%s' taint at %s and %s to %s.\n", PROP_NAMES[type], REGNAME(src1_reg), REGNAME(src2_reg), REGNAME(dst_reg));
 
@@ -585,11 +585,11 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
                                      DBG_END_DR_CLEANCALL);
       }
       else if (prop_is_cond_mov(type))
-      {      	
-      	FAILIF(!opnd_same(src2, dst));
+      {        
+        FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tConditional taint of '%s' from %s to %s.\n", PROP_NAMES[type], 
-        	                 REGNAME(src1_reg), REGNAME(dst_reg));
+                           REGNAME(src1_reg), REGNAME(dst_reg));
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cond_mv_reg2reg, false, DBG_TAINT_NUM_PARAMS(4),
                                OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT64(instr_dupl(instr)),
@@ -597,7 +597,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else
       {
-      	FAIL();
+        FAIL();
       }
     }
     else if (opnd_is_rel_addr(dst))
@@ -612,7 +612,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
       if (type == PROP_MOV)
       {
-      	FAILIF(!opnd_same(src2, dst));
+        FAILIF(!opnd_same(src2, dst));
 
         LDUMP("InsDetail:\tTaint from %s to pc-relative %llx.\n", REGNAME(src1_reg), addr);
 
@@ -621,11 +621,11 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_restrictor(type))
       {
-      	FAIL();
+        FAIL();
       }
       else
       {
-      	FAIL();
+        FAIL();
       }
     }
     else
@@ -661,7 +661,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_binary(type))
       {
-      	LDUMP("InsDetail:\tDoing '%s' to taint at pc-relative %llx and %s to %s.\n", PROP_NAMES[type], 
+        LDUMP("InsDetail:\tDoing '%s' to taint at pc-relative %llx and %s to %s.\n", PROP_NAMES[type], 
                   addr, REGNAME(dst_reg), REGNAME(dst_reg));
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_constmem2reg, false, DBG_TAINT_NUM_PARAMS(3),
@@ -670,8 +670,8 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (type == PROP_MOVZX)
       {
-      	LDUMP("InsDetail:\tZero extend %d bytes from %llx to %s, %d bytes.\n", 
-      		                    extend_from, addr, REGNAME(dst_reg), REGSIZE(dst_reg));
+        LDUMP("InsDetail:\tZero extend %d bytes from %llx to %s, %d bytes.\n", 
+                              extend_from, addr, REGNAME(dst_reg), REGSIZE(dst_reg));
  
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_constmem2regzx, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(dst_reg),
@@ -679,8 +679,8 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (type == PROP_MOVSX)
       {
-      	LDUMP("InsDetail:\tSign extend %d bytes from %llx to %s, %d bytes.\n", 
-      		                    extend_from, addr, REGNAME(dst_reg), REGSIZE(dst_reg));
+        LDUMP("InsDetail:\tSign extend %d bytes from %llx to %s, %d bytes.\n", 
+                              extend_from, addr, REGNAME(dst_reg), REGSIZE(dst_reg));
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_constmem2regsx, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(dst_reg),
@@ -688,11 +688,11 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_restrictor(type))
       {
-      	FAIL();
+        FAIL();
       }
       else
       {
-      	FAIL();
+        FAIL();
       }
     }
     else
@@ -702,7 +702,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
   }
   else
   {
-  	FAIL();
+    FAIL();
   }
 }
 
@@ -737,7 +737,7 @@ static void opcode_pop(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
   else
   {
-  	FAIL();
+    FAIL();
   }
 }
 
@@ -772,7 +772,7 @@ static void opcode_push(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
   else if (opnd_is_reg(src))
   {
-  	int src_reg = opnd_get_reg(src);
+    int src_reg = opnd_get_reg(src);
 
     LDUMP("InsDetail:\tTaint from %s to [%s:%s + %d*%s + %d]\n", 
                                 REGNAME(src_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, 
@@ -802,7 +802,7 @@ static void opcode_push(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
   else
   {
-  	FAIL();
+    FAIL();
   }
 }
 
@@ -848,23 +848,23 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
   if (opcode == OP_cmp)
   {
-  	type = PROP_CMP;
+    type = PROP_CMP;
   }
   else if (opcode == OP_test)
   {
-  	type = PROP_TEST;
+    type = PROP_TEST;
   }
   else
   {
-  	FAIL();
+    FAIL();
   }
 
   if (opnd_is_reg(first))
   {
     int reg1 = opnd_get_reg(first);
 
-  	if (opnd_is_reg(second))
-  	{
+    if (opnd_is_reg(second))
+    {
       int reg2 = opnd_get_reg(second);
 
       LDUMP("InsDetail:\tUpdating eflags by comparing %s and %s via '%s'.\n", REGNAME(reg1), REGNAME(reg2), PROP_NAMES[type]);
@@ -872,14 +872,14 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_reg2reg, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT32(reg1), OPND_CREATE_INT32(reg2), OPND_CREATE_INT32(type)
                                       DBG_END_DR_CLEANCALL);
-  	}
-  	else if (opnd_is_immed(second))
-  	{
+    }
+    else if (opnd_is_immed(second))
+    {
        LDUMP("InsDetail:\tUpdating eflags by comparing %s and immediate via '%s'.\n", REGNAME(reg1), PROP_NAMES[type]);
 
        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_reg2imm, false, DBG_TAINT_NUM_PARAMS(1),
                                  OPND_CREATE_INT32(reg1), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
-  	}
+    }
     else if (opnd_is_base_disp(second))
     {
       reg_id_t base_reg  = opnd_get_base(second);
@@ -898,10 +898,10 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
                                           OPND_CREATE_INT32(disp), OPND_CREATE_INT32(type)
                                               DBG_END_DR_CLEANCALL);
     }
-  	else
-  	{
-  	  FAIL();
-  	}
+    else
+    {
+      FAIL();
+    }
   }
   else if (opnd_is_base_disp(first))
   {
@@ -914,7 +914,7 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
     int size = opnd_size_in_bytes(opnd_get_size(first));
 
     if (opnd_is_reg(second))
-  	{
+    {
       int reg2 = opnd_get_reg(second);
 
       LDUMP("InsDetail:\tUpdating eflags by comparing [%s:%s + %d*%s + %d] and %s via '%s'.\n", 
@@ -925,9 +925,9 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
                                  OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                      OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(size),
                                          OPND_CREATE_INT32(reg2), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
-  	}
-  	else if (opnd_is_immed(second))
-  	{
+    }
+    else if (opnd_is_immed(second))
+    {
       LDUMP("InsDetail:\tUpdating eflags by comparing [%s:%s + %d*%s + %d] and immediate via '%s'.\n", 
                            REGNAME(seg_reg), REGNAME(base_reg), scale, 
                                   REGNAME(index_reg), disp, PROP_NAMES[type]);
@@ -936,11 +936,11 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
                                  OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                      OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), OPND_CREATE_INT32(size),
                                          OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
-  	}
-  	else
-  	{
-  	  FAIL();
-  	}
+    }
+    else
+    {
+      FAIL();
+    }
   }
   else if (opnd_is_rel_addr(first))
   {
@@ -951,7 +951,7 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
     int size = opnd_size_in_bytes(opnd_get_size(first));
 
     if (opnd_is_reg(second))
-  	{
+    {
       int reg2 = opnd_get_reg(second);
 
       LDUMP("InsDetail:\tUpdating eflags by comparing [%llx] and %s via '%s'.\n", addr, REGNAME(reg2), PROP_NAMES[type]);
@@ -959,22 +959,22 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_constmem2reg, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(size), OPND_CREATE_INT32(reg2), 
                                      OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
-  	}
-  	else if (opnd_is_immed(second))
-  	{      
-  	  LDUMP("InsDetail:\tUpdating eflags by comparing [%llx] and immediate via '%s'.\n", addr, PROP_NAMES[type]);
+    }
+    else if (opnd_is_immed(second))
+    {      
+      LDUMP("InsDetail:\tUpdating eflags by comparing [%llx] and immediate via '%s'.\n", addr, PROP_NAMES[type]);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_constmem2imm, false, DBG_TAINT_NUM_PARAMS(2),
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(size), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
-  	}
-  	else
-  	{
-  	  FAIL();
-  	}
+    }
+    else
+    {
+      FAIL();
+    }
   }
   else
   {
-  	FAIL();
+    FAIL();
   }
 }
 
@@ -992,14 +992,14 @@ static void process_conditional_jmp(void *drcontext, instr_t *instr, instrlist_t
   else if (opcode == OP_call_ind || opcode == OP_jmp_ind)
   {
     // Just some tests, to be sure we catch all cases.
-  	if (opcode == OP_call_ind)
-  	{
-  	  FAILIF(instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 2);
-  	  FAILIF(!opnd_is_reg(instr_get_dst(instr, 0)) || opnd_get_reg(instr_get_dst(instr, 0)) != DR_REG_RSP);
-  	  FAILIF(!opnd_is_reg(instr_get_src(instr, 1)) || opnd_get_reg(instr_get_src(instr, 1)) != DR_REG_RSP);
-  	  FAILIF(!opnd_is_base_disp(instr_get_dst(instr, 1)) || opnd_get_base(instr_get_dst(instr, 1)) != DR_REG_RSP);
-  	}
-  	else if (opcode == OP_jmp_ind)
+    if (opcode == OP_call_ind)
+    {
+      FAILIF(instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 2);
+      FAILIF(!opnd_is_reg(instr_get_dst(instr, 0)) || opnd_get_reg(instr_get_dst(instr, 0)) != DR_REG_RSP);
+      FAILIF(!opnd_is_reg(instr_get_src(instr, 1)) || opnd_get_reg(instr_get_src(instr, 1)) != DR_REG_RSP);
+      FAILIF(!opnd_is_base_disp(instr_get_dst(instr, 1)) || opnd_get_base(instr_get_dst(instr, 1)) != DR_REG_RSP);
+    }
+    else if (opcode == OP_jmp_ind)
     {
       FAILIF(instr_num_srcs(instr) != 1 || instr_num_dsts(instr) != 0);
     }
@@ -1031,11 +1031,11 @@ static void process_conditional_jmp(void *drcontext, instr_t *instr, instrlist_t
 
       if (size != 8)
       {
-      	FAIL();
+        FAIL();
       }
 
       LDUMP("InsDetail:\tChecking bounds for indirect jump to [%s:%s + %d*%s + %d].\n", REGNAME(seg_reg), 
-      	                     REGNAME(base_reg), scale, REGNAME(index_reg), disp);
+                             REGNAME(base_reg), scale, REGNAME(index_reg), disp);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_ind_jmp_mem, false, DBG_TAINT_NUM_PARAMS(6),
                                OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
@@ -1053,13 +1053,13 @@ static void process_conditional_jmp(void *drcontext, instr_t *instr, instrlist_t
   }
   else
   {
-  	int cond = opcode2cond(opcode);
+    int cond = opcode2cond(opcode);
 
-  	if (cond != -1)
-  	{
-  	  /*
-  	  FIXME: we don't need whole instr, but only opcode.
-  	  */
+    if (cond != -1)
+    {
+      /*
+      FIXME: we don't need whole instr, but only opcode.
+      */
 
       LDUMP("InsDetail:\tUpdate bounds by conditional jump %s.\n", PROP_NAMES[cond]);
 
@@ -1067,13 +1067,13 @@ static void process_conditional_jmp(void *drcontext, instr_t *instr, instrlist_t
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cond_jmp, false, DBG_TAINT_NUM_PARAMS(2),
                            OPND_CREATE_INT64(instr_dupl(instr)), OPND_CREATE_INT32(cond)  
                                   DBG_END_DR_CLEANCALL);
-  	}
+    }
     else
     {
-  	  if (started_ == MODE_ACTIVE)  // Ignore other cases for now, since we cannot debug.
+      if (started_ == MODE_ACTIVE)  // Ignore other cases for now, since we cannot debug.
       {
-  	    FAIL();
-  	  }
+        FAIL();
+      }
     }
   }
 }
@@ -1094,50 +1094,50 @@ static void opcode_convert(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
   if (opcode == OP_cwde)
   {
-  	FAILIF(src_reg != DR_REG_AX);
+    FAILIF(src_reg != DR_REG_AX);
 
     // sign extend AL -> AX
-  	if (dst_reg == DR_REG_AX)
-  	{
+    if (dst_reg == DR_REG_AX)
+    {
       LDUMP("InsDetail:\tSign extend %s to %s.\n", REGNAME(DR_REG_AL), REGNAME(DR_REG_AX));
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regsx, false, DBG_TAINT_NUM_PARAMS(2),
                              OPND_CREATE_INT32(DR_REG_AL), OPND_CREATE_INT32(DR_REG_AX) DBG_END_DR_CLEANCALL);
-  	}
-  	// sign extend AX -> EAX
-  	else if (dst_reg == DR_REG_EAX)
-  	{
+    }
+    // sign extend AX -> EAX
+    else if (dst_reg == DR_REG_EAX)
+    {
       LDUMP("InsDetail:\tSign extend %s to %s.\n", REGNAME(DR_REG_AX), REGNAME(DR_REG_EAX));
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regsx, false, DBG_TAINT_NUM_PARAMS(2),
                              OPND_CREATE_INT32(DR_REG_AX), OPND_CREATE_INT32(DR_REG_EAX) DBG_END_DR_CLEANCALL);
-  	}
-  	// sign extend EAX -> RAX
-  	else if (dst_reg == DR_REG_RAX)
-  	{
+    }
+    // sign extend EAX -> RAX
+    else if (dst_reg == DR_REG_RAX)
+    {
       LDUMP("InsDetail:\tSign extend %s to %s.\n", REGNAME(DR_REG_EAX), REGNAME(DR_REG_RAX));
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regsx, false, DBG_TAINT_NUM_PARAMS(2),
                              OPND_CREATE_INT32(DR_REG_EAX), OPND_CREATE_INT32(DR_REG_RAX) DBG_END_DR_CLEANCALL);
-  	}
-  	else
-  	{
-  	  FAIL();
-  	}
+    }
+    else
+    {
+      FAIL();
+    }
   }
   else if (opcode == OP_cdq)
   {
     LDUMP("InsDetail:\tSign extend %d't byte of %s to %s.\n", REGSIZE(src_reg) - 1, REGNAME(src_reg), 
-    	           REGNAME(dst_reg));
+                 REGNAME(dst_reg));
 
-  	// sign extend AX -> DX:AX
+    // sign extend AX -> DX:AX
     dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_regbyte2regsx, false, DBG_TAINT_NUM_PARAMS(3),
                            OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(REGSIZE(src_reg) - 1), OPND_CREATE_INT32(dst_reg) 
                                 DBG_END_DR_CLEANCALL);
   }
   else
   {
-  	FAIL();
+    FAIL();
   }
 }
 
@@ -1290,7 +1290,7 @@ static void opcode_add(void *drcontext, instr_t *instr, instrlist_t *ilist)
     }
     else
     {
-    	FAIL();
+      FAIL();
     }
   }
 }
@@ -1352,7 +1352,7 @@ static void opcode_cond_set(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
   else
   {
-  	FAIL();
+    FAIL();
   }
 }
 
@@ -1374,7 +1374,7 @@ static void opcode_cond_mov(void *drcontext, instr_t *instr, instrlist_t *ilist)
     if (started_ == MODE_ACTIVE)  // Ignore other cases for now, since we cannot debug.
     {
       FAIL();
-  	}
+    }
   }
 }
 
@@ -1402,7 +1402,7 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
   else if (opnd_is_base_disp(t))
   {
-  	// We know, jump to main will be to *$rax
+    // We know, jump to main will be to *$rax
     STOP_IF_NOT_ACTIVE();
 
     reg_id_t base_reg  = opnd_get_base(t);
@@ -1433,7 +1433,7 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
   else if (opnd_is_rel_addr(t))
   {
-  	app_pc tmp;
+    app_pc tmp;
 
     instr_get_rel_addr_target(instr, &tmp);
 
@@ -1441,7 +1441,7 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
   else
   {
-  	FAIL();
+    FAIL();
   }
 
   LDUMP("InsDetail:\tProcessing jump to immediate %llx %s.\n", pc);
@@ -1462,154 +1462,153 @@ void nshr_init_opcodes(void)
   // Add custom handlers for all known opcodes.
   //
 
-  instrFunctions[OP_LABEL]			= opcode_ignore;	// 3
-  instrFunctions[OP_add]			= opcode_add;		// 4
-  instrFunctions[OP_or]				= opcode_add;		// 5
-  instrFunctions[OP_adc]			= opcode_add;		// 6
-  instrFunctions[OP_sbb]			= opcode_add;		// 7
-  instrFunctions[OP_and]			= opcode_add;		// 8
-  instrFunctions[OP_daa]			= wrong_opcode;		// 9 (BCD)
-  instrFunctions[OP_sub]			= opcode_add;		// 10
-  instrFunctions[OP_das]			= wrong_opcode;		// 11 (BCD)
-  instrFunctions[OP_xor]			= opcode_add;		// 12
-  instrFunctions[OP_aaa]			= wrong_opcode;		// 13 (BCD)
-  instrFunctions[OP_cmp]			= opcode_cmp;		// 14
-  instrFunctions[OP_aas]			= wrong_opcode;		// 15 (BCD)
-  instrFunctions[OP_inc]			= opcode_ignore;	// 16
-  instrFunctions[OP_dec]			= opcode_ignore;	// 17
-  instrFunctions[OP_push]			= opcode_push;		// 18
-  instrFunctions[OP_push_imm]		= opcode_push;		// 19
-  instrFunctions[OP_pop]			= opcode_pop;		// 20
-  instrFunctions[OP_pusha]			= wrong_opcode;		// 21
-  instrFunctions[OP_popa]			= wrong_opcode;		// 22
-  instrFunctions[OP_bound]			= wrong_opcode;		// 23
-  instrFunctions[OP_arpl]			= wrong_opcode;		// 24
-  instrFunctions[OP_imul]			= opcode_add;		// 25
-  instrFunctions[OP_jo_short]		= opcode_call;		// 26
-  instrFunctions[OP_jno_short]		= opcode_call;		// 27
-  instrFunctions[OP_jb_short]		= opcode_call;		// 28
-  instrFunctions[OP_jnb_short]		= opcode_call;		// 29
-  instrFunctions[OP_jz_short]		= opcode_call;		// 30
-  instrFunctions[OP_jnz_short]		= opcode_call;		// 31
-  instrFunctions[OP_jbe_short]		= opcode_call;		// 32
-  instrFunctions[OP_jnbe_short]		= opcode_call;		// 33
-  instrFunctions[OP_js_short]		= opcode_call;		// 34
-  instrFunctions[OP_jns_short]		= opcode_call;		// 35
-  instrFunctions[OP_jp_short]		= opcode_call;		// 36
-  instrFunctions[OP_jnp_short]		= opcode_call;		// 37
-  instrFunctions[OP_jl_short]		= opcode_call;		// 38
-  instrFunctions[OP_jnl_short]		= opcode_call;		// 39
-  instrFunctions[OP_jle_short]		= opcode_call;		// 40
-  instrFunctions[OP_jnle_short]		= opcode_call;		// 41
-  instrFunctions[OP_call]			= opcode_call;		// 42
-  instrFunctions[OP_call_ind]		= opcode_call;		// 43
-  instrFunctions[OP_call_far]		= opcode_call;		// 44
-  instrFunctions[OP_call_far_ind]	= opcode_call;		// 45
-  instrFunctions[OP_jmp]			= opcode_call;		// 46
-  instrFunctions[OP_jmp_short]		= opcode_call;		// 47
-  instrFunctions[OP_jmp_ind]		= opcode_call;		// 48
-  instrFunctions[OP_jmp_far]		= opcode_call;		// 49
-  instrFunctions[OP_jmp_far_ind]	= opcode_call;		// 50
-  instrFunctions[OP_loopne]			= wrong_opcode;		// 51
-  instrFunctions[OP_loope]			= wrong_opcode;		// 52
-  instrFunctions[OP_loop]			= wrong_opcode;		// 53
-  instrFunctions[OP_jecxz]			= wrong_opcode;		// 54
-  instrFunctions[OP_mov_ld]			= opcode_mov;		// 55	Can be: mem2reg
-  instrFunctions[OP_mov_st]			= opcode_mov;		// 56	Can be: imm2mem, reg2mem, reg2reg.
-  instrFunctions[OP_mov_imm]		= opcode_mov;		// 57   Can be: imm2reg.
-  instrFunctions[OP_mov_seg]		= wrong_opcode;   	// 58
-  instrFunctions[OP_mov_priv]		= wrong_opcode;		// 59
-  instrFunctions[OP_test]			= opcode_cmp;		// 60 
-  instrFunctions[OP_lea]			= opcode_lea;		// 61
+  instrFunctions[OP_LABEL]               = opcode_ignore;  // 3
+  instrFunctions[OP_add]                 = opcode_add;    // 4
+  instrFunctions[OP_or]                  = opcode_add;    // 5
+  instrFunctions[OP_adc]                 = opcode_add;    // 6
+  instrFunctions[OP_sbb]                 = opcode_add;    // 7
+  instrFunctions[OP_and]                 = opcode_add;    // 8
+  instrFunctions[OP_daa]                 = wrong_opcode;    // 9 (BCD)
+  instrFunctions[OP_sub]                 = opcode_add;    // 10
+  instrFunctions[OP_das]                 = wrong_opcode;    // 11 (BCD)
+  instrFunctions[OP_xor]                 = opcode_add;    // 12
+  instrFunctions[OP_aaa]                 = wrong_opcode;    // 13 (BCD)
+  instrFunctions[OP_cmp]                 = opcode_cmp;    // 14
+  instrFunctions[OP_aas]                 = wrong_opcode;    // 15 (BCD)
+  instrFunctions[OP_inc]                 = opcode_ignore;  // 16
+  instrFunctions[OP_dec]                 = opcode_ignore;  // 17
+  instrFunctions[OP_push]                = opcode_push;    // 18
+  instrFunctions[OP_push_imm]            = opcode_push;    // 19
+  instrFunctions[OP_pop]                 = opcode_pop;    // 20
+  instrFunctions[OP_pusha]               = wrong_opcode;    // 21
+  instrFunctions[OP_popa]                = wrong_opcode;    // 22
+  instrFunctions[OP_bound]               = wrong_opcode;    // 23
+  instrFunctions[OP_arpl]                = wrong_opcode;    // 24
+  instrFunctions[OP_imul]                = opcode_add;    // 25
+  instrFunctions[OP_jo_short]            = opcode_call;    // 26
+  instrFunctions[OP_jno_short]           = opcode_call;    // 27
+  instrFunctions[OP_jb_short]            = opcode_call;    // 28
+  instrFunctions[OP_jnb_short]           = opcode_call;    // 29
+  instrFunctions[OP_jz_short]            = opcode_call;    // 30
+  instrFunctions[OP_jnz_short]           = opcode_call;    // 31
+  instrFunctions[OP_jbe_short]           = opcode_call;    // 32
+  instrFunctions[OP_jnbe_short]          = opcode_call;    // 33
+  instrFunctions[OP_js_short]            = opcode_call;    // 34
+  instrFunctions[OP_jns_short]           = opcode_call;    // 35
+  instrFunctions[OP_jp_short]            = opcode_call;    // 36
+  instrFunctions[OP_jnp_short]           = opcode_call;    // 37
+  instrFunctions[OP_jl_short]            = opcode_call;    // 38
+  instrFunctions[OP_jnl_short]           = opcode_call;    // 39
+  instrFunctions[OP_jle_short]           = opcode_call;    // 40
+  instrFunctions[OP_jnle_short]          = opcode_call;    // 41
+  instrFunctions[OP_call]                = opcode_call;    // 42
+  instrFunctions[OP_call_ind]            = opcode_call;    // 43
+  instrFunctions[OP_call_far]            = opcode_call;    // 44
+  instrFunctions[OP_call_far_ind]        = opcode_call;    // 45
+  instrFunctions[OP_jmp]                 = opcode_call;    // 46
+  instrFunctions[OP_jmp_short]           = opcode_call;    // 47
+  instrFunctions[OP_jmp_ind]             = opcode_call;    // 48
+  instrFunctions[OP_jmp_far]             = opcode_call;    // 49
+  instrFunctions[OP_jmp_far_ind]         = opcode_call;    // 50
+  instrFunctions[OP_loopne]              = wrong_opcode;    // 51
+  instrFunctions[OP_loope]               = wrong_opcode;    // 52
+  instrFunctions[OP_loop]                = wrong_opcode;    // 53
+  instrFunctions[OP_jecxz]               = wrong_opcode;    // 54
+  instrFunctions[OP_mov_ld]              = opcode_mov;    // 55  Can be: mem2reg
+  instrFunctions[OP_mov_st]              = opcode_mov;    // 56  Can be: imm2mem, reg2mem, reg2reg.
+  instrFunctions[OP_mov_imm]             = opcode_mov;    // 57   Can be: imm2reg.
+  instrFunctions[OP_mov_seg]             = wrong_opcode;     // 58
+  instrFunctions[OP_mov_priv]            = wrong_opcode;    // 59
+  instrFunctions[OP_test]                = opcode_cmp;    // 60 
+  instrFunctions[OP_lea]                 = opcode_lea;    // 61
 
-  instrFunctions[OP_cwde]			= opcode_convert;	// 64
-  instrFunctions[OP_cdq]			= opcode_convert;	// 65
+  instrFunctions[OP_cwde]                = opcode_convert;  // 64
+  instrFunctions[OP_cdq]                 = opcode_convert;  // 65
 
-  instrFunctions[OP_ret]			= opcode_ret;		// 70
-  instrFunctions[OP_ret_far]		= opcode_ret;		// 71
+  instrFunctions[OP_ret]                 = opcode_ret;    // 70
+  instrFunctions[OP_ret_far]             = opcode_ret;    // 71
 
-  instrFunctions[OP_enter]			= opcode_ignore; 	// 74
-  instrFunctions[OP_leave]			= opcode_ignore;	// 75
+  instrFunctions[OP_enter]               = opcode_ignore;   // 74
+  instrFunctions[OP_leave]               = opcode_ignore;  // 75
 
-  instrFunctions[OP_cld]            = opcode_ignore;    // 91
-  instrFunctions[OP_std]            = opcode_ignore;    // 92
+  instrFunctions[OP_cld]                 = opcode_ignore;    // 91
+  instrFunctions[OP_std]                 = opcode_ignore;    // 92
 
-  instrFunctions[OP_syscall]		= opcode_ignore;	// 95 syscall processed by dr_register_post_syscall_event.
+  instrFunctions[OP_syscall]             = opcode_ignore;  // 95 syscall processed by dr_register_post_syscall_event.
 
-  instrFunctions[OP_nop_modrm]		= opcode_ignore;	// 101
+  instrFunctions[OP_nop_modrm]           = opcode_ignore;  // 101
 
-  instrFunctions[OP_cmovo]			= opcode_cond_mov;	// 110
-  instrFunctions[OP_cmovno]			= opcode_cond_mov;	// 111
-  instrFunctions[OP_cmovb]			= opcode_cond_mov;	// 112
-  instrFunctions[OP_cmovnb]			= opcode_cond_mov;	// 113
-  instrFunctions[OP_cmovz]			= opcode_cond_mov;	// 114
-  instrFunctions[OP_cmovnz]			= opcode_cond_mov;	// 115
-  instrFunctions[OP_cmovbe]			= opcode_cond_mov;	// 116
-  instrFunctions[OP_cmovnbe]		= opcode_cond_mov;	// 117
-  instrFunctions[OP_cmovs]			= opcode_cond_mov;	// 118
-  instrFunctions[OP_cmovns]			= opcode_cond_mov;	// 119
-  instrFunctions[OP_cmovp]			= opcode_cond_mov;	// 120
-  instrFunctions[OP_cmovnp]			= opcode_cond_mov;	// 121
-  instrFunctions[OP_cmovl]			= opcode_cond_mov;	// 122
-  instrFunctions[OP_cmovnl]			= opcode_cond_mov;	// 123
-  instrFunctions[OP_cmovle]			= opcode_cond_mov;	// 124
-  instrFunctions[OP_cmovnle]		= opcode_cond_mov;	// 125
+  instrFunctions[OP_cmovo]               = opcode_cond_mov;  // 110
+  instrFunctions[OP_cmovno]              = opcode_cond_mov;  // 111
+  instrFunctions[OP_cmovb]               = opcode_cond_mov;  // 112
+  instrFunctions[OP_cmovnb]              = opcode_cond_mov;  // 113
+  instrFunctions[OP_cmovz]               = opcode_cond_mov;  // 114
+  instrFunctions[OP_cmovnz]              = opcode_cond_mov;  // 115
+  instrFunctions[OP_cmovbe]              = opcode_cond_mov;  // 116
+  instrFunctions[OP_cmovnbe]             = opcode_cond_mov;  // 117
+  instrFunctions[OP_cmovs]               = opcode_cond_mov;  // 118
+  instrFunctions[OP_cmovns]              = opcode_cond_mov;  // 119
+  instrFunctions[OP_cmovp]               = opcode_cond_mov;  // 120
+  instrFunctions[OP_cmovnp]              = opcode_cond_mov;  // 121
+  instrFunctions[OP_cmovl]               = opcode_cond_mov;  // 122
+  instrFunctions[OP_cmovnl]              = opcode_cond_mov;  // 123
+  instrFunctions[OP_cmovle]              = opcode_cond_mov;  // 124
+  instrFunctions[OP_cmovnle]             = opcode_cond_mov;  // 125
 
-  instrFunctions[OP_jo]				= opcode_call;		// 152
-  instrFunctions[OP_jno]			= opcode_call;		// 153
-  instrFunctions[OP_jb]				= opcode_call;		// 154
-  instrFunctions[OP_jnb]			= opcode_call;		// 155
-  instrFunctions[OP_jz]				= opcode_call;		// 156
-  instrFunctions[OP_jnz]			= opcode_call;		// 157
-  instrFunctions[OP_jbe]			= opcode_call;		// 158
-  instrFunctions[OP_jnbe]			= opcode_call;		// 159
-  instrFunctions[OP_js]				= opcode_call;		// 160
-  instrFunctions[OP_jns]			= opcode_call;		// 161
-  instrFunctions[OP_jp]				= opcode_call;		// 162
-  instrFunctions[OP_jnp]			= opcode_call;		// 163
-  instrFunctions[OP_jl]				= opcode_call;		// 164
-  instrFunctions[OP_jnl]			= opcode_call;		// 165
-  instrFunctions[OP_jle]			= opcode_call;		// 166
-  instrFunctions[OP_jnle]			= opcode_call;		// 167
-  instrFunctions[OP_seto]			= opcode_cond_set;	// 168
-  instrFunctions[OP_setno]			= opcode_cond_set;	// 169
-  instrFunctions[OP_setb]			= opcode_cond_set;	// 170
-  instrFunctions[OP_setnb]			= opcode_cond_set;	// 171
-  instrFunctions[OP_setz]			= opcode_cond_set;	// 172
-  instrFunctions[OP_setnz]			= opcode_cond_set;	// 173
-  instrFunctions[OP_setbe]			= opcode_cond_set;	// 174
-  instrFunctions[OP_setnbe]			= opcode_cond_set;	// 175
-  instrFunctions[OP_sets]			= opcode_cond_set;	// 176
-  instrFunctions[OP_setns]			= opcode_cond_set;	// 177
-  instrFunctions[OP_setp]			= opcode_cond_set;	// 178
-  instrFunctions[OP_setnp]			= opcode_cond_set;	// 179
-  instrFunctions[OP_setl]			= opcode_cond_set;	// 180
-  instrFunctions[OP_setnl]			= opcode_cond_set;	// 181
-  instrFunctions[OP_setle]			= opcode_cond_set;	// 182
-  instrFunctions[OP_setnle]			= opcode_cond_set;	// 183
+  instrFunctions[OP_jo]                  = opcode_call;    // 152
+  instrFunctions[OP_jno]                 = opcode_call;    // 153
+  instrFunctions[OP_jb]                  = opcode_call;    // 154
+  instrFunctions[OP_jnb]                 = opcode_call;    // 155
+  instrFunctions[OP_jz]                  = opcode_call;    // 156
+  instrFunctions[OP_jnz]                 = opcode_call;    // 157
+  instrFunctions[OP_jbe]                 = opcode_call;    // 158
+  instrFunctions[OP_jnbe]                = opcode_call;    // 159
+  instrFunctions[OP_js]                  = opcode_call;    // 160
+  instrFunctions[OP_jns]                 = opcode_call;    // 161
+  instrFunctions[OP_jp]                  = opcode_call;    // 162
+  instrFunctions[OP_jnp]                 = opcode_call;    // 163
+  instrFunctions[OP_jl]                  = opcode_call;    // 164
+  instrFunctions[OP_jnl]                 = opcode_call;    // 165
+  instrFunctions[OP_jle]                 = opcode_call;    // 166
+  instrFunctions[OP_jnle]                = opcode_call;    // 167
+  instrFunctions[OP_seto]                = opcode_cond_set;  // 168
+  instrFunctions[OP_setno]               = opcode_cond_set;  // 169
+  instrFunctions[OP_setb]                = opcode_cond_set;  // 170
+  instrFunctions[OP_setnb]               = opcode_cond_set;  // 171
+  instrFunctions[OP_setz]                = opcode_cond_set;  // 172
+  instrFunctions[OP_setnz]               = opcode_cond_set;  // 173
+  instrFunctions[OP_setbe]               = opcode_cond_set;  // 174
+  instrFunctions[OP_setnbe]              = opcode_cond_set;  // 175
+  instrFunctions[OP_sets]                = opcode_cond_set;  // 176
+  instrFunctions[OP_setns]               = opcode_cond_set;  // 177
+  instrFunctions[OP_setp]                = opcode_cond_set;  // 178
+  instrFunctions[OP_setnp]               = opcode_cond_set;  // 179
+  instrFunctions[OP_setl]                = opcode_cond_set;  // 180
+  instrFunctions[OP_setnl]               = opcode_cond_set;  // 181
+  instrFunctions[OP_setle]               = opcode_cond_set;  // 182
+  instrFunctions[OP_setnle]              = opcode_cond_set;  // 183
 
-  instrFunctions[OP_movzx]			= opcode_mov;		// 195
+  instrFunctions[OP_movzx]               = opcode_mov;    // 195
 
-  instrFunctions[OP_movsx]			= opcode_mov;		// 200
+  instrFunctions[OP_movsx]               = opcode_mov;    // 200
 
-  instrFunctions[OP_shl]			= opcode_shift;		// 257
-  instrFunctions[OP_shr]			= opcode_shift;		// 258
-  instrFunctions[OP_sar]			= opcode_shift;		// 259
+  instrFunctions[OP_shl]                 = opcode_shift;    // 257
+  instrFunctions[OP_shr]                 = opcode_shift;    // 258
+  instrFunctions[OP_sar]                 = opcode_shift;    // 259
 
-  instrFunctions[OP_neg]            = opcode_neg;       // 261
+  instrFunctions[OP_neg]                 = opcode_neg;       // 261
 
-  instrFunctions[OP_movsd]			= opcode_ignore;	// 296
+  instrFunctions[OP_movsd]               = opcode_ignore;  // 296
 
-  instrFunctions[OP_nop]			= opcode_ignore;	// 381
+  instrFunctions[OP_nop]                 = opcode_ignore;  // 381
 
+  instrFunctions[OP_stos]                = opcode_cmps;    // 389 (memset)
+  instrFunctions[OP_rep_stos]            = opcode_cmps;      // 390 (memset)
 
-  instrFunctions[OP_stos]			= opcode_cmps;		// 389 (memset)
-  instrFunctions[OP_rep_stos]		= opcode_cmps;      // 390 (memset)
+  instrFunctions[OP_cmps]                = opcode_cmps;    // 393 (strcpy)
+  instrFunctions[OP_rep_cmps]            = opcode_cmps;    // 394 (strcpy)
 
-  instrFunctions[OP_cmps]			= opcode_cmps;		// 393 (strcpy)
-  instrFunctions[OP_rep_cmps]		= opcode_cmps;		// 394 (strcpy)
-
-  instrFunctions[OP_movsxd]			= opcode_mov;		// 597
+  instrFunctions[OP_movsxd]              = opcode_mov;    // 597
 }
 
 //
@@ -1626,7 +1625,7 @@ dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr
   int opcode = instr_get_opcode(instr);
 
   if (started_ == MODE_ACTIVE || 
-  	     (instr_is_cti(instr) && started_ != MODE_IGNORING))
+         (instr_is_cti(instr) && started_ != MODE_IGNORING))
   {
     if (started_ == MODE_ACTIVE)
     {

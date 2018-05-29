@@ -9,29 +9,29 @@
 
 void dump()
 {
-	dr_printf("\n\nStarting dump of IID:\n");
+  dr_printf("\n\nStarting dump of IID:\n");
 
-	for (int i = 0; i < nshr_tid_new_iid_get(); i++)
-	{
-		dr_printf("IID #%d\t\t -> id %d index %d\n", i, iids_[i].id, iids_[i].index);
-	}
+  for (int i = 0; i < nshr_tid_new_iid_get(); i++)
+  {
+    dr_printf("IID #%d\t\t -> id %d index %d\n", i, iids_[i].id, iids_[i].index);
+  }
 
-	dr_printf("\n\nStarting dump of IID:\n");
+  dr_printf("\n\nStarting dump of IID:\n");
 
-	for (int i = 0; i < nshr_tid_new_id_get(); i++)
-	{
-		dr_printf("ID #%d\t\t -> uid %d size %d ops_size: %d\n", i, ids_[i].uid, ids_[i].size, ids_[i].ops_size);
+  for (int i = 0; i < nshr_tid_new_id_get(); i++)
+  {
+    dr_printf("ID #%d\t\t -> uid %d size %d ops_size: %d\n", i, ids_[i].uid, ids_[i].size, ids_[i].ops_size);
 
-		if (ids_[i].ops_size > 0)
-		{
-			dr_printf("\tOperations:\n");
-			for (int j = 0; j < ids_[i].ops_size; j++)
-			{
-				dr_printf("\tOperation #%d: '%s' by %lld\n", j, PROP_NAMES[ids_[i].ops[j].type],
-					ids_[i].ops[j].value);
-			}
-		}
-	}
+    if (ids_[i].ops_size > 0)
+    {
+      dr_printf("\tOperations:\n");
+      for (int j = 0; j < ids_[i].ops_size; j++)
+      {
+        dr_printf("\tOperation #%d: '%s' by %lld\n", j, PROP_NAMES[ids_[i].ops[j].type],
+          ids_[i].ops[j].value);
+      }
+    }
+  }
 }
 
 static void
@@ -55,7 +55,7 @@ event_exit(void)
     for (int i = 0; i < instr_next_pointer; i++) 
     {
         // FIXME: we have a crash here sometimes.
-    	instr_destroy(dr_get_current_drcontext(), instr_pointers[i]);
+      instr_destroy(dr_get_current_drcontext(), instr_pointers[i]);
     }
 }
 
@@ -72,15 +72,15 @@ static void nshr_handle_dump(long long addr)
 
     if (tained == -1)
     {
-    	dr_printf("Helper:\t\tChecking taint for 0x%llx: TAINT#-1\n");
+      dr_printf("Helper:\t\tChecking taint for 0x%llx: TAINT#-1\n");
 
-    	return;
+      return;
     }
 
     int id = MEMTAINTVAL(index, addr);
 
-	dr_printf("Helper:\t\tChecking taint for 0x%llx: TAINT#%d, index %d.\n", 
-		          addr, id, index);
+  dr_printf("Helper:\t\tChecking taint for 0x%llx: TAINT#%d, index %d.\n", 
+              addr, id, index);
 
 }
 
@@ -136,7 +136,7 @@ void init(void)
 
   if (lp == NULL)
   {
-  	DIE("ERROR! Failed making LP\n");
+    DIE("ERROR! Failed making LP\n");
   }
 }
 
@@ -191,7 +191,7 @@ dr_init(client_id_t client_id)
   }
 
   if (!drwrap_init())
-  {	
+  {  
     DIE("ERROR! Failed starting drwrap.\n");
   }
 

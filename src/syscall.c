@@ -46,13 +46,13 @@ static void post_open(void *drcontext)
   }
 }
 
-int read_fd;
+int   read_fd;
 char *read_addr;
 
 static void pre_read(void *drcontext)
 {
-  read_fd   = 			dr_syscall_get_param(drcontext, 0);
-  read_addr = (char *)	dr_syscall_get_param(drcontext, 1);
+  read_fd   =          dr_syscall_get_param(drcontext, 0);
+  read_addr = (char *) dr_syscall_get_param(drcontext, 1);
 }
 
 static void post_read(void *drcontext)

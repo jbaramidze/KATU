@@ -297,7 +297,7 @@ drsym_info_t *get_func(app_pc pc)
 
   if (data == NULL)
   {
-  	return NULL;
+    return NULL;
   }
 
   static drsym_info_t sym;
@@ -317,7 +317,7 @@ drsym_info_t *get_func(app_pc pc)
 
   if (symres != DRSYM_SUCCESS)
   {
-  	return NULL;
+    return NULL;
   }
 
   return &sym;
@@ -516,14 +516,14 @@ int check_bounds_separately(int id DBG_END_TAINTING_FUNC)
     #ifdef DBG_PASS_INSTR
     drsym_info_t *func = get_func(instr_get_app_pc(dbg_instr));
     LWARNING("!!!WARNING!!! Detected unbounded access for ID#%d (UID#%d), at %s  %s:%d\n", 
-    	              id, ID2UID(id), func -> name, func -> file, func -> line);
+                    id, ID2UID(id), func -> name, func -> file, func -> line);
     #else
     LWARNING("!!!WARNING!!! Detected unbounded access for ID#%d (UID#%d)\n", id, ID2UID(id));
     #endif
 
     vulnerability_detected();
 
-  	return -1;
+    return -1;
   }
 
   return 0;
@@ -551,9 +551,9 @@ void check_bounds_mem(uint64_t addr, int size DBG_END_TAINTING_FUNC)
 {
   for (int i = 0; i < size; i++)
   {
-  	int index = mem_taint_find_index(addr, i);
+    int index = mem_taint_find_index(addr, i);
 
-  	int id = MEMTAINTVAL(index, addr + i);
+    int id = MEMTAINTVAL(index, addr + i);
 
     if (id > 0)
     {
