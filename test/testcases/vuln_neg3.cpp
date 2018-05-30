@@ -19,10 +19,7 @@ int main(int argc, char **argv)
   {
   	volatile int b = a*-29;
 
-  	if (b > -500)
-  	{
-  		volatile int c = A[b];
-  	}
+  	volatile int c = A[b];
   }
 
 }

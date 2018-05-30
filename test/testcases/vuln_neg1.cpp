@@ -11,17 +11,18 @@ int A[50];
 int main(int argc, char **argv)
 {
 
-  volatile int a = 3;
+
+ volatile int a = 3;
 
   nshrtaint((long long int) &a, 4);
 
   if (a < 100)
   {
-  	volatile int b = a*-29;
+  	volatile int b = a*-1;
 
-  	if (b > -500)
+  	if (b > -100)
   	{
-  		volatile int c = A[b];
+  	  volatile int c = A[a];
   	}
   }
 
