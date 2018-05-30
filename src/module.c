@@ -16,7 +16,7 @@ void dump()
     dr_printf("IID #%d\t\t -> id %d index %d\n", i, iids_[i].id, iids_[i].index);
   }
 
-  dr_printf("\n\nStarting dump of IID:\n");
+  dr_printf("\n\nStarting dump of ID:\n");
 
   for (int i = 0; i < nshr_tid_new_id_get(); i++)
   {
@@ -30,6 +30,22 @@ void dump()
         dr_printf("\tOperation #%d: '%s' by %lld\n", j, PROP_NAMES[ids_[i].ops[j].type],
           ids_[i].ops[j].value);
       }
+    }
+  }
+
+
+  dr_printf("\n\nStarting dump of UID:\n");
+
+  for (int i = 0; i < nshr_tid_new_uid_get(); i++)
+  {
+    dr_printf("UID #%d\t\t -> fd %d bounded %d\n", i, uids_[i].fd, uids_[i].bounded);
+
+    Group_restriction *gr = uids_[i].gr;
+
+    while(gr != NULL)
+    {
+      dr_printf("\tGroup restriction id %d type %d.\n", gr -> id, gr -> bound_type);
+      gr = gr -> next;
     }
   }
 }

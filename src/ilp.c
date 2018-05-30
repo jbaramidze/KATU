@@ -6,20 +6,18 @@
 #include "dr_api.h"
 #include "nashromi.h"
 
-
-static REAL KS[] = {1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1,
-                    1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1};
+static REAL KS[2048];
 
 // Used by recursively_get_uids, for objective function.
 
 static int uids_objective_map[MAX_UID];
-static int uids_objective_vector[MAX_UID];
+static int uids_objective_vector[MAX_UID][2];
 static int uids_objective_vector_size;
 
 // Used by recursively_get_uids, for constraints.
 
 static int uids_constr_map[MAX_UID];
-static int uids_constr_vector[MAX_UID];
+static int uids_constr_vector[MAX_UID][2];
 static int uids_constr_vector_size;
 
 // Used by to keep info about all the uids that matter.
@@ -38,15 +36,27 @@ static int uids_t[MAX_UID];
 static int uids_counter;
 static int uids_total[MAX_UID];
 
+void reset_KS()
+{
+  int t = 1;
+
+  for (int i = 0; i < 2048; i++)
+  {
+    KS[i] = t;
+    t *= -1;
+  }
+
+  return;
+}
 
 void ilp_bound(int *input, int size, int type)
 {
-  if (size > 256) 
+  if (size > 1024) 
   {
     DIE("ERROR! ILP Failure at [A]\n");
   }
 
-  int coeff[512];
+  int coeff[2048];
 
   for (int i = 0; i < size; i++)
   {
@@ -62,12 +72,12 @@ void ilp_bound(int *input, int size, int type)
 
 void ilp_objective(int *input, int size)
 {
-  if (size > 256) 
+  if (size > 1024) 
   {
     DIE("ERROR! ILP Failure at [C]\n");
   }
 
-  int coeff[512];
+  int coeff[2048];
 
   for (int i = 0; i < size; i++)
   {
@@ -82,11 +92,25 @@ void ilp_objective(int *input, int size)
 }
 
 
-static void recursively_get_uids_objective(int id)
+static void recursively_get_uids_objective(int id, int type)
 {
+  int id_began_at = uids_objective_vector_size;
+
   if (uids_objective_map[ID2UID(id)] == -1)
   {
-    uids_objective_vector[uids_objective_vector_size++] = ID2UID(id);
+    uids_objective_vector[uids_objective_vector_size][0] = ID2UID(id);
+
+    if (type == PROP_ADD)
+    {
+      uids_objective_vector[uids_objective_vector_size][1] = 1;
+    }
+    else if (type == PROP_SUB)
+    {
+      uids_objective_vector[uids_objective_vector_size][1] = -1;
+    }
+
+    uids_objective_vector_size++;
+
     uids_objective_map[ID2UID(id)] = uids_counter;
 
     uids_total[uids_counter++] = ID2UID(id);
@@ -94,15 +118,39 @@ static void recursively_get_uids_objective(int id)
 
   for (int i = 0; i < ID2OPSIZE(id); i++)
   {
-    recursively_get_uids_objective(ID2OP(id, i).value);
+    if (ID2OP(id, i).type == PROP_NEG)
+    {
+      for (int i = 2*id_began_at; i < 2*uids_objective_vector_size; i++)
+      {
+        KS[i] *= -1;
+      }
+    }
+    else
+    {
+      recursively_get_uids_objective(ID2OP(id, i).value, ID2OP(id, i).type);
+    }
   }
 }
 
-static void recursively_get_uids_constr(int id)
+static void recursively_get_uids_constr(int id, int type)
 {
+  int id_began_at = uids_constr_vector_size;
+
   if (uids_constr_map[ID2UID(id)] == -1)
   {
-    uids_constr_vector[uids_constr_vector_size++] = ID2UID(id);
+    uids_constr_vector[uids_constr_vector_size][0] = ID2UID(id);
+
+    if (type == PROP_ADD)
+    {
+      uids_constr_vector[uids_constr_vector_size][1] = 1;
+    }
+    else if (type == PROP_SUB)
+    {
+      uids_constr_vector[uids_constr_vector_size][1] = -1;
+    }
+
+    uids_constr_vector_size++;
+
     uids_constr_map[ID2UID(id)] = 1;
   }
 
@@ -117,7 +165,17 @@ static void recursively_get_uids_constr(int id)
 
   for (int i = 0; i < ID2OPSIZE(id); i++)
   {
-    recursively_get_uids_constr(ID2OP(id, i).value);
+    if (ID2OP(id, i).type == PROP_NEG)
+    {
+      for (int i = 2*id_began_at; i < 2*uids_constr_vector_size; i++)
+      {
+        KS[i] *= -1;
+      }
+    }
+    else
+    {
+      recursively_get_uids_constr(ID2OP(id, i).value, ID2OP(id, i).type);
+    }
   }
 }
 
@@ -127,6 +185,8 @@ int solve_ilp(int id DBG_END_TAINTING_FUNC)
 
   uids_counter = 1;
 
+  reset_KS();
+
   /*
   Get uids paticipating in this id.
   */
@@ -135,30 +195,42 @@ int solve_ilp(int id DBG_END_TAINTING_FUNC)
            uids_objective_map[i] = -1;
   uids_objective_vector_size = 0;
 
-  recursively_get_uids_objective(id);
+  recursively_get_uids_objective(id, PROP_ADD);
 
   uids_total_vector_size = uids_objective_vector_size;
 
   for (int i = 0; i < MAX_UID; i++)
   {
     uids_total_map[i]    = uids_objective_map[i];
-    uids_total_vector[i] = uids_objective_vector[i];
+    uids_total_vector[i] = uids_objective_vector[i][0];
   }
 
   LDUMP("ILP:\tPrinting objective: \n");
 
   for (int i = 0; i < uids_objective_vector_size; i++) 
   {
-    LDUMP("%d (%d)  ", uids_objective_vector[i], uids_total_map[uids_objective_vector[i]]);
+    LDUMP("%d*%d (%d)  ", uids_objective_vector[i][1], uids_objective_vector[i][0], 
+                                uids_total_map[uids_objective_vector[i]]);
   }
 
   LDUMP("\n");
 
-  for (int i = 0; i < uids_objective_vector_size; i++) uids_t[i] = uids_total_map[uids_objective_vector[i]];
+  for (int i = 0; i < uids_objective_vector_size; i++) 
+  {
+      uids_t[i] = uids_total_map[uids_objective_vector[i][0]];
+
+      if (uids_objective_vector[i][1] == -1)
+      {
+        KS[2*i]*= -1;
+        KS[2*i + 1]*= -1;
+      }
+  }
 
   set_add_rowmode(lp, FALSE);
 
   ilp_objective(uids_t, uids_objective_vector_size);
+
+  reset_KS();
 
   /*
   For each uid, get constraint lists,
@@ -168,6 +240,23 @@ int solve_ilp(int id DBG_END_TAINTING_FUNC)
   while (uids_total_vector_size > 0)
   {
     int curr_uid = uids_total_vector[--uids_total_vector_size];
+
+    // Before moving on to group restrictions, add direct ones.
+    if (uids_[curr_uid].bounded & TAINT_BOUND_LOW)
+    {
+      ilp_bound(&uids_total_map[curr_uid], 1, LE);
+    }
+
+    if (uids_[curr_uid].bounded & TAINT_BOUND_HIGH)
+    {
+      ilp_bound(&uids_total_map[curr_uid], 1, GE);
+    }
+
+    if (uids_[curr_uid].bounded & TAINT_BOUND_FIX)
+    {
+      ilp_bound(&uids_total_map[curr_uid], 1, LE);
+      ilp_bound(&uids_total_map[curr_uid], 1, GE);
+    }   
 
     Group_restriction *gr = uids_[curr_uid].gr;
 
@@ -180,20 +269,30 @@ int solve_ilp(int id DBG_END_TAINTING_FUNC)
               uids_constr_map[i] = -1;
       uids_constr_vector_size = 0;
 
-      recursively_get_uids_constr(constrained_id);
+      recursively_get_uids_constr(constrained_id, PROP_ADD);
 
       LDUMP("ILP:\tPrinting constraint: \n");
 
       for (int i = 0; i < uids_constr_vector_size; i++) 
       {
-        LDUMP("%d (%d)  ", uids_constr_vector[i], uids_total_map[uids_constr_vector[i]]);
+        LDUMP("%d*%d (%d)  ", uids_constr_vector[i][1], uids_constr_vector[i][0], 
+                                 uids_total_map[uids_constr_vector[i][0]]);
       }
 
       LDUMP("[%d]\n", gr -> bound_type);
 
       set_add_rowmode(lp, TRUE);
 
-      for (int i = 0; i < uids_constr_vector_size; i++) uids_t[i] = uids_total_map[uids_constr_vector[i]];
+      for (int i = 0; i < uids_constr_vector_size; i++) 
+      {
+        uids_t[i] = uids_total_map[uids_constr_vector[i][0]];
+
+        if (uids_constr_vector[i][1] == -1)
+        {
+          KS[2*i]*= -1;
+          KS[2*i + 1]*= -1;
+        }
+      }
 
       if (gr -> bound_type & TAINT_BOUND_LOW)
       {
@@ -209,9 +308,13 @@ int solve_ilp(int id DBG_END_TAINTING_FUNC)
         ilp_bound(uids_t, uids_constr_vector_size, GE);
       }
 
+      reset_KS();
+
       gr = gr -> next;
     }
   }
+
+
 
   LDUMP("ILP:\tPrinting total: \n");
 

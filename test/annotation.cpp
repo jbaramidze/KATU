@@ -10,28 +10,20 @@ int A[50];
 
 int main(int argc, char **argv)
 {
-  volatile int a = 0;
+
+
+ volatile int a = 3;
 
   nshrtaint((long long int) &a, 4);
 
-
-  asm volatile (
-  	"neg %%eax"
-  	: "=a"(a) : "a"(a) :
-  	);
-
-  printf("%d.\n", a);
-/*
-
   if (a < 100)
   {
-  	a = a*-1;
-  	if (a < 100)
+  	volatile int b = a*-1;
+
+  	if (b < 100)
   	{
-  	  a = a*-11;
-  	  printf("a.\n\n\n");
-  	  volatile int b = A[a];
+  	  volatile int c = A[a];
   	}
   }
-  */
+
 }

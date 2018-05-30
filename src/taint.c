@@ -844,6 +844,40 @@ void nshr_taint_cond_mv_reg2reg(int src_reg, int dst_reg, instr_t *instr, int ty
   }
 }
 
+void nshr_taint_mv_reg2regneg(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
+{
+  LDEBUG_TAINT(false, "NEGATING REG %s size %d -> REG %s size %d.\n", 
+             REGNAME(src_reg), REGSIZE(src_reg), 
+                 REGNAME(dst_reg), REGSIZE(dst_reg));
+
+
+  FAILIF(REGSIZE(src_reg) > REGSIZE(dst_reg));
+
+  for (unsigned int i = 0; i < REGSIZE(src_reg); i++)
+  {
+    if (REGTAINTED(src_reg, i))
+    {
+      int newid = nshr_tid_modify_id_by_symbol(REGTAINTVAL(src_reg, i), PROP_NEG, 0);
+
+      LDUMP_TAINT(i, (REGTAINTED(dst_reg, i) || REGTAINTED(src_reg, i)), 
+                       "  REG %s byte %d TAINT#%d NEGATED TO %d -> REG %s byte %d TAINT#%d TOTAL %d.\n", 
+                             REGNAME(src_reg), i, REGTAINTVAL(src_reg, i), newid,
+                                 REGNAME(dst_reg), i, REGTAINTVAL(dst_reg, i), REGSIZE(dst_reg));
+
+      SETREGTAINTVAL(dst_reg, i, newid);
+    }
+    else
+    {
+      REGTAINTRM(dst_reg, i);
+    }
+  }
+
+  if (REGSIZE(dst_reg) > REGSIZE(src_reg))
+  {
+    FAIL();
+  }
+}
+
 void nshr_taint_mv_reg2reg(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
 {
   // mask1 -> mask2

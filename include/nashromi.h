@@ -121,7 +121,10 @@ enum prop_type {
   COND_LESS_UNSIGNED,
   COND_MORE_UNSIGNED,
   COND_SIGN_BIT,
-  COND_NOT_SIGN_BIT
+  COND_NOT_SIGN_BIT,
+
+  // Extra
+  PROP_NEG
 
 };
 
@@ -133,7 +136,9 @@ static const char *PROP_NAMES[] = {
     "or", "xor", "and",
     "cmp", "test",
     "if_less", "if_more", "if_equal", "if_notequal", "if_nonzero", "if_zero", 
-    "if_less_unsigned", "if_more_unsigned", "if_sign_bit", "if_not_sign_bit"
+    "if_less_unsigned", "if_more_unsigned", "if_sign_bit", "if_not_sign_bit",
+
+    "negate"
 };
 
 int prop_is_binary(enum prop_type type );
@@ -191,7 +196,9 @@ typedef struct {
   Operations ops[DEFAULT_OPERATIONS];
   int ops_size;
 
-  // no absolutely necessary.
+  int negated;
+
+  // not used for now, just propagated.
   int size;
 } ID_entity;
 
@@ -339,7 +346,11 @@ static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 #endif
 
 #ifdef LOGDUMP
-#define LDUMP(...) dr_printf(__VA_ARGS__)
+  #ifdef LOG_LINES
+  #define LDUMP(...) { dr_printf("AT %d:  ", __LINE__); dr_printf(__VA_ARGS__); }
+  #else
+  #define LDUMP(...) dr_printf(__VA_ARGS__)
+  #endif
 #else
 #define LDUMP(...)
 #endif
@@ -434,14 +445,16 @@ extern int nextUID;
 extern int nextID;
 extern int nextIID;
 
-int nshr_tid_new_id();
+int nshr_tid_new_id(int uid);
 int nshr_tid_new_id_get();
 int nshr_tid_new_iid(int id, int index);
 int nshr_tid_new_iid_get();
 int nshr_tid_new_uid(int fd);
+int nshr_tid_new_uid_get();
 int nshr_tid_copy_id(int id);
 int nshr_make_id_by_merging_all_ids_in2regs(int reg1, int reg2);
 int nshr_tid_modify_id_by_symbol(int dst_taint, enum prop_type operation, int src_taint);
+void nshr_id_add_op(int id, enum prop_type operation, int modify_by);
 
 //
 // Function declarations.
@@ -460,6 +473,7 @@ void nshr_taint(reg_t addr, unsigned int size, int fd);
 
 void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_END_TAINTING_FUNC);
 void nshr_taint_mv_reg2reg(int src_reg, int dst_reg DBG_END_TAINTING_FUNC);
+void nshr_taint_mv_reg2regneg(int src_reg, int dst_reg DBG_END_TAINTING_FUNC);
 
 // Works also if size of source is bigger, just copies necessary part.
 void nshr_taint_mv_reg2regzx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC);
@@ -509,6 +523,7 @@ void nshr_taint_rest_imm2mem(uint64_t value, int seg_reg, int base_reg, int inde
 void nshr_taint_shift_reg(int dst_reg, int64 value, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC);
 void nshr_taint_strsto_rep(int size DBG_END_TAINTING_FUNC);
+void nshr_taint_neg(int dst_reg DBG_END_TAINTING_FUNC);
 
 void nshr_taint_check_ret(DBG_END_TAINTING_FUNC_ALONE);
 void nshr_taint_check_jmp_reg(int reg DBG_END_TAINTING_FUNC);

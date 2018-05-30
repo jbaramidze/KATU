@@ -33,6 +33,11 @@ lprec           *lp;
 instr_t *instr_pointers[1024*16];
 int instr_next_pointer = 0;
 
+void add_bound(int uid, int mask)
+{
+  uids_[uid].bounded |= mask;
+}
+
 int prop_is_binary(enum prop_type type )
 {
   return type >= PROP_ADD && type <= PROP_IMUL;
@@ -53,8 +58,12 @@ int prop_is_cond_mov(enum prop_type type )
   return type >= COND_LESS && type <= COND_ZERO;
 }
 
-int nshr_tid_new_id()
+int nshr_tid_new_id(int uid)
 {
+  ids_[nextID].uid      = uid;
+  ids_[nextID].ops_size = 0;
+  ids_[nextID].negated  = 0;
+
   return nextID++;
 }
 
@@ -76,9 +85,14 @@ int nshr_tid_new_iid_get()
   return nextIID;
 }
 
+int nshr_tid_new_uid_get()
+{
+  return nextUID;
+}
+
 int nshr_tid_copy_id(int id)
 {
-  int newid = nshr_tid_new_id();
+  int newid = nshr_tid_new_id(ids_[id].uid);
 
   LDEBUG("Utils:\t\tCopied id %d to %d.\n", id, newid);
 
@@ -86,8 +100,8 @@ int nshr_tid_copy_id(int id)
   First copy everything from old id.
   */
 
-  ids_[newid].uid      = ids_[id].uid;
   ids_[newid].ops_size = ids_[id].ops_size;
+  ids_[newid].negated  = ids_[id].negated;
   ids_[newid].size     = ids_[id].size;
 
   int i;
@@ -109,10 +123,36 @@ void nshr_id_add_op(int id, enum prop_type operation, int modify_by)
     if (ID2OP(id, i).value == modify_by) return;
   }
 
+  // Also make sure they don't have same uid
+  if (ID2UID(id) == ID2UID(modify_by))
+  {
+    return;
+  }
+
   ID2OP(id, ID2OPSIZE(id)).type  = operation;
   ID2OP(id, ID2OPSIZE(id)).value = modify_by;
 
   ID2OPSIZE(id)++;
+}
+
+static int lower_bound(int uid)
+{
+  if ((uids_[uid].bounded & (TAINT_BOUND_LOW | TAINT_BOUND_FIX)) == 0)
+  {
+    return 0;
+  }
+
+  return 1;
+}
+
+static int higher_bound(int uid)
+{
+  if ((uids_[uid].bounded & (TAINT_BOUND_HIGH | TAINT_BOUND_FIX)) == 0)
+  {
+    return 0;
+  }
+
+  return 1;
 }
 
 
@@ -123,16 +163,19 @@ int nshr_make_id_by_merging_all_ids_in2regs(int reg1, int reg2)
 
   // First, make sure at least one of them is tainted.
   int tainted = 0;
+  int uid     = -1;
 
   for(unsigned int i = 0; i < REGSIZE(reg1); i++)
   {
     if (REGTAINTED(reg1, i))
     {
       tainted = 1;
+      uid = ID2UID(REGTAINTVAL(reg1, i));
     }
-    if (REGTAINTED(reg2, i))
+    else if (REGTAINTED(reg2, i))
     {
       tainted = 1;
+      uid = ID2UID(REGTAINTVAL(reg2, i));
     }
   }
 
@@ -141,7 +184,7 @@ int nshr_make_id_by_merging_all_ids_in2regs(int reg1, int reg2)
     return -1;
   }
 
-  int newid = nshr_tid_new_id();
+  int newid = nshr_tid_new_id(uid);
 
   for(unsigned int i = 0; i < REGSIZE(reg1); i++)
   {
@@ -163,7 +206,7 @@ int nshr_make_id_by_merging_all_ids_in2regs(int reg1, int reg2)
     }
   }
 
-  return newid;
+  return nshr_tid_new_iid(newid, 0);
 }
 
 int nshr_tid_modify_id_by_symbol(int dst_taint, enum prop_type operation, int src_taint)
@@ -183,11 +226,9 @@ int nshr_tid_new_uid(int fd)
   uids_[nextUID].bounded  = 0;
   uids_[nextUID].gr       = NULL;
 
-  int newid  = nshr_tid_new_id();
+  int newid  = nshr_tid_new_id(nextUID);
   int newiid = nshr_tid_new_iid(newid, 0);
 
-  ids_[newid].uid          = nextUID;
-  ids_[newid].ops_size     = 0;
   ids_[newid].size         = 1;
 
   nextUID++;
@@ -445,6 +486,11 @@ void bound(int *ids, int mask)
         gr -> next = uids_[uid].gr;
 
         uids_[uid].gr = gr;
+
+        if (i == 0)
+        {
+          LTEST("Bounder:\t\tCreated new group restriction on TAINT#%d to uid %d.\n", id, uid);
+        }
       }
       else
       {
@@ -453,30 +499,10 @@ void bound(int *ids, int mask)
           LTEST("Bounder:\t\tBounding Taint ID#%d (UID#%d) by mask %d.\n", ids[i], uid, mask);
         }
 
-        uids_[uid].bounded |= mask;
+        add_bound(uid, mask);
       }
     }
   }
-}
-
-static int lower_bound(int uid)
-{
-  if ((uids_[uid].bounded & (TAINT_BOUND_LOW | TAINT_BOUND_FIX)) == 0)
-  {
-    return 0;
-  }
-
-  return 1;
-}
-
-static int higher_bound(int uid)
-{
-  if ((uids_[uid].bounded & (TAINT_BOUND_HIGH | TAINT_BOUND_FIX)) == 0)
-  {
-    return 0;
-  }
-
-  return 1;
 }
 
 // Returns: -1 on vulnerability
@@ -510,8 +536,8 @@ int check_bounds_separately(int id DBG_END_TAINTING_FUNC)
     return 1;
   }
 
-  // only one uid participating, and it's not bounded.
-  if (ID2OPSIZE(id) == 0 && vuln1 == 1)
+  // only one uid participating, it's not bounded and there are no related group restrictions....
+  if (ID2OPSIZE(id) == 0 && vuln1 == 1 && uids_[ID2UID(id)].gr == NULL)
   {
     #ifdef DBG_PASS_INSTR
     drsym_info_t *func = get_func(instr_get_app_pc(dbg_instr));
@@ -531,6 +557,8 @@ int check_bounds_separately(int id DBG_END_TAINTING_FUNC)
 
 void vulnerability_detected()
 {
+  dump();
+
   // Whatever we wanna do if we detect it.
   exit(0);
 }
