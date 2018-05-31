@@ -520,7 +520,8 @@ void nshr_taint_rest_mem2reg(int seg_reg, int base_reg, int index_reg, int scale
 void nshr_taint_rest_imm2reg(uint64_t value, int dst_reg, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_rest_imm2mem(uint64_t value, int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int type DBG_END_TAINTING_FUNC);
 
-void nshr_taint_shift_reg(int dst_reg, int64 value, int type DBG_END_TAINTING_FUNC);
+void nshr_taint_shift_imm(int dst_reg, int64 value, int type DBG_END_TAINTING_FUNC);
+void nshr_taint_shift_reg(int dst_reg, int src_reg, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC);
 void nshr_taint_strsto_rep(int size DBG_END_TAINTING_FUNC);
 void nshr_taint_neg(int dst_reg DBG_END_TAINTING_FUNC);

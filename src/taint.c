@@ -343,7 +343,21 @@ void nshr_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC)
   }
 }
 
-void nshr_taint_shift_reg(int dst_reg, int64 value, int type DBG_END_TAINTING_FUNC)
+void nshr_taint_shift_imm(int dst_reg, int64 value, int type DBG_END_TAINTING_FUNC)
+{
+  for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
+  {
+    int id   = REGTAINTVAL(dst_reg, i);
+
+    if (id > 0)
+    {
+      FAIL();
+    }
+  }
+}
+
+
+void nshr_taint_shift_reg(int dst_reg, int src_reg, int type DBG_END_TAINTING_FUNC)
 {
   for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
   {

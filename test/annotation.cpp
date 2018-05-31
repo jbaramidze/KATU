@@ -12,17 +12,20 @@ int main(int argc, char **argv)
 {
 
   volatile int a = 3;
+  volatile int b = 5;
 
   nshrtaint((long long int) &a, 4);
+  nshrtaint((long long int) &b, 4);
 
-  if (a < 100)
+  if (a < 100 && b < 100)
   {
-  	volatile int b = a*-29;
+  	int c = a-b;
 
-  	if (b > -500)
+  	if (c < 100)
   	{
-  		volatile int c = A[b];
+  	  volatile int v = A[c];
   	}
   }
+  
 
 }

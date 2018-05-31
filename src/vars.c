@@ -55,7 +55,7 @@ int prop_is_restrictor(enum prop_type type )
 
 int prop_is_cond_mov(enum prop_type type )
 {
-  return type >= COND_LESS && type <= COND_ZERO;
+  return type >= COND_LESS && type <= COND_NOT_SIGN_BIT;
 }
 
 int nshr_tid_new_id(int uid)
