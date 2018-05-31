@@ -88,7 +88,7 @@ extern int instr_next_pointer;
 #define MAX_ID                1000000
 #define MAX_IID               4000000
 #define MAX_OPCODE            2048
-#define DEFAULT_OPERATIONS    8
+#define DEFAULT_OPERATIONS    64
 #define TAINTMAP_NUM          10
 #define TAINTMAP_SIZE         65536
 #define ILP_MAX_CONSTR        1000
@@ -103,6 +103,7 @@ enum prop_type {
   PROP_SUB,
   PROP_ADC,
   PROP_SBB,
+  PROP_DIV,
   PROP_IMUL,
   // Restrictors
   PROP_OR,
@@ -132,7 +133,7 @@ enum prop_type {
 
 static const char *PROP_NAMES[] = {
     "mov", "movzx", "movsx", 
-    "add", "sub", "add with carry", "sub with borrow", "imul", 
+    "add", "sub", "add with carry", "sub with borrow", "div", "imul", 
     "or", "xor", "and",
     "cmp", "test",
     "if_less", "if_more", "if_equal", "if_notequal", "if_nonzero", "if_zero", 
@@ -309,7 +310,9 @@ static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 #define MEMTAINTRM(index, address) mem_taint_set_value(index, address, -1);
 
 #define MEMTAINTED(index, address)          (mem_taint_get_value(index, address) > 0)
-#define REGTAINTED(mask, offset)            (reg_taint_get_value(mask, offset) > 0)
+#define REGTAINTED(reg, offset)             (reg_taint_get_value(reg, offset) > 0)
+
+#define REGTAINTEDANY(reg)                  reg_taint_any(reg)
 
 #define REGTAINTID(mask, offset)            (iids_[(taintReg_[(mask & 0xFF0000) >> 16][((mask & 0xFF00) >> 8) + offset])].id)
 #define MEMTAINTID(index, address)          (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].id)
@@ -415,6 +418,7 @@ extern TaintRegStruct taint_reg_;
 
 char    reg_get_byte_value(int reg, int offset);
 int64_t reg_taint_get_value(int reg, int offset);
+int     reg_taint_any(int reg);
 void    reg_taint_set_value(int reg, int offset, uint64_t value);
 
 void log_instr(instr_t *instr);
@@ -492,6 +496,10 @@ void nshr_taint_mv_reg_rm(int dst_reg DBG_END_TAINTING_FUNC);
 void nshr_taint_mv_baseindexmem_rm(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size DBG_END_TAINTING_FUNC);
 void nshr_taint_mv_mem_rm(uint64 addr, int size DBG_END_TAINTING_FUNC);
 
+void nshr_taint_div(int dividend1_reg, int dividend2_reg, int divisor_reg, int quotinent_reg, int remainder_reg DBG_END_TAINTING_FUNC);
+void nshr_taint_mul_reg2reg(int src1_reg, int src2_reg, int dst1_reg, int dst2_reg DBG_END_TAINTING_FUNC);
+void nshr_taint_mul_imm2reg(int src1_reg, int64 value, int dst1_reg, int dst2_reg DBG_END_TAINTING_FUNC);
+
 void nshr_taint_cond_mv_reg2reg(int src_reg, int dst_reg, instr_t *instr, int type DBG_END_TAINTING_FUNC);
 
 void nshr_taint_cond_set_reg(int dst_reg, int type, instr_t *instr DBG_END_TAINTING_FUNC);
@@ -501,9 +509,9 @@ void nshr_taint_ind_jmp_reg(int src_reg DBG_END_TAINTING_FUNC);
 void nshr_taint_ind_jmp_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp, int size DBG_END_TAINTING_FUNC);
 
 // e.g dst_reg=src_reg+dst_reg, dst_reg=src_reg^dst_reg.....
-void nshr_taint_mix_regNreg2reg(int src1_reg, int src2_reg, int dst_reg, int type DBG_END_TAINTING_FUNC);
+void nshr_taint_mix_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_mix_reg2mem(int src_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_mix_memNreg2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int src2_reg, int dst_reg, int type DBG_END_TAINTING_FUNC);
+void nshr_taint_mix_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_mix_constmem2reg(uint64 addr, int dst_reg, int type DBG_END_TAINTING_FUNC); 
 
 

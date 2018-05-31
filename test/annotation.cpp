@@ -4,6 +4,7 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h" 
+#include "limits.h" 
 #include "dr_annotations_zhani.h"
 
 int A[50];
@@ -11,21 +12,18 @@ int A[50];
 int main(int argc, char **argv)
 {
 
-  volatile int a = 3;
-  volatile int b = 5;
-
+  asm volatile (
+  	"imul $12, %%cx"
+  	:::);
+  	
+/*
+  volatile int a = 10;
+  volatile int b = 2;
+    
   nshrtaint((long long int) &a, 4);
   nshrtaint((long long int) &b, 4);
 
-  if (a < 100 && b < 100)
-  {
-  	int c = a-b;
-
-  	if (c < 100)
-  	{
-  	  volatile int v = A[c];
-  	}
-  }
-  
-
+  volatile int c = a/b;
+ 
+  nshr_dump_taint((long long int) &c);*/
 }

@@ -25,6 +25,11 @@ void dump()
     if (ids_[i].ops_size > 0)
     {
       dr_printf("\tOperations:\n");
+      if (ids_[i].ops_size > DEFAULT_OPERATIONS)
+      {
+        FAIL();
+      }
+
       for (int j = 0; j < ids_[i].ops_size; j++)
       {
         dr_printf("\tOperation #%d: '%s' by %lld\n", j, PROP_NAMES[ids_[i].ops[j].type],
