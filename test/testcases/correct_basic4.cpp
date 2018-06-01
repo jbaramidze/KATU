@@ -10,21 +10,22 @@ int A[50];
 
 int main(int argc, char **argv)
 {
+
   volatile int a = 3;
+  volatile int b = 5;
 
   nshrtaint((long long int) &a, 4);
+  nshrtaint((long long int) &b, 4);
 
-  a = a + a;
-  a = a*a;
-  a = a*2;
-  a = a*13;
-  a = a + 5;
-  a = a - 4;
-  a = a / 13;
-  a++;
-  a--;
-  volatile int b = a;
-    
+  if (a < 100 && b < 100)
+  {
+  	int c = a+b;
 
-  volatile int q = A[b];
+  	if (c > -100)
+  	{
+  	  volatile int v = A[c];
+  	}
+  }
+  
+
 }

@@ -1234,7 +1234,7 @@ static void opcode_imul(void *drcontext, instr_t *instr, instrlist_t *ilist)
       int dst1_reg = opnd_get_reg(dst1);
       int dst2_reg = opnd_get_reg(dst2);
 
-      dr_printf("InsDetail:\tMultiplying %s and %s -> %s:%s.\n", REGNAME(src1_reg), REGNAME(src2_reg), 
+      LDUMP("InsDetail:\tMultiplying %s and %s -> %s:%s.\n", REGNAME(src1_reg), REGNAME(src2_reg), 
                                 REGNAME(dst1_reg), REGNAME(dst2_reg));
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mul_reg2reg, false, DBG_TAINT_NUM_PARAMS(4),
@@ -1258,7 +1258,7 @@ static void opcode_imul(void *drcontext, instr_t *instr, instrlist_t *ilist)
       int src2_reg = opnd_get_reg(src2);
       int dst1_reg = opnd_get_reg(dst1);
 
-      dr_printf("InsDetail:\tMultiplying %s and %s -> %s.\n", REGNAME(src1_reg), REGNAME(src2_reg), 
+      LDUMP("InsDetail:\tMultiplying %s and %s -> %s.\n", REGNAME(src1_reg), REGNAME(src2_reg), 
                                 REGNAME(dst1_reg));
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mul_reg2reg, false, DBG_TAINT_NUM_PARAMS(4),
@@ -1273,7 +1273,7 @@ static void opcode_imul(void *drcontext, instr_t *instr, instrlist_t *ilist)
       int64 src2_val = opnd_get_immed_int(src2);
       int dst1_reg   = opnd_get_reg(dst1);
 
-      dr_printf("InsDetail:\tMultiplying %s and %lld -> %s.\n", REGNAME(src1_reg), src2_val, REGNAME(dst1_reg));
+      LDUMP("InsDetail:\tMultiplying %s and %lld -> %s.\n", REGNAME(src1_reg), src2_val, REGNAME(dst1_reg));
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mul_imm2reg, false, DBG_TAINT_NUM_PARAMS(3),
                             OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT64(src2_val), 

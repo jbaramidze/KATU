@@ -19,8 +19,11 @@ int main(int argc, char **argv)
 
     a = a + a;
     a = a*a;
+    a = a*2;
+    a = a*13;
     a = a + 5;
     a = a - 4;
+    a = a / 13;
     a++;
     a--;
     volatile int b = a;

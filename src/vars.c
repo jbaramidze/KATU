@@ -119,19 +119,15 @@ void nshr_id_add_op(int id, enum prop_type operation, int modify_by)
 {
   // FIXME: Problem with those is we should take prop_type into consideration.
   //        e.g. what if it was added, and now we are subtracting?
-  /*
+  //        many cases to consider, will make things way faster.
+  
   // First make sure id is not already in operations list;
   for (int i = 0; i < ID2OPSIZE(id); i++)
   {
-    if (ID2OP(id, i).value == modify_by) return;
+    if (ID2OP(id, i).value == modify_by &&
+        ID2OP(id, i).type  == PROP_ADD &&
+        operation == PROP_ADD) return;
   }
-
-  // Also make sure they don't have same uid
-  if (ID2UID(id) == ID2UID(modify_by))
-  {
-    return;
-  }
-  */
 
   ID2OP(id, ID2OPSIZE(id)).type  = operation;
   ID2OP(id, ID2OPSIZE(id)).value = modify_by;
@@ -303,6 +299,14 @@ int64_t reg_taint_get_value(int reg, int offset)
 void    reg_taint_set_value(int reg, int offset, uint64_t value)
 {
   taint_reg_.value[REGINDEX(reg)][REGSTART(reg) + offset] = value;
+}
+
+void reg_taint_rm_all(int reg)
+{
+  for (unsigned int i = 0; i < REGSIZE(reg); i++)
+  {
+    REGTAINTRM(reg, i);
+  } 
 }
 
 int reg_taint_any(int reg)

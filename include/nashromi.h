@@ -93,6 +93,13 @@ extern int instr_next_pointer;
 #define TAINTMAP_SIZE         65536
 #define ILP_MAX_CONSTR        1000
 
+//
+// Things to tweak.
+//
+
+#define DETAINT_SHIFT 0.8
+#define IGNORE_SHIFT  0.1
+
 enum prop_type {
   // MOV's
   PROP_MOV,
@@ -306,8 +313,9 @@ static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 #define MEMTAINT2REGTAINT(index, address, mask, offset)       reg_taint_set_value(mask,  offset,    mem_taint_get_value(index, address))
 #define REGTAINT2REGTAINT(mask1, offset1, mask2, offset2)     reg_taint_set_value(mask2, offset2,   reg_taint_get_value(mask1, offset1))
 
-#define REGTAINTRM(mask, offset)   reg_taint_set_value(mask,  offset, -1);
-#define MEMTAINTRM(index, address) mem_taint_set_value(index, address, -1);
+#define REGTAINTRMALL(reg)                   reg_taint_rm_all(reg)
+#define REGTAINTRM(reg, offset)              reg_taint_set_value(reg,  offset, -1)
+#define MEMTAINTRM(index, address)           mem_taint_set_value(index, address, -1)
 
 #define MEMTAINTED(index, address)          (mem_taint_get_value(index, address) > 0)
 #define REGTAINTED(reg, offset)             (reg_taint_get_value(reg, offset) > 0)
@@ -418,6 +426,7 @@ extern TaintRegStruct taint_reg_;
 
 char    reg_get_byte_value(int reg, int offset);
 int64_t reg_taint_get_value(int reg, int offset);
+void    reg_taint_rm_all(int reg);
 int     reg_taint_any(int reg);
 void    reg_taint_set_value(int reg, int offset, uint64_t value);
 

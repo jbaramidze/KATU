@@ -343,13 +343,24 @@ void nshr_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC)
   }
 }
 
+// This one looks more or less safe, generally very hard to decide when to untaint.
 void nshr_taint_shift_imm(int dst_reg, int64 value, int type DBG_END_TAINTING_FUNC)
 {
-  for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
+  if (REGTAINTEDANY(dst_reg))
   {
-    int id   = REGTAINTVAL(dst_reg, i);
+    float p = value;
 
-    if (id > 0)
+    p /= (8*REGSIZE(dst_reg));
+
+    if (p > DETAINT_SHIFT)
+    {
+      REGTAINTRMALL(dst_reg);
+    }
+    else if (p < IGNORE_SHIFT)
+    {
+      return;
+    }
+    else
     {
       FAIL();
     }

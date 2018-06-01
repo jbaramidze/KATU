@@ -11,19 +11,27 @@ int A[50];
 
 int main(int argc, char **argv)
 {
+  volatile int a = 30;
 
-  asm volatile (
-  	"imul $12, %%cx"
-  	:::);
-  	
-/*
-  volatile int a = 10;
-  volatile int b = 2;
-    
   nshrtaint((long long int) &a, 4);
-  nshrtaint((long long int) &b, 4);
 
-  volatile int c = a/b;
- 
-  nshr_dump_taint((long long int) &c);*/
+  a/=1;
+  a/=2;
+  a/=3;
+  a/=4;
+  a/=5;
+  a/=6;
+  a/=7;
+  a/=8;
+  a/=9;
+  a/=10;
+  a/=11;
+  a/=12;
+  a/=13;
+  a/=14;
+  a/=15;
+
+  volatile int b = A[a];
+
+
 }
