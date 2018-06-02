@@ -561,7 +561,6 @@ dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr
                                 bool translating, void *user_data);
 void nshr_init_opcodes(void);
 
-void nshr_pre_scanf(void *wrapcxt, OUT void **user_data);
-void nshr_post_scanf(void *wrapcxt, void *user_data);
+void module_load_event(void *drcontext, const module_data_t *mod, bool loaded);
 
 #endif

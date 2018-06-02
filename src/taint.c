@@ -1309,7 +1309,7 @@ void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_E
 }
 
 
-static void process_jump(app_pc pc DBG_END_TAINTING_FUNC)
+static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
 {
   module_data_t *data = dr_lookup_module(pc);
 
@@ -1339,6 +1339,15 @@ static void process_jump(app_pc pc DBG_END_TAINTING_FUNC)
 
   if (started_ == MODE_IN_LIBC && (strcmp(modname, LIBC_NAME) != 0 && strcmp(modname, LD_LINUX) != 0))
   {
+    if (libc_parsing_pending == 1 && !is_ret)
+    {
+      dr_printf("WARNING! Detected unrecognized libc call.\n");
+
+      FAIL();
+    }
+
+    libc_parsing_pending = 0;
+
     symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
 
   	if (symres == DRSYM_SUCCESS)
@@ -1354,13 +1363,6 @@ static void process_jump(app_pc pc DBG_END_TAINTING_FUNC)
     started_ = MODE_ACTIVE;
 
     dr_free_module_data(data);
-
-    if (libc_parsing_pending == 1)
-    {
-      dr_printf("WARNING! Detected unrecognized libc call.\n");
-    }
-
-    libc_parsing_pending = 0;
 
     return;
   }
@@ -1407,7 +1409,14 @@ static void process_jump(app_pc pc DBG_END_TAINTING_FUNC)
 
   	started_ = MODE_IN_LIBC;
 
-    libc_parsing_pending = 1;
+    //
+    // Ignore some compiler-generated function calls from here.
+    //
+
+    if (strcmp(sym.name, "_dl_fini") != 0)
+    {
+      libc_parsing_pending = 1;
+    }
   }
 
   // DON'T FORGET IT!
@@ -1421,7 +1430,7 @@ void nshr_taint_check_ret(DBG_END_TAINTING_FUNC_ALONE)
   
   reg_t pc = *((uint64_t *) reg_get_value(DR_REG_RSP, &mcontext));
 
-  process_jump((unsigned char *) pc DGB_END_CALL_ARG);
+  process_jump((unsigned char *) pc, 1 DGB_END_CALL_ARG);
 }
 
 void nshr_taint_check_jmp_reg(int reg DBG_END_TAINTING_FUNC)
@@ -1430,7 +1439,7 @@ void nshr_taint_check_jmp_reg(int reg DBG_END_TAINTING_FUNC)
   
   reg_t pc = reg_get_value(reg, &mcontext);
 
-  process_jump((unsigned char *) pc DGB_END_CALL_ARG);
+  process_jump((unsigned char *) pc, 0 DGB_END_CALL_ARG);
 }
 
 
@@ -1438,12 +1447,12 @@ void nshr_taint_check_jmp_mem(int seg_reg, int base_reg, int index_reg, int scal
 {
   reg_t pc = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
 
-  process_jump((unsigned char *) pc DGB_END_CALL_ARG);
+  process_jump((unsigned char *) pc, 0 DGB_END_CALL_ARG);
 }
 
 void nshr_taint_check_jmp_immed(uint64_t pc DBG_END_TAINTING_FUNC)
 {
-  process_jump((unsigned char *) pc DGB_END_CALL_ARG);
+  process_jump((unsigned char *) pc, 0 DGB_END_CALL_ARG);
 }
 
 

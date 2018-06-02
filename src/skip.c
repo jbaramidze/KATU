@@ -143,6 +143,9 @@ int get_format_size(const char *format, int *advance)
   return -1;
 }
 
+void nshr_pre_ignore(void *wrapcxt, OUT void **user_data) { libc_parsing_pending = 0; }
+void nshr_post_ignore(void *wrapcxt, void *user_data) {}
+
 void nshr_pre_scanf(void *wrapcxt, OUT void **user_data)
 {
   libc_parsing_pending = 0;
@@ -214,4 +217,50 @@ void nshr_post_scanf(void *wrapcxt, void *user_data)
 
     nshr_taint((reg_t) s, size, 0);
   }
+}
+
+void ignore_handlers(const module_data_t *mod, const char *function)
+{
+  app_pc addr = (app_pc) dr_get_proc_address(mod -> handle, function);
+
+  if (addr == NULL)
+  {
+    dr_printf("ERROR! Failed getting address for %s.\n", function);
+
+    FAIL();
+  }
+
+  drwrap_wrap(addr, nshr_pre_ignore, nshr_post_ignore);
+}
+
+void register_handlers(const module_data_t *mod, const char *function,  
+                            void(*pre_func_cb)(void *wrapcxt, OUT void **user_data),
+                                void(*post_func_cb)(void *wrapcxt, void *user_data))
+{
+  app_pc addr = (app_pc) dr_get_proc_address(mod -> handle, function);
+
+  if (addr == NULL)
+  {
+    dr_printf("ERROR! Failed getting address for %s.\n", function);
+
+    FAIL();
+  }
+
+  drwrap_wrap(addr, pre_func_cb, post_func_cb);
+}
+
+void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
+{
+   const char *module = dr_module_preferred_name(mod);
+
+   dr_printf("Info:\t\tLoading %s.\n", module);
+
+   if (strncmp(dr_module_preferred_name(mod), "libc.so", 7) == 0)
+   {
+     register_handlers(mod, "scanf", nshr_pre_scanf, nshr_post_scanf);
+     ignore_handlers(mod, "__libc_start_main");
+   }
+   else if (strncmp(dr_module_preferred_name(mod), "ld-linux-x86-64.so", 18) == 0)
+   {
+   }
 }
