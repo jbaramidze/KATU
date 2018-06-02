@@ -754,6 +754,22 @@ static void opcode_push(void *drcontext, instr_t *instr, instrlist_t *ilist)
                                  OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp),
                                       OPND_CREATE_INT32(access_size) DBG_END_DR_CLEANCALL);
   }
+  else if (opnd_is_base_disp(src))
+  {
+    reg_id_t src_base_reg  = opnd_get_base(src);
+    reg_id_t src_index_reg = opnd_get_index(src);
+    reg_id_t src_seg_reg   = opnd_get_segment(src);
+    int src_scale          = opnd_get_scale(src);
+    int src_disp           = opnd_get_disp(src);
+
+    int access_size = opnd_size_in_bytes(opnd_get_size(src));
+
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_mem2mem, false, DBG_TAINT_NUM_PARAMS(11), 
+                             OPND_CREATE_INT32(src_seg_reg), OPND_CREATE_INT32(src_base_reg), OPND_CREATE_INT32(src_index_reg), 
+                                 OPND_CREATE_INT32(src_scale), OPND_CREATE_INT32(src_disp), OPND_CREATE_INT32(seg_reg), 
+                                     OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), 
+                                         OPND_CREATE_INT32(disp), OPND_CREATE_INT32(access_size) DBG_END_DR_CLEANCALL);
+  }
   else
   {
     FAIL();

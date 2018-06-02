@@ -82,6 +82,14 @@ static int get_A_of_size(int size)
   FAIL();
 }
 
+void nshr_taint_mv_mem2mem(int src_seg_reg, int src_base_reg, int src_index_reg, int src_scale, int src_disp, 
+                                  int dst_seg_reg, int dst_base_reg, int dst_index_reg, int dst_scale, int dst_disp, int access_size DBG_END_TAINTING_FUNC)
+{
+  reg_t src_addr = decode_addr(src_seg_reg, src_base_reg, src_index_reg, src_scale, src_disp DGB_END_CALL_ARG);
+
+  nshr_taint_mv_constmem2mem(src_addr, dst_seg_reg, dst_base_reg, dst_index_reg, dst_scale, dst_disp, access_size DGB_END_CALL_ARG);
+}
+
 void nshr_taint_mv_constmem2mem(uint64 src_addr, int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size DBG_END_TAINTING_FUNC)
 {
   reg_t dst_addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
@@ -343,6 +351,7 @@ void nshr_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC)
   }
 }
 
+// Problematic due stupid gcc optimizing divisions by constants to multiplication & shifts.
 // This one looks more or less safe, generally very hard to decide when to untaint.
 void nshr_taint_shift_imm(int dst_reg, int64 value, int type DBG_END_TAINTING_FUNC)
 {
