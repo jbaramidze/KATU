@@ -145,6 +145,8 @@ int get_format_size(const char *format, int *advance)
 
 void nshr_pre_scanf(void *wrapcxt, OUT void **user_data)
 {
+  libc_parsing_pending = 0;
+
   int num_arg = 1;
   num_string_args = 0;
 

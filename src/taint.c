@@ -1,5 +1,5 @@
 #define LOGTEST
-#define LOGDEBUG
+#undef LOGDEBUG
 #undef  LOGDUMP
 
 #include "dr_api.h"
@@ -1355,6 +1355,13 @@ static void process_jump(app_pc pc DBG_END_TAINTING_FUNC)
 
     dr_free_module_data(data);
 
+    if (libc_parsing_pending == 1)
+    {
+      dr_printf("WARNING! Detected unrecognized libc call.\n");
+    }
+
+    libc_parsing_pending = 0;
+
     return;
   }
 
@@ -1399,6 +1406,8 @@ static void process_jump(app_pc pc DBG_END_TAINTING_FUNC)
   	LDUMP_TAINT(0, true, "Goind into MODE_IN_LIBC mode.\n");
 
   	started_ = MODE_IN_LIBC;
+
+    libc_parsing_pending = 1;
   }
 
   // DON'T FORGET IT!

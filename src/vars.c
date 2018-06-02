@@ -18,6 +18,8 @@ UID_entity      uids_[MAX_UID];
 ID_entity       ids_[MAX_ID];
 IID_entity      iids_[MAX_IID];
 
+int libc_parsing_pending                     = 0;
+
 // Used to describe true taint sources (e.g. read())
 int             nextUID                      = 1;
 
@@ -562,10 +564,10 @@ int check_bounds_separately(int id DBG_END_TAINTING_FUNC)
   {
     #ifdef DBG_PASS_INSTR
     drsym_info_t *func = get_func(instr_get_app_pc(dbg_instr));
-    LWARNING("!!!WARNING!!! Detected unbounded access for ID#%d (UID#%d), at %s  %s:%d\n", 
+    LWARNING("!!!VULNERABILITY!!! Detected unbounded access for ID#%d (UID#%d), at %s  %s:%d\n", 
                     id, ID2UID(id), func -> name, func -> file, func -> line);
     #else
-    LWARNING("!!!WARNING!!! Detected unbounded access for ID#%d (UID#%d)\n", id, ID2UID(id));
+    LWARNING("!!!VULNERABILITY!!! Detected unbounded access for ID#%d (UID#%d)\n", id, ID2UID(id));
     #endif
 
     vulnerability_detected();

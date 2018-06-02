@@ -387,6 +387,12 @@ extern instrFunc instrFunctions[MAX_OPCODE];
 
 extern lprec *lp;
 
+//
+// Small flags.
+//
+
+extern int libc_parsing_pending;
+
 
 /****************************************************
         T A I N T   M E M   S T R U C T U R E
