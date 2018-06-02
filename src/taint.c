@@ -1339,7 +1339,7 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
 
   if (started_ == MODE_IN_LIBC && (strcmp(modname, LIBC_NAME) != 0 && strcmp(modname, LD_LINUX) != 0))
   {
-    if (libc_parsing_pending == 1 && !is_ret)
+    if (libc_parsing_pending == 1)
     {
       dr_printf("WARNING! Detected unrecognized libc call.\n");
 
@@ -1415,7 +1415,10 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
 
     if (strcmp(sym.name, "_dl_fini") != 0)
     {
-      libc_parsing_pending = 1;
+      if (!is_ret)
+      {
+        libc_parsing_pending = 1;
+      }
     }
   }
 
