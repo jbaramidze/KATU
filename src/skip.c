@@ -341,8 +341,12 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      register_handlers(mod, "malloc", check_arg0_8, NULL);              // void *malloc(size_t size);
      register_handlers(mod, "getenv", NULL, taint_retstr);              // char *getenv(const char *name);
 
-     ignore_handlers(mod, "pthread_mutex_lock");
      ignore_handlers(mod, "__printf_chk");
+
+     // Problematic one, toupper defined as 
+     // return __c >= -128 && __c < 256 ? (*__ctype_toupper_loc ())[__c] : __c;
+     ignore_handlers(mod, "__ctype_toupper_loc"); 
+
 
    }
    else if (strncmp(dr_module_preferred_name(mod), "ld-linux-x86-64.so", 18) == 0)

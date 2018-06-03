@@ -847,7 +847,7 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
     {
        LDUMP("InsDetail:\tUpdating eflags by comparing %s and immediate via '%s'.\n", REGNAME(reg1), PROP_NAMES[type]);
 
-       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_reg2imm, false, DBG_TAINT_NUM_PARAMS(1),
+       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_reg2imm, false, DBG_TAINT_NUM_PARAMS(2),
                                  OPND_CREATE_INT32(reg1), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
     }
     else if (opnd_is_base_disp(second))
@@ -862,11 +862,23 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
                                  REGNAME(seg_reg), REGNAME(base_reg), scale, 
                                         REGNAME(index_reg), disp, PROP_NAMES[type]);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_reg2mem, false, DBG_TAINT_NUM_PARAMS(6),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_reg2mem, false, DBG_TAINT_NUM_PARAMS(7),
                                  OPND_CREATE_INT32(reg1), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
                                      OPND_CREATE_INT32(index_reg),  OPND_CREATE_INT32(scale),  
                                           OPND_CREATE_INT32(disp), OPND_CREATE_INT32(type)
                                               DBG_END_DR_CLEANCALL);
+    }
+    else if (opnd_is_rel_addr(second))
+    {
+      app_pc addr;
+
+      instr_get_rel_addr_target(instr, &addr);
+
+      LDUMP("InsDetail:\tUpdating eflags by comparing %s and [%llx] via '%s'.\n", REGNAME(reg1), addr, PROP_NAMES[type]);
+
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_reg2constmem, false, DBG_TAINT_NUM_PARAMS(3),
+                                 OPND_CREATE_INT32(reg1), OPND_CREATE_INT64(addr), OPND_CREATE_INT32(type) 
+                                        DBG_END_DR_CLEANCALL);
     }
     else
     {
@@ -891,7 +903,7 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
                            REGNAME(seg_reg), REGNAME(base_reg), scale, 
                                   REGNAME(index_reg), disp, REGNAME(reg2), PROP_NAMES[type]);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_mem2reg, false, DBG_TAINT_NUM_PARAMS(7),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_mem2reg, false, DBG_TAINT_NUM_PARAMS(8),
                                  OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                      OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(size),
                                          OPND_CREATE_INT32(reg2), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
@@ -902,7 +914,7 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
                            REGNAME(seg_reg), REGNAME(base_reg), scale, 
                                   REGNAME(index_reg), disp, PROP_NAMES[type]);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_mem2imm, false, DBG_TAINT_NUM_PARAMS(6),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_mem2imm, false, DBG_TAINT_NUM_PARAMS(7),
                                  OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                      OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), OPND_CREATE_INT32(size),
                                          OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
@@ -926,7 +938,7 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
       LDUMP("InsDetail:\tUpdating eflags by comparing [%llx] and %s via '%s'.\n", addr, REGNAME(reg2), PROP_NAMES[type]);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_constmem2reg, false, DBG_TAINT_NUM_PARAMS(3),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_constmem2reg, false, DBG_TAINT_NUM_PARAMS(4),
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(size), OPND_CREATE_INT32(reg2), 
                                      OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
     }
@@ -934,7 +946,7 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
     {      
       LDUMP("InsDetail:\tUpdating eflags by comparing [%llx] and immediate via '%s'.\n", addr, PROP_NAMES[type]);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_constmem2imm, false, DBG_TAINT_NUM_PARAMS(2),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_constmem2imm, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(size), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
     }
     else

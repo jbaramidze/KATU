@@ -688,31 +688,36 @@ void nshr_taint_cond_jmp(instr_t *instr, int type DBG_END_TAINTING_FUNC)
   process_cond_statement(type, taken DGB_END_CALL_ARG);
 }
 
-void nshr_taint_cmp_reg2mem(int reg1, int seg_reg, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC)
+void nshr_taint_cmp_reg2constmem(int reg1, uint64_t addr, int type DBG_END_TAINTING_FUNC)
 {
-  reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
-
   int found = 0;
 
   for (unsigned int i = 0; i < REGSIZE(reg1); i++)
   {
     int index = mem_taint_find_index(addr, i);
 
-  	int t1 = REGTAINTVAL(reg1, i);
-  	int t2 = MEMTAINTVAL(index, addr + i);
+    int t1 = REGTAINTVAL(reg1, i);
+    int t2 = MEMTAINTVAL(index, addr + i);
 
-  	if (t1 > 0 || t2 > 0)
-  	{
-  	  found = 1;
+    if (t1 > 0 || t2 > 0)
+    {
+      found = 1;
 
       update_eflags(PROP_CMP, i, t1, t2);
-  	}
+    }
   }
 
   if (!found)
   {
-  	invalidate_eflags();
+    invalidate_eflags();
   }
+}
+
+void nshr_taint_cmp_reg2mem(int reg1, int seg_reg, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC)
+{
+  reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
+
+  nshr_taint_cmp_reg2constmem(reg1, addr, type DGB_END_CALL_ARG);
 }
 
 void nshr_taint_cmp_reg2reg(int reg1, int reg2, int type DBG_END_TAINTING_FUNC)

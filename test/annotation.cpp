@@ -6,36 +6,14 @@
 #include "string.h" 
 #include "limits.h" 
 #include "dr_annotations_zhani.h"
+#include <ctype.h>
 
-typedef void (*FF)();
-
-volatile int q = 21;
-
-void f()
-{
-  q++;
-}
+int A[50];
 
 int main(int argc, char **argv)
 {
-  FF fif = f;
+  volatile int a = 'c';
+  nshrtaint((long long int) &a, 4);
+  volatile int b = toupper(a);
 
-  asm volatile (
-  	"call *(%%rax)"
-  	::"a"(&fif):
-  		);
-	/*
-  volatile int qaz = 12;
-
-  volatile xmlMallocFunc xmlMalloc;
-
-  if (qaz == 12) xmlMalloc = malloc;
-
-  volatile int a = 10;
-  a++;
-
-  volatile char *q = (char *) (*xmlMalloc)(a);
- 
-  volatile int b = q[0];
-  */
 }
