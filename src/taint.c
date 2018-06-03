@@ -1356,7 +1356,10 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
 
     dr_free_module_data(data);
 
-    (*return_from_libc)();
+    if (return_from_libc != NULL)
+    {
+      (*return_from_libc)(DGB_END_CALL_ARG_ALONE);
+    }
 
     return;
   }
@@ -1411,7 +1414,10 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
       if (handler != NULL) 
       {
         // Call pre-funciton.
-        handler[0]();
+        if (handler[0] != NULL)
+        {
+          handler[0](DGB_END_CALL_ARG_ALONE);
+        }
 
         // Register post-function.
         return_from_libc = handler[1];

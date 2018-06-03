@@ -19,6 +19,20 @@ get_stack_arg(dr_mcontext_t *ctx, uint arg)
     return *((reg_t *) (reg_get_value(DR_REG_RSP, ctx) + (arg - 6 + 1) * sizeof(reg_t)));
 }
 
+int get_arg_reg(int arg, int size)
+{
+  switch(arg)
+  {
+    case 0: return reg_resize_to_opsz(DR_REG_RDI, opnd_size_from_bytes(size));
+    case 1: return reg_resize_to_opsz(DR_REG_RSI, opnd_size_from_bytes(size));
+    case 2: return reg_resize_to_opsz(DR_REG_RDX, opnd_size_from_bytes(size));
+    case 3: return reg_resize_to_opsz(DR_REG_RCX, opnd_size_from_bytes(size));
+    case 4: return reg_resize_to_opsz(DR_REG_R8,  opnd_size_from_bytes(size));
+    case 5: return reg_resize_to_opsz(DR_REG_R9,  opnd_size_from_bytes(size));
+
+    default: FAIL();
+  }
+}
 
 reg_t get_arg(int arg)
 {
@@ -168,7 +182,7 @@ int get_format_size(const char *format, int *advance)
   return -1;
 }
 
-void nshr_pre_scanf()
+void nshr_pre_scanf(DBG_END_TAINTING_FUNC_ALONE)
 {
   int num_arg = 1;
   num_string_args = 0;
@@ -225,7 +239,7 @@ void nshr_pre_scanf()
   started_ = MODE_IN_LIBC;
 }
 
-void nshr_post_scanf()
+void nshr_post_scanf(DBG_END_TAINTING_FUNC_ALONE)
 {
   for (int i = 0; i < num_string_args; i++)
   {
@@ -239,12 +253,14 @@ void nshr_post_scanf()
   }
 }
 
-void nshr_pre_malloc(void *wrapcxt, OUT void **user_data)
+void nshr_pre_malloc(DBG_END_TAINTING_FUNC_ALONE)
 {
+  // void *malloc(size_t size);
+  int reg = get_arg_reg(0, sizeof(size_t));
+
+  check_bounds_reg(reg DGB_END_CALL_ARG);
 }
 
-void nshr_pre_ignore() {}
-void nshr_post_ignore() {}
 
 void ignore_handlers(const module_data_t *mod, const char *function)
 {
@@ -258,8 +274,8 @@ void ignore_handlers(const module_data_t *mod, const char *function)
   }
 
   handleFunc *e = malloc(sizeof(handleFunc) * 2);
-  e[0] = nshr_pre_ignore;
-  e[1] = nshr_post_ignore;
+  e[0] = NULL;
+  e[1] = NULL;
 
   // Fixme: Don't allocate for all ignore functions same thing. Make one, but deal with deallocation.
 
@@ -271,7 +287,8 @@ void ignore_handlers(const module_data_t *mod, const char *function)
 
 
 void register_handlers(const module_data_t *mod, const char *function,  
-                            void(*pre_func_cb)(), void(*post_func_cb)())
+                            void(*pre_func_cb)(DBG_END_TAINTING_FUNC_ALONE), 
+                                void(*post_func_cb)(DBG_END_TAINTING_FUNC_ALONE))
 {
   app_pc addr = (app_pc) dr_get_proc_address(mod -> handle, function);
 
@@ -301,7 +318,7 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
    if (strncmp(dr_module_preferred_name(mod), "libc.so", 7) == 0)
    {
      register_handlers(mod, "scanf", nshr_pre_scanf, nshr_post_scanf);
-     //register_handlers(mod, "malloc", nshr_pre_malloc, nshr_post_ignore);
+     register_handlers(mod, "malloc", nshr_pre_malloc, NULL);
      ignore_handlers(mod, "pthread_mutex_lock");
 
    }

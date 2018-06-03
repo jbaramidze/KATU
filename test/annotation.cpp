@@ -13,4 +13,9 @@ int main(int argc, char **argv)
 {
   volatile int a;
   scanf("%d", &a);
+
+
+  volatile int *b = (int *)malloc(3);
+
+  *b = 17;
 }

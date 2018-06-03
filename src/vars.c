@@ -564,8 +564,15 @@ int check_bounds_separately(int id DBG_END_TAINTING_FUNC)
   {
     #ifdef DBG_PASS_INSTR
     drsym_info_t *func = get_func(instr_get_app_pc(dbg_instr));
-    LWARNING("!!!VULNERABILITY!!! Detected unbounded access for ID#%d (UID#%d), at %s  %s:%d\n", 
-                    id, ID2UID(id), func -> name, func -> file, func -> line);
+    if (func != NULL)
+    {
+      LWARNING("!!!VULNERABILITY!!! Detected unbounded access for ID#%d (UID#%d), at %s  %s:%d\n", 
+                      id, ID2UID(id), func -> name, func -> file, func -> line);
+    }
+    else
+    {
+      LWARNING("!!!VULNERABILITY!!! Detected unbounded access for ID#%d (UID#%d)\n", id, ID2UID(id));
+    }
     #else
     LWARNING("!!!VULNERABILITY!!! Detected unbounded access for ID#%d (UID#%d)\n", id, ID2UID(id));
     #endif

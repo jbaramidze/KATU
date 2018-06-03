@@ -19,6 +19,7 @@ extern int instr_next_pointer;
 
   #define DBG_TAINT_NUM_PARAMS(x) (x+1)
   #define DGB_END_CALL_ARG , dbg_instr
+  #define DGB_END_CALL_ARG_ALONE dbg_instr
   #define DBG_END_DR_CLEANCALL , OPND_CREATE_INT64(instr_dupl(instr))
   #define DBG_END_TAINTING_FUNC , instr_t *dbg_instr
   #define DBG_END_TAINTING_FUNC_ALONE instr_t *dbg_instr
@@ -50,6 +51,7 @@ extern int instr_next_pointer;
 
   #define DBG_TAINT_NUM_PARAMS(x) (x)
   #define DGB_END_CALL_ARG 
+  #define DGB_END_CALL_ARG_ALONE
   #define DBG_END_DR_CLEANCALL
   #define DBG_END_TAINTING_FUNC
   #define DBG_END_TAINTING_FUNC_ALONE
@@ -236,7 +238,7 @@ typedef struct {
 
 } Eflags;
 
-typedef void (*handleFunc)(void);
+typedef void (*handleFunc)(DBG_END_TAINTING_FUNC_ALONE);
 
 
 //
