@@ -1308,7 +1308,6 @@ void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_E
   }
 }
 
-
 static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
 {
   module_data_t *data = dr_lookup_module(pc);
@@ -1321,6 +1320,8 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
 
      return;
   }
+
+  static handleFunc return_from_libc = NULL;
 
   const char *modname = dr_module_preferred_name(data);
 
@@ -1339,15 +1340,6 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
 
   if (started_ == MODE_IN_LIBC && (strcmp(modname, LIBC_NAME) != 0 && strcmp(modname, LD_LINUX) != 0))
   {
-    if (libc_parsing_pending == 1)
-    {
-      dr_printf("WARNING! Detected unrecognized libc call.\n");
-
-      FAIL();
-    }
-
-    libc_parsing_pending = 0;
-
     symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
 
   	if (symres == DRSYM_SUCCESS)
@@ -1363,6 +1355,8 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
     started_ = MODE_ACTIVE;
 
     dr_free_module_data(data);
+
+    (*return_from_libc)();
 
     return;
   }
@@ -1409,15 +1403,22 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
 
   	started_ = MODE_IN_LIBC;
 
-    //
-    // Ignore some compiler-generated function calls from here.
-    //
-
-    if (strcmp(sym.name, "_dl_fini") != 0)
+    if (strcmp(sym.name, "__libc_start_main") != 0 &&
+        strcmp(sym.name, "_dl_fini") != 0)
     {
-      if (!is_ret)
+      handleFunc *handler = hashtable_lookup(&func_hashtable, pc);
+
+      if (handler != NULL) 
       {
-        libc_parsing_pending = 1;
+        // Call pre-funciton.
+        handler[0]();
+
+        // Register post-function.
+        return_from_libc = handler[1];
+      }
+      else
+      {
+        FAIL();
       }
     }
   }

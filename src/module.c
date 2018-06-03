@@ -60,7 +60,7 @@ event_exit(void)
 {
     dr_printf("Info:\t\tExit.\n");
 
-    drwrap_exit();
+    //drwrap_exit();
 
     if (drsym_exit() != DRSYM_SUCCESS)
     {
@@ -78,6 +78,8 @@ event_exit(void)
         // FIXME: we have a crash here sometimes.
       instr_destroy(dr_get_current_drcontext(), instr_pointers[i]);
     }
+
+    hashtable_delete(&func_hashtable);
 }
 
 static void nshr_handle_taint(long long addr, int size)
@@ -159,6 +161,8 @@ void init(void)
   {
     DIE("ERROR! Failed making LP\n");
   }
+
+  hashtable_init(&func_hashtable, HASH_BITS, HASH_INTPTR, false);
 }
 
 DR_EXPORT void
@@ -195,10 +199,10 @@ dr_init(client_id_t client_id)
     DIE("ERROR! Failed starting drsym.\n");
   }
 
-  if (!drwrap_init())
+  /*if (!drwrap_init())
   {  
     DIE("ERROR! Failed starting drwrap.\n");
-  }
+  }*/
 
   init();
 

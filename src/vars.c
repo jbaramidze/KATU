@@ -18,7 +18,7 @@ UID_entity      uids_[MAX_UID];
 ID_entity       ids_[MAX_ID];
 IID_entity      iids_[MAX_IID];
 
-int libc_parsing_pending                     = 0;
+hashtable_t func_hashtable;
 
 // Used to describe true taint sources (e.g. read())
 int             nextUID                      = 1;

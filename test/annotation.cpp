@@ -11,6 +11,6 @@ int A[50];
 
 int main(int argc, char **argv)
 {
-  int a;
+  volatile int a;
   scanf("%d", &a);
 }

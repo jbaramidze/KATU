@@ -13,6 +13,31 @@
 static uint64_t *string_args[10];
 static int num_string_args;
 
+reg_t 
+get_stack_arg(dr_mcontext_t *ctx, uint arg)
+{
+    return *((reg_t *) (reg_get_value(DR_REG_RSP, ctx) + (arg - 6 + 1) * sizeof(reg_t)));
+}
+
+
+reg_t get_arg(int arg)
+{
+  GET_CONTEXT();
+
+  switch(arg)
+  {
+    case 0: return  reg_get_value(DR_REG_RDI, &mcontext);
+    case 1: return  reg_get_value(DR_REG_RSI, &mcontext);
+    case 2: return  reg_get_value(DR_REG_RDX, &mcontext);
+    case 3: return  reg_get_value(DR_REG_RCX, &mcontext);
+    case 4: return  reg_get_value(DR_REG_R8, &mcontext);
+    case 5: return  reg_get_value(DR_REG_R9, &mcontext);
+    default: return get_stack_arg(&mcontext, arg);
+  }
+
+  return 0;
+}
+
 /*
   Return 0 for strings, -1 for don't taint.
   Not tainting: '%n', floating points.
@@ -143,17 +168,12 @@ int get_format_size(const char *format, int *advance)
   return -1;
 }
 
-void nshr_pre_ignore(void *wrapcxt, OUT void **user_data) { libc_parsing_pending = 0; }
-void nshr_post_ignore(void *wrapcxt, void *user_data) {}
-
-void nshr_pre_scanf(void *wrapcxt, OUT void **user_data)
+void nshr_pre_scanf()
 {
-  libc_parsing_pending = 0;
-
   int num_arg = 1;
   num_string_args = 0;
 
-  const char *format = (const char *) drwrap_get_arg(wrapcxt, 0);
+  const char *format = (const char *) get_arg(0);
 
   LTEST("DRWRAP:\t\tGoing into scanf with %s.\n", format);
 
@@ -185,7 +205,7 @@ void nshr_pre_scanf(void *wrapcxt, OUT void **user_data)
 
       if (size == 0)
       {
-        string_args[num_string_args++] = drwrap_get_arg(wrapcxt, num_arg);
+        string_args[num_string_args++] = (uint64_t *) get_arg(num_arg);
       }
       else if (size == -1)
       {
@@ -195,7 +215,7 @@ void nshr_pre_scanf(void *wrapcxt, OUT void **user_data)
       }
       else
       {
-        nshr_taint((reg_t) drwrap_get_arg(wrapcxt, num_arg), size, 0);
+        nshr_taint(get_arg(num_arg), size, 0);
       }
 
       num_arg++;
@@ -205,7 +225,7 @@ void nshr_pre_scanf(void *wrapcxt, OUT void **user_data)
   started_ = MODE_IN_LIBC;
 }
 
-void nshr_post_scanf(void *wrapcxt, void *user_data)
+void nshr_post_scanf()
 {
   for (int i = 0; i < num_string_args; i++)
   {
@@ -219,6 +239,13 @@ void nshr_post_scanf(void *wrapcxt, void *user_data)
   }
 }
 
+void nshr_pre_malloc(void *wrapcxt, OUT void **user_data)
+{
+}
+
+void nshr_pre_ignore() {}
+void nshr_post_ignore() {}
+
 void ignore_handlers(const module_data_t *mod, const char *function)
 {
   app_pc addr = (app_pc) dr_get_proc_address(mod -> handle, function);
@@ -230,12 +257,21 @@ void ignore_handlers(const module_data_t *mod, const char *function)
     FAIL();
   }
 
-  drwrap_wrap(addr, nshr_pre_ignore, nshr_post_ignore);
+  handleFunc *e = malloc(sizeof(handleFunc) * 2);
+  e[0] = nshr_pre_ignore;
+  e[1] = nshr_post_ignore;
+
+  // Fixme: Don't allocate for all ignore functions same thing. Make one, but deal with deallocation.
+
+  if (!hashtable_add(&func_hashtable, addr, (void *)e))
+  {
+    FAIL();
+  }
 }
 
+
 void register_handlers(const module_data_t *mod, const char *function,  
-                            void(*pre_func_cb)(void *wrapcxt, OUT void **user_data),
-                                void(*post_func_cb)(void *wrapcxt, void *user_data))
+                            void(*pre_func_cb)(), void(*post_func_cb)())
 {
   app_pc addr = (app_pc) dr_get_proc_address(mod -> handle, function);
 
@@ -246,7 +282,14 @@ void register_handlers(const module_data_t *mod, const char *function,
     FAIL();
   }
 
-  drwrap_wrap(addr, pre_func_cb, post_func_cb);
+  handleFunc *e = malloc(sizeof(handleFunc) * 2);
+  e[0] = pre_func_cb;
+  e[1] = post_func_cb;
+
+  if (!hashtable_add(&func_hashtable, addr, (void *)e))
+  {
+    FAIL();
+  }
 }
 
 void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
@@ -258,7 +301,9 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
    if (strncmp(dr_module_preferred_name(mod), "libc.so", 7) == 0)
    {
      register_handlers(mod, "scanf", nshr_pre_scanf, nshr_post_scanf);
-     ignore_handlers(mod, "__libc_start_main");
+     //register_handlers(mod, "malloc", nshr_pre_malloc, nshr_post_ignore);
+     ignore_handlers(mod, "pthread_mutex_lock");
+
    }
    else if (strncmp(dr_module_preferred_name(mod), "ld-linux-x86-64.so", 18) == 0)
    {

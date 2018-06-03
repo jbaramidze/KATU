@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "drsyms.h"
 #include "lp_lib.h"
+#include "hashtable.h"
 
 // Do additional checks, while testing
 #define CHECKS
@@ -92,6 +93,7 @@ extern int instr_next_pointer;
 #define TAINTMAP_NUM          10
 #define TAINTMAP_SIZE         65536
 #define ILP_MAX_CONSTR        1000
+#define HASH_BITS             13
 
 //
 // Things to tweak.
@@ -233,6 +235,8 @@ typedef struct {
   int valid;
 
 } Eflags;
+
+typedef void (*handleFunc)(void);
 
 
 //
@@ -387,11 +391,7 @@ extern instrFunc instrFunctions[MAX_OPCODE];
 
 extern lprec *lp;
 
-//
-// Small flags.
-//
-
-extern int libc_parsing_pending;
+extern hashtable_t func_hashtable;
 
 
 /****************************************************
@@ -562,5 +562,4 @@ dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr
 void nshr_init_opcodes(void);
 
 void module_load_event(void *drcontext, const module_data_t *mod, bool loaded);
-
 #endif
