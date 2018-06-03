@@ -7,15 +7,35 @@
 #include "limits.h" 
 #include "dr_annotations_zhani.h"
 
-int A[50];
+typedef void (*FF)();
+
+volatile int q = 21;
+
+void f()
+{
+  q++;
+}
 
 int main(int argc, char **argv)
 {
-  volatile int a;
-  scanf("%d", &a);
+  FF fif = f;
 
+  asm volatile (
+  	"call *(%%rax)"
+  	::"a"(&fif):
+  		);
+	/*
+  volatile int qaz = 12;
 
-  volatile int *b = (int *)malloc(3);
+  volatile xmlMallocFunc xmlMalloc;
 
-  *b = 17;
+  if (qaz == 12) xmlMalloc = malloc;
+
+  volatile int a = 10;
+  a++;
+
+  volatile char *q = (char *) (*xmlMalloc)(a);
+ 
+  volatile int b = q[0];
+  */
 }

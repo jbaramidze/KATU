@@ -13,13 +13,12 @@
 static uint64_t *string_args[10];
 static int num_string_args;
 
-reg_t 
-get_stack_arg(dr_mcontext_t *ctx, uint arg)
+static reg_t get_stack_arg(dr_mcontext_t *ctx, uint arg)
 {
     return *((reg_t *) (reg_get_value(DR_REG_RSP, ctx) + (arg - 6 + 1) * sizeof(reg_t)));
 }
 
-int get_arg_reg(int arg, int size)
+static int get_arg_reg(int arg, int size)
 {
   switch(arg)
   {
@@ -34,7 +33,14 @@ int get_arg_reg(int arg, int size)
   }
 }
 
-reg_t get_arg(int arg)
+static reg_t get_ret()
+{
+  GET_CONTEXT();
+
+  return  reg_get_value(DR_REG_RAX, &mcontext);
+}
+
+static reg_t get_arg(int arg)
 {
   GET_CONTEXT();
 
@@ -52,11 +58,20 @@ reg_t get_arg(int arg)
   return 0;
 }
 
+static void taint_str(const char *str)
+{
+  int size = strlen(str);
+
+  dr_printf("SKIPPER:\t\tTainting string at %p, %d bytes.\n", str, size);
+
+  nshr_taint((reg_t) str, size, 0);
+}
+
 /*
   Return 0 for strings, -1 for don't taint.
   Not tainting: '%n', floating points.
 */
-int get_format_size(const char *format, int *advance)
+static int get_format_size(const char *format, int *advance)
 {
   int remaining = strlen(format);
 
@@ -182,7 +197,7 @@ int get_format_size(const char *format, int *advance)
   return -1;
 }
 
-void nshr_pre_scanf(DBG_END_TAINTING_FUNC_ALONE)
+static void pre_scanf(DBG_END_TAINTING_FUNC_ALONE)
 {
   int num_arg = 1;
   num_string_args = 0;
@@ -239,30 +254,35 @@ void nshr_pre_scanf(DBG_END_TAINTING_FUNC_ALONE)
   started_ = MODE_IN_LIBC;
 }
 
-void nshr_post_scanf(DBG_END_TAINTING_FUNC_ALONE)
+static void post_scanf(DBG_END_TAINTING_FUNC_ALONE)
 {
   for (int i = 0; i < num_string_args; i++)
   {
-    const char *s = (const char *) string_args[i];
+    const char *str = (const char *) string_args[i];
 
-    int size = strlen(s);
-
-    dr_printf("DRWRAP:\t\tDetected scanf'd string, %d bytes.\n", size);
-
-    nshr_taint((reg_t) s, size, 0);
+    taint_str(str);
   }
 }
 
-void nshr_pre_malloc(DBG_END_TAINTING_FUNC_ALONE)
+static void check_arg0_8(DBG_END_TAINTING_FUNC_ALONE)
 {
-  // void *malloc(size_t size);
   int reg = get_arg_reg(0, sizeof(size_t));
 
   check_bounds_reg(reg DGB_END_CALL_ARG);
 }
 
 
-void ignore_handlers(const module_data_t *mod, const char *function)
+static void taint_retstr(DBG_END_TAINTING_FUNC_ALONE)
+{
+  const char *str = (const char *) get_ret();
+
+  if (str != NULL)
+  {
+    taint_str(str);
+  }
+}
+
+static void ignore_handlers(const module_data_t *mod, const char *function)
 {
   app_pc addr = (app_pc) dr_get_proc_address(mod -> handle, function);
 
@@ -286,7 +306,7 @@ void ignore_handlers(const module_data_t *mod, const char *function)
 }
 
 
-void register_handlers(const module_data_t *mod, const char *function,  
+static void register_handlers(const module_data_t *mod, const char *function,  
                             void(*pre_func_cb)(DBG_END_TAINTING_FUNC_ALONE), 
                                 void(*post_func_cb)(DBG_END_TAINTING_FUNC_ALONE))
 {
@@ -317,9 +337,12 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
 
    if (strncmp(dr_module_preferred_name(mod), "libc.so", 7) == 0)
    {
-     register_handlers(mod, "scanf", nshr_pre_scanf, nshr_post_scanf);
-     register_handlers(mod, "malloc", nshr_pre_malloc, NULL);
+     register_handlers(mod, "scanf", pre_scanf, post_scanf);
+     register_handlers(mod, "malloc", check_arg0_8, NULL);              // void *malloc(size_t size);
+     register_handlers(mod, "getenv", NULL, taint_retstr);              // char *getenv(const char *name);
+
      ignore_handlers(mod, "pthread_mutex_lock");
+     ignore_handlers(mod, "__printf_chk");
 
    }
    else if (strncmp(dr_module_preferred_name(mod), "ld-linux-x86-64.so", 18) == 0)

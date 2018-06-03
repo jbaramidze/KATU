@@ -1455,7 +1455,9 @@ void nshr_taint_check_jmp_reg(int reg DBG_END_TAINTING_FUNC)
 
 void nshr_taint_check_jmp_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC)
 {
-  reg_t pc = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
+  reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
+
+  reg_t pc = *((reg_t *) addr);
 
   process_jump((unsigned char *) pc, 0 DGB_END_CALL_ARG);
 }
