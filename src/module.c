@@ -80,6 +80,7 @@ event_exit(void)
     }
 
     hashtable_delete(&func_hashtable);
+    hashtable_delete(&FILEs_);
 }
 
 static void nshr_handle_taint(long long addr, int size)
@@ -163,6 +164,7 @@ void init(void)
   }
 
   hashtable_init(&func_hashtable, HASH_BITS, HASH_INTPTR, false);
+  hashtable_init(&FILEs_,         4,         HASH_INTPTR, false);
 }
 
 DR_EXPORT void

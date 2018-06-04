@@ -15,6 +15,8 @@ static int num_string_args;
 
 typedef struct {
   const char *s1, *s2;
+  const void *v1, *v2;
+  long long i1, i2;
 
 } arg_data_struct;
 
@@ -69,7 +71,7 @@ static void taint_str(const char *str)
 {
   int size = strlen(str);
 
-  dr_printf("SKIPPER:\t\tTainting string at %p, %d bytes.\n", str, size);
+  LTEST("SKIPPER:\t\tTainting string at %p, %d bytes.\n", str, size);
 
   nshr_taint((reg_t) str, size, 0);
 }
@@ -211,7 +213,7 @@ static void pre_scanf(DBG_END_TAINTING_FUNC_ALONE)
 
   const char *format = (const char *) get_arg(0);
 
-  LTEST("DRWRAP:\t\tGoing into scanf with %s.\n", format);
+  LTEST("SKIPPER:\t\tGoing into scanf with %s.\n", format);
 
   for (unsigned int i = 0; i < strlen(format) - 1; i++)
   {
@@ -271,7 +273,7 @@ static void post_scanf(DBG_END_TAINTING_FUNC_ALONE)
   }
 }
 
-static void taint_strcmp_end(DBG_END_TAINTING_FUNC_ALONE)
+static void strcmp_end(DBG_END_TAINTING_FUNC_ALONE)
 {
   int t = get_ret();
 
@@ -281,10 +283,55 @@ static void taint_strcmp_end(DBG_END_TAINTING_FUNC_ALONE)
   }
 }
 
-static void taint_strcmp_begin(DBG_END_TAINTING_FUNC_ALONE)
+static void strcmp_begin(DBG_END_TAINTING_FUNC_ALONE)
 {
   arg_data.s1 = (const char *) get_arg(0);
   arg_data.s2 = (const char *) get_arg(1);
+}
+
+static void fread_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  arg_data.s1 = (const char *) get_arg(0);
+  arg_data.v1 = (void *)       get_arg(3);
+}
+
+static void fread_end(DBG_END_TAINTING_FUNC_ALONE)
+{
+  uint64_t r = (uint64_t) get_ret();
+
+  char *path = hashtable_lookup(&FILEs_, (void *) arg_data.v1);
+
+  if (path != NULL) 
+  {
+    dr_printf("Read %lld bytes from %s to %p.\n", r, path , arg_data.s1);
+  }
+  else
+  {
+    FAIL();
+  }
+
+  FAIL();
+}
+
+static void fopen_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  arg_data.s1 = (const char *) get_arg(0);
+}
+
+static void fopen_end(DBG_END_TAINTING_FUNC_ALONE)
+{
+  void *r = (void *) get_ret();
+
+  LTEST("SKIPPER:\t\tOpened %s at %p.\n", arg_data.s1, r);
+
+  char *e = (char *) malloc(sizeof(char) * (strlen(arg_data.s1) + 1));
+
+  strcpy(e, arg_data.s1);
+
+  if (!hashtable_add(&FILEs_, r, (void *)e))
+  {
+    FAIL();
+  }
 }
 
 static void check_arg0_8(DBG_END_TAINTING_FUNC_ALONE)
@@ -361,16 +408,25 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
    if (strncmp(dr_module_preferred_name(mod), "libc.so", 7) == 0)
    {
      register_handlers(mod, "scanf", pre_scanf, post_scanf);
-     register_handlers(mod, "malloc", check_arg0_8, NULL);                           // void *malloc(size_t size);
-     register_handlers(mod, "getenv", NULL, taint_retstr);                           // char *getenv(const char *name);
-     register_handlers(mod, "strcmp", taint_strcmp_begin, taint_strcmp_end);         // int strcmp(const char *s1, const char *s2);
-     
+     register_handlers(mod, "malloc", check_arg0_8, NULL);                 // void *malloc(size_t size);
+     register_handlers(mod, "getenv", NULL, taint_retstr);                 // char *getenv(const char *name);
+     register_handlers(mod, "strcmp", strcmp_begin, strcmp_end);           // int strcmp(const char *s1, const char *s2);
+     register_handlers(mod, "fopen", fopen_begin, fopen_end);              // FILE *fopen(const char *path, const char *mode);
+     register_handlers(mod, "fread", fread_begin, fread_end);              // size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream);
+
 
      ignore_handlers(mod, "__printf_chk");
 
      // Problematic one, toupper defined as 
      // return __c >= -128 && __c < 256 ? (*__ctype_toupper_loc ())[__c] : __c;
      ignore_handlers(mod, "__ctype_toupper_loc"); 
+     ignore_handlers(mod, "__xstat");
+     ignore_handlers(mod, "_IO_puts");
+     ignore_handlers(mod, "rand_r");
+     ignore_handlers(mod, "strlen");
+     ignore_handlers(mod, "snprintf");
+     
+
 
 
    }

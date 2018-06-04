@@ -1,30 +1,51 @@
-//#include "/custobuilds/include/stdio.h"
-//#include "/custobuilds/include/stdlib.h"
-//#include "/custobuilds/include/string.h" 
-#include "stdio.h"
-#include "stdlib.h"
-#include "string.h" 
-#include "limits.h" 
-#include "dr_annotations_zhani.h"
-#include <ctype.h>
+#include<stdio.h>
+#include<string.h>
 
-int A[50];
+#define SIZE 1
+#define NUMELEM 5
 
-const char *xixo = "babs";
-
-int main(int argc, char **argv)
+int main(void)
 {
-  char q[6];
-  q[0] = 'b';
-  q[1] = 'c';
-  q[2] = 'b';
-  q[3] = 's';
-  q[4] = 0;
+    FILE* fd = NULL;
+    char buff[100];
+    memset(buff,0,sizeof(buff));
 
-  nshrtaint((long long int) &q, 6);
+    fd = fopen("/home/zhani/Thesis/project/test/build/test.txt","rw+");
 
-  volatile int b = strcmp(q, xixo);
+    if(NULL == fd)
+    {
+        printf("\n fopen() Error!!!\n");
+        return 1;
+    }
 
-  volatile int qis = A[q[0]];
+    if(SIZE*NUMELEM != fread(buff,SIZE,NUMELEM,fd))
+    {
+        printf("\n fread() failed\n");
+        return 1;
+    }
 
+    printf("The bytes read are [%s]\n",buff);
+/*
+    if(0 != fseek(fd,11,SEEK_CUR))
+    {
+        printf("\n fseek() failed\n");
+        return 1;
+    }
+
+    printf("\n fseek() successful\n");
+
+    if(SIZE*NUMELEM != fwrite(buff,SIZE,strlen(buff),fd))
+    {
+        printf("\n fwrite() failed\n");
+        return 1;
+    }
+
+    printf("\n fwrite() successful, data written to text file\n");
+
+    fclose(fd);
+
+    printf("\n File stream closed through fclose()\n");
+    */
+
+    return 0;
 }

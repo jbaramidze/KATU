@@ -19,6 +19,7 @@ ID_entity       ids_[MAX_ID];
 IID_entity      iids_[MAX_IID];
 
 hashtable_t func_hashtable;
+hashtable_t FILEs_;
 
 // Used to describe true taint sources (e.g. read())
 int             nextUID                      = 1;

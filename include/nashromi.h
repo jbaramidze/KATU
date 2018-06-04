@@ -394,6 +394,7 @@ extern instrFunc instrFunctions[MAX_OPCODE];
 extern lprec *lp;
 
 extern hashtable_t func_hashtable;
+extern hashtable_t FILEs_;
 
 
 /****************************************************
