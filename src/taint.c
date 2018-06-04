@@ -1,5 +1,5 @@
 #define LOGTEST
-#undef LOGDEBUG
+#define LOGDEBUG
 #undef  LOGDUMP
 
 #include "dr_api.h"
@@ -80,6 +80,33 @@ static int get_A_of_size(int size)
   if (size == 8) return DR_REG_RAX;
 
   FAIL();
+}
+
+void update_bounds_strings_equal(uint64_t saddr, uint64_t daddr, int bytes DBG_END_TAINTING_FUNC)
+{
+  for (int i = 0; i < bytes; i++)
+  {
+    int index1 = mem_taint_find_index(saddr, i);
+    int index2 = mem_taint_find_index(daddr, i);
+
+    if (MEMTAINTVAL(index2, daddr + i) == -1)
+    {
+      LDUMP_TAINT(i, (MEMTAINTED(index1, saddr)), 
+                    "  REMOVE MEM %p TAINT#%d INDEX %d TOTAL %d.\n", 
+                            ADDR(saddr + i), MEMTAINTVAL(index1, saddr + i), index1, bytes);
+
+      MEMTAINTRM(index1, saddr + i);
+    }
+
+    if (MEMTAINTVAL(index1, saddr + i) == -1)
+    {
+      LDUMP_TAINT(i, (MEMTAINTED(index2, daddr)), 
+                    "  REMOVE MEM %p TAINT#%d INDEX %d TOTAL %d.\n", 
+                         ADDR(daddr + i), MEMTAINTVAL(index2, daddr + i), index2, bytes);
+
+      MEMTAINTRM(index2, daddr + i);
+    }
+  }
 }
 
 void nshr_taint_mv_mem2mem(int src_seg_reg, int src_base_reg, int src_index_reg, int src_scale, int src_disp, 
@@ -308,7 +335,6 @@ void nshr_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC)
     char *si = (char *) reg_get_value(DR_REG_RSI, &mcontext);
     char *di = (char *) reg_get_value(DR_REG_RDI, &mcontext);
 
-
     for (unsigned int i = 0; i < bytes; i++)
     {
       if (*(si + i) != *(di + i))
@@ -321,28 +347,9 @@ void nshr_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC)
 
     invalidate_eflags();
 
-    uint64_t saddr = (uint64_t) si;
-    uint64_t daddr = (uint64_t) di;
-
     if (equals == 1)
     {
-      for (unsigned int i = 0; i < bytes; i++)
-      {
-        int index1 = mem_taint_find_index(saddr, i);
-        int index2 = mem_taint_find_index(daddr, i);
-
-        LDUMP_TAINT(i, (MEMTAINTED(index1, saddr)), 
-                      "  REMOVE MEM %p TAINT#%d INDEX %d TOTAL %d.\n", 
-                           ADDR(saddr + i), MEMTAINTVAL(index1, saddr + i), index1, size);
-
-        MEMTAINTRM(index2, saddr + i);
-
-        LDUMP_TAINT(i, (MEMTAINTED(index2, daddr)), 
-                      "  REMOVE MEM %p TAINT#%d INDEX %d TOTAL %d.\n", 
-                           ADDR(daddr + i), MEMTAINTVAL(index2, daddr + i), index2, size);
-
-        MEMTAINTRM(index2, daddr + i);
-      }
+      update_bounds_strings_equal((uint64_t) si, (uint64_t) di, bytes DGB_END_CALL_ARG);
     }
   }
   else

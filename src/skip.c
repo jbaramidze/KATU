@@ -13,12 +13,19 @@
 static uint64_t *string_args[10];
 static int num_string_args;
 
+typedef struct {
+  const char *s1, *s2;
+
+} arg_data_struct;
+
+arg_data_struct arg_data;
+
 static reg_t get_stack_arg(dr_mcontext_t *ctx, uint arg)
 {
     return *((reg_t *) (reg_get_value(DR_REG_RSP, ctx) + (arg - 6 + 1) * sizeof(reg_t)));
 }
 
-static int get_arg_reg(int arg, int size)
+static reg_t get_arg_reg(int arg, int size)
 {
   switch(arg)
   {
@@ -264,6 +271,22 @@ static void post_scanf(DBG_END_TAINTING_FUNC_ALONE)
   }
 }
 
+static void taint_strcmp_end(DBG_END_TAINTING_FUNC_ALONE)
+{
+  int t = get_ret();
+
+  if (t == 0)
+  {
+    update_bounds_strings_equal((uint64_t) arg_data.s1, (uint64_t) arg_data.s2, strlen(arg_data.s1) DGB_END_CALL_ARG);
+  }
+}
+
+static void taint_strcmp_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  arg_data.s1 = (const char *) get_arg(0);
+  arg_data.s2 = (const char *) get_arg(1);
+}
+
 static void check_arg0_8(DBG_END_TAINTING_FUNC_ALONE)
 {
   int reg = get_arg_reg(0, sizeof(size_t));
@@ -338,8 +361,10 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
    if (strncmp(dr_module_preferred_name(mod), "libc.so", 7) == 0)
    {
      register_handlers(mod, "scanf", pre_scanf, post_scanf);
-     register_handlers(mod, "malloc", check_arg0_8, NULL);              // void *malloc(size_t size);
-     register_handlers(mod, "getenv", NULL, taint_retstr);              // char *getenv(const char *name);
+     register_handlers(mod, "malloc", check_arg0_8, NULL);                           // void *malloc(size_t size);
+     register_handlers(mod, "getenv", NULL, taint_retstr);                           // char *getenv(const char *name);
+     register_handlers(mod, "strcmp", taint_strcmp_begin, taint_strcmp_end);         // int strcmp(const char *s1, const char *s2);
+     
 
      ignore_handlers(mod, "__printf_chk");
 

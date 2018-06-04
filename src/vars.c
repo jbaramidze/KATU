@@ -637,4 +637,3 @@ void check_bounds_reg(int reg DBG_END_TAINTING_FUNC)
     }
   }
 }
-
