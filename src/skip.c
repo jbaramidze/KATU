@@ -15,7 +15,7 @@ static int num_string_args;
 
 typedef struct {
   const char *s1, *s2;
-  const void *v1, *v2;
+  void *v1, *v2;
   long long i1, i2;
 
 } arg_data_struct;
@@ -73,7 +73,7 @@ static void taint_str(const char *str)
 
   LTEST("SKIPPER:\t\tTainting string at %p, %d bytes.\n", str, size);
 
-  nshr_taint((reg_t) str, size, 0);
+  nshr_taint_by_fd((reg_t) str, size, 0);
 }
 
 /*
@@ -253,7 +253,7 @@ static void pre_scanf(DBG_END_TAINTING_FUNC_ALONE)
       }
       else
       {
-        nshr_taint(get_arg(num_arg), size, 0);
+        nshr_taint_by_fd(get_arg(num_arg), size, 0);
       }
 
       num_arg++;
@@ -299,18 +299,10 @@ static void fread_end(DBG_END_TAINTING_FUNC_ALONE)
 {
   uint64_t r = (uint64_t) get_ret();
 
-  char *path = hashtable_lookup(&FILEs_, (void *) arg_data.v1);
-
-  if (path != NULL) 
+  if (r > 0)
   {
-    dr_printf("Read %lld bytes from %s to %p.\n", r, path , arg_data.s1);
+    nshr_taint_by_file((reg_t) arg_data.s1, r, arg_data.v1);
   }
-  else
-  {
-    FAIL();
-  }
-
-  FAIL();
 }
 
 static void fopen_begin(DBG_END_TAINTING_FUNC_ALONE)
@@ -425,6 +417,7 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "rand_r");
      ignore_handlers(mod, "strlen");
      ignore_handlers(mod, "snprintf");
+     ignore_handlers(mod, "fclose");
      
 
 

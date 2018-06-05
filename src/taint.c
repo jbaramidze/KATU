@@ -1223,7 +1223,8 @@ void nshr_taint_mv_reg_rm(int mask DBG_END_TAINTING_FUNC)
   }
 }
 
-void nshr_taint(reg_t addr, unsigned int size, int fd)
+
+void nshr_taint_by_file(reg_t addr, unsigned int size, void *file)
 {
   LDEBUG("ADD MEM %p size %d mark %d\n", addr, size, nshr_tid_new_iid_get());
 
@@ -1242,7 +1243,35 @@ void nshr_taint(reg_t addr, unsigned int size, int fd)
     }
     else
     {
-      int newid = nshr_tid_new_uid(fd);
+      int newid = nshr_tid_new_uid_by_file(file);
+      dr_printf("  ADD MEM %p mark %d TAINT#%d INDEX %d TOTAL %d.\n", 
+                         ADDR(addr + i), nshr_tid_new_iid_get(), newid, index, size);
+
+      SETMEMTAINTVAL(index, addr + i, newid);
+    }
+  }
+}
+
+void nshr_taint_by_fd(reg_t addr, unsigned int size, int fd)
+{
+  LDEBUG("ADD MEM %p size %d mark %d\n", addr, size, nshr_tid_new_iid_get());
+
+  for (unsigned int i = 0; i < size; i++)
+  {
+    int index = 0;
+  
+    while(index < TAINTMAP_NUM && !MEMTAINTISEMPTY(index, addr + i))
+    {
+      index++;
+    }
+    
+    if (index == TAINTMAP_NUM)
+    {
+      FAIL();
+    }
+    else
+    {
+      int newid = nshr_tid_new_uid_by_fd(fd);
       dr_printf("  ADD MEM %p mark %d TAINT#%d INDEX %d TOTAL %d.\n", 
       	                 ADDR(addr + i), nshr_tid_new_iid_get(), newid, index, size);
 

@@ -1,8 +1,10 @@
-#include<stdio.h>
-#include<string.h>
+#include <stdio.h>
+#include <string.h>
 
 #define SIZE 1
 #define NUMELEM 5
+
+int A[100];
 
 int main(void)
 {
@@ -25,6 +27,8 @@ int main(void)
     }
 
     printf("The bytes read are [%s]\n",buff);
+
+    fclose(fd);
 /*
     if(0 != fseek(fd,11,SEEK_CUR))
     {
@@ -42,7 +46,6 @@ int main(void)
 
     printf("\n fwrite() successful, data written to text file\n");
 
-    fclose(fd);
 
     printf("\n File stream closed through fclose()\n");
     */

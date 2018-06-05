@@ -68,7 +68,7 @@ static void post_read(void *drcontext)
   {
     LTEST("Syscall:\tRead %d bytes from FD#%d to %p\n", result, read_fd, read_addr);
 
-    nshr_taint((reg_t) read_addr, result, read_fd);
+    nshr_taint_by_fd((reg_t) read_addr, result, read_fd);
   }
 }
 

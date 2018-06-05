@@ -223,11 +223,29 @@ int nshr_tid_modify_id_by_symbol(int dst_taint, enum prop_type operation, int sr
   return nshr_tid_new_iid(newid, 0);
 }
 
-int nshr_tid_new_uid(int fd)
+int nshr_tid_new_uid_by_file(void *file)
 {
-  uids_[nextUID].fd       = fd;
-  uids_[nextUID].bounded  = 0;
-  uids_[nextUID].gr       = NULL;
+  uids_[nextUID].descriptor.file = file;
+  uids_[nextUID].descr_type      = 1;
+  uids_[nextUID].bounded         = 0;
+  uids_[nextUID].gr              = NULL;
+
+  int newid  = nshr_tid_new_id(nextUID);
+  int newiid = nshr_tid_new_iid(newid, 0);
+
+  ids_[newid].size         = 1;
+
+  nextUID++;
+
+  return newiid;
+}
+
+int nshr_tid_new_uid_by_fd(int fd)
+{
+  uids_[nextUID].descriptor.fd = fd;
+  uids_[nextUID].descr_type    = 0;
+  uids_[nextUID].bounded       = 0;
+  uids_[nextUID].gr            = NULL;
 
   int newid  = nshr_tid_new_id(nextUID);
   int newiid = nshr_tid_new_iid(newid, 0);

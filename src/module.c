@@ -11,14 +11,14 @@ void dump()
 {
   dr_printf("\n\nStarting dump of IID:\n");
 
-  for (int i = 0; i < nshr_tid_new_iid_get(); i++)
+  for (int i = 1; i < nshr_tid_new_iid_get(); i++)
   {
     dr_printf("IID #%d\t\t -> id %d index %d\n", i, iids_[i].id, iids_[i].index);
   }
 
   dr_printf("\n\nStarting dump of ID:\n");
 
-  for (int i = 0; i < nshr_tid_new_id_get(); i++)
+  for (int i = 1; i < nshr_tid_new_id_get(); i++)
   {
     dr_printf("ID #%d\t\t -> uid %d size %d ops_size: %d\n", i, ids_[i].uid, ids_[i].size, ids_[i].ops_size);
 
@@ -41,9 +41,20 @@ void dump()
 
   dr_printf("\n\nStarting dump of UID:\n");
 
-  for (int i = 0; i < nshr_tid_new_uid_get(); i++)
+  for (int i = 1; i < nshr_tid_new_uid_get(); i++)
   {
-    dr_printf("UID #%d\t\t -> fd %d bounded %d\n", i, uids_[i].fd, uids_[i].bounded);
+    char *path;
+
+    if (uids_[i].descr_type == 0)
+    {
+      path = fds_[uids_[i].descriptor.fd].path;
+    }
+    else
+    {
+      path = hashtable_lookup(&FILEs_, uids_[i].descriptor.file);
+    }
+
+    dr_printf("UID #%d\t\t -> path %s bounded %d\n", i, path, uids_[i].bounded);
 
     Group_restriction *gr = uids_[i].gr;
 
@@ -85,7 +96,7 @@ event_exit(void)
 
 static void nshr_handle_taint(long long addr, int size)
 {
-  nshr_taint(addr, size, 900);
+  nshr_taint_by_fd(addr, size, 900);
 }
 
 static void nshr_handle_dump(long long addr)

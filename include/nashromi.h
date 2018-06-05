@@ -187,7 +187,13 @@ struct Group_restriction{
 typedef struct Group_restriction Group_restriction;
 
 typedef struct {
-  int fd;
+  union {
+    int fd;
+    void *file;
+
+  } descriptor;
+
+  int descr_type;
 
   // TAINT_BOUND_*
   int bounded;
@@ -384,7 +390,9 @@ extern enum mode started_;
 
 extern Eflags eflags_;
 
-extern Fd_entity  fds_[MAX_FD];
+extern Fd_entity   fds_[MAX_FD];
+extern hashtable_t FILEs_;
+
 extern UID_entity uids_[MAX_UID];
 extern ID_entity  ids_[MAX_ID];
 extern IID_entity iids_[MAX_IID];
@@ -394,7 +402,6 @@ extern instrFunc instrFunctions[MAX_OPCODE];
 extern lprec *lp;
 
 extern hashtable_t func_hashtable;
-extern hashtable_t FILEs_;
 
 
 /****************************************************
@@ -471,7 +478,8 @@ int nshr_tid_new_id(int uid);
 int nshr_tid_new_id_get();
 int nshr_tid_new_iid(int id, int index);
 int nshr_tid_new_iid_get();
-int nshr_tid_new_uid(int fd);
+int nshr_tid_new_uid_by_fd(int fd);
+int nshr_tid_new_uid_by_file(void *file);
 int nshr_tid_new_uid_get();
 int nshr_tid_copy_id(int id);
 int nshr_make_id_by_merging_all_ids_in2regs(int reg1, int reg2);
@@ -491,7 +499,8 @@ bool nshr_event_pre_syscall(void *drcontext, int id);
 bool nshr_syscall_filter(void *drcontext, int sysnum);
 
 // taint.
-void nshr_taint(reg_t addr, unsigned int size, int fd);
+void nshr_taint_by_fd(reg_t addr, unsigned int size, int fd);
+void nshr_taint_by_file(reg_t addr, unsigned int size, void *file);
 
 void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_END_TAINTING_FUNC);
 void nshr_taint_mv_reg2reg(int src_reg, int dst_reg DBG_END_TAINTING_FUNC);
