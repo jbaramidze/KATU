@@ -121,10 +121,15 @@ void nshr_taint_mv_constmem2mem(uint64 src_addr, int seg_reg, int base_reg, int 
 {
   reg_t dst_addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
 
-  LDEBUG_TAINT(false, "MEM %p -> MEM %p size %d.\n", 
-             src_addr, dst_addr, access_size);
+  nshr_taint_mv_constmem2constmem(src_addr, dst_addr, access_size DGB_END_CALL_ARG);
+}
 
-  for (int i = 0; i < access_size; i++)
+void nshr_taint_mv_constmem2constmem(uint64 src_addr, uint64 dst_addr, unsigned int size DBG_END_TAINTING_FUNC)
+{
+  LDEBUG_TAINT(false, "MEM %p -> MEM %p size %d.\n", 
+             src_addr, dst_addr, size);
+
+  for (unsigned int i = 0; i < size; i++)
   {
     int index1 = mem_taint_find_index(src_addr, i);
     int index2 = mem_taint_find_index(dst_addr, i);
@@ -132,7 +137,7 @@ void nshr_taint_mv_constmem2mem(uint64 src_addr, int seg_reg, int base_reg, int 
     LDUMP_TAINT(i, (MEMTAINTED(index1, src_addr + i) || MEMTAINTED(index2, dst_addr + i)), 
                        "  MEM %p TAINT#%d -> MEM %p TAINT#%d INDEX %d TOTAL %d.\n", 
                            ADDR(src_addr + i), MEMTAINTVAL(index1, src_addr + i),
-                               ADDR(dst_addr + i), MEMTAINTVAL(index2, dst_addr + i), index1, access_size);
+                               ADDR(dst_addr + i), MEMTAINTVAL(index2, dst_addr + i), index1, size);
 
     MEMTAINT2MEMTAINT(index1, src_addr + i, index2, dst_addr + i);
   }

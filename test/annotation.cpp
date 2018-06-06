@@ -14,21 +14,20 @@ int main(void)
 
     fd = fopen("/home/zhani/Thesis/project/test/build/test.txt","rw+");
 
-    if(NULL == fd)
+    fread(buff,SIZE,NUMELEM,fd);
+
+    if (buff[2] < 100 && buff[2] > 1)
     {
-        printf("\n fopen() Error!!!\n");
-        return 1;
+      char quq[100];
+
+      memcpy(quq, buff, strlen(buff));
+
+      printf("The bytes read are [%s]\n",buff);
+
+      volatile int b = A[quq[2]];
+
+      fclose(fd);
     }
-
-    if(SIZE*NUMELEM != fread(buff,SIZE,NUMELEM,fd))
-    {
-        printf("\n fread() failed\n");
-        return 1;
-    }
-
-    printf("The bytes read are [%s]\n",buff);
-
-    fclose(fd);
 /*
     if(0 != fseek(fd,11,SEEK_CUR))
     {

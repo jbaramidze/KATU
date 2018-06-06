@@ -1829,6 +1829,8 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_cmps]                = opcode_cmps;      // 393 (strcpy)
   instrFunctions[OP_rep_cmps]            = opcode_cmps;      // 394 (strcpy)
 
+  instrFunctions[OP_repne_scas]          = opcode_ignore;    // 398 (strlen)
+
   instrFunctions[OP_movsxd]              = opcode_mov;       // 597
 }
 
