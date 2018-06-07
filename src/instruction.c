@@ -327,9 +327,11 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_restrictor(type))
       {
-        int64 value = opnd_get_immed_int(src);
+        uint64_t value = opnd_get_immed_int(src);
 
-        LDUMP("InsDetail:\tRestricting by '%s' taint at %s by 0x%x\n", PROP_NAMES[type], REGNAME(dst_reg), value);
+        value = low_trim(value, 8*opnd_size_in_bytes(opnd_get_size(src)));
+
+        dr_printf("InsDetail:\tRestricting by '%s' taint at %s by 0x%x\n", PROP_NAMES[type], REGNAME(dst_reg), value);
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_rest_imm2reg, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT64(value), OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(type) 
@@ -365,7 +367,9 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_restrictor(type))
       {
-        int64 value = opnd_get_immed_int(src);
+        uint64_t value = opnd_get_immed_int(src);
+
+        value = low_trim(value, 8*opnd_size_in_bytes(opnd_get_size(src)));
 
         LDUMP("InsDetail:\tRestricting by '%s' taint at [%s:%s + %d*%s + %d], by 0x%x, %d bytes\n", 
                   PROP_NAMES[type], REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp,
@@ -405,7 +409,9 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_restrictor(type))
       {
-        int64 value = opnd_get_immed_int(src);
+        uint64_t value = opnd_get_immed_int(src);
+
+        value = low_trim(value, 8*opnd_size_in_bytes(opnd_get_size(src)));
 
         LDUMP("InsDetail:\tRestricting by '%s' taint at pc-relative %llx, by 0x%x, %d bytes\n", 
                   PROP_NAMES[type], addr, value, access_size);
@@ -1298,7 +1304,9 @@ static void opcode_imul(void *drcontext, instr_t *instr, instrlist_t *ilist)
     	     opnd_is_reg(dst1))
     {
       int src1_reg   = opnd_get_reg(src1);
+
       int64 src2_val = opnd_get_immed_int(src2);
+
       int dst1_reg   = opnd_get_reg(dst1);
 
       LDUMP("InsDetail:\tMultiplying %s and %lld -> %s.\n", REGNAME(src1_reg), src2_val, REGNAME(dst1_reg));

@@ -314,8 +314,10 @@ static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 #define MEMTAINTVAL(index, address)                  mem_taint_get_value(index, address)
 #define SETMEMTAINTVAL(index, address, value)        mem_taint_set_value(index, address, value)
 
-#define REGVAL(reg, offset)                          reg_get_byte_value(reg, offset)
-#define MEMVAL(address)                              (*(unsigned char *) address)
+#define REGVAL_BYTE(reg, offset)                     reg_get_byte_value(reg, offset)
+#define REGVAL(reg)                                  reg_get_full_value(reg)
+#define MEMVAL(address)                              (*(uint64_t *) address)
+#define MEMVAL_BYTE(address)                         (*(unsigned char *) address)
 
 #define REGTAINTVAL(reg, offset)                     reg_taint_get_value(reg, offset)
 #define SETREGTAINTVAL(reg, offset, value)           reg_taint_set_value(reg, offset, value)
@@ -333,6 +335,7 @@ static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 #define REGTAINTED(reg, offset)             (reg_taint_get_value(reg, offset) > 0)
 
 #define REGTAINTEDANY(reg)                  reg_taint_any(reg)
+#define MEMTAINTEDANY(mem, size)            mem_taint_any(mem, size)
 
 #define REGTAINTID(mask, offset)            (iids_[(taintReg_[(mask & 0xFF0000) >> 16][((mask & 0xFF00) >> 8) + offset])].id)
 #define MEMTAINTID(index, address)          (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].id)
@@ -440,11 +443,13 @@ typedef struct _TaintRegStruct
 
 extern TaintRegStruct taint_reg_;
 
-char    reg_get_byte_value(int reg, int offset);
-int64_t reg_taint_get_value(int reg, int offset);
-void    reg_taint_rm_all(int reg);
-int     reg_taint_any(int reg);
-void    reg_taint_set_value(int reg, int offset, uint64_t value);
+char     reg_get_byte_value(int reg, int offset);
+uint64_t reg_get_full_value(int reg);
+int64_t  reg_taint_get_value(int reg, int offset);
+void     reg_taint_rm_all(int reg);
+int      reg_taint_any(int reg);
+int      mem_taint_any(uint64_t mem, int size);
+void     reg_taint_set_value(int reg, int offset, uint64_t value);
 
 void log_instr(instr_t *instr);
 instr_t *instr_dupl(instr_t *instr);
@@ -578,4 +583,6 @@ void nshr_init_opcodes(void);
 void module_load_event(void *drcontext, const module_data_t *mod, bool loaded);
 
 void update_bounds_strings_equal(uint64_t saddr, uint64_t daddr, int bytes DBG_END_TAINTING_FUNC);
+
+uint64_t low_trim(uint64_t data, int size);
 #endif

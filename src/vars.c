@@ -312,6 +312,15 @@ char    reg_get_byte_value(int reg, int offset)
   return pc[offset];
 }
 
+uint64_t    reg_get_full_value(int reg)
+{
+  GET_CONTEXT();
+  
+  uint64_t r = (uint64_t) reg_get_value(reg, &mcontext);
+
+  return r;
+}
+
 int64_t reg_taint_get_value(int reg, int offset)
 {
   return taint_reg_.value[REGINDEX(reg)][REGSTART(reg) + offset];
@@ -328,6 +337,21 @@ void reg_taint_rm_all(int reg)
   {
     REGTAINTRM(reg, i);
   } 
+}
+
+int mem_taint_any(uint64_t addr, int size)
+{
+  for (int i = 0; i < size; i++)
+  {
+    int index = mem_taint_find_index(addr, i);
+
+    if (MEMTAINTED(index, addr + i))
+    {
+      return 1;
+    }
+  }
+
+  return 0;
 }
 
 int reg_taint_any(int reg)
@@ -655,4 +679,15 @@ void check_bounds_reg(int reg DBG_END_TAINTING_FUNC)
       check_bounds_id(id DGB_END_CALL_ARG);
     }
   }
+}
+
+uint64_t low_trim(uint64_t data, int size)
+{
+  uint64_t s = 1;
+  s = s << size;
+  s--;
+
+  data = data & s;
+
+  return data; 
 }

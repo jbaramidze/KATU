@@ -9,12 +9,13 @@
 
 void dump()
 {
-  dr_printf("\n\nStarting dump of IID:\n");
+  /*dr_printf("\n\nStarting dump of IID:\n");
 
   for (int i = 1; i < nshr_tid_new_iid_get(); i++)
   {
     dr_printf("IID #%d\t\t -> id %d index %d\n", i, iids_[i].id, iids_[i].index);
   }
+  */
 
   dr_printf("\n\nStarting dump of ID:\n");
 

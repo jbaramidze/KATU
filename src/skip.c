@@ -298,6 +298,23 @@ static void memcpy_begin(DBG_END_TAINTING_FUNC_ALONE)
   nshr_taint_mv_constmem2constmem((uint64) src, (uint64) dst, size DGB_END_CALL_ARG);
 }
 
+static void strncpy_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  void *dst = (void *) get_arg(0);
+  void *src = (void *) get_arg(1);
+  unsigned int size  = (int) get_arg(2);
+
+  unsigned int len = strlen(src);
+
+  // choose smallest in size.
+  if (size > len)
+  {
+    size = len;
+  }
+
+  nshr_taint_mv_constmem2constmem((uint64) src, (uint64) dst, size DGB_END_CALL_ARG);
+}
+
 static void fread_begin(DBG_END_TAINTING_FUNC_ALONE)
 {
   arg_data.s1 = (const char *) get_arg(0);
@@ -413,6 +430,7 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      register_handlers(mod, "getenv", NULL, taint_retstr);                 // char *getenv(const char *name);
      register_handlers(mod, "strcmp", strcmp_begin, strcmp_end);           // int strcmp(const char *s1, const char *s2);
      register_handlers(mod, "memcpy", memcpy_begin, NULL);                 // void *memcpy(void *dest, const void *src, size_t n);
+     register_handlers(mod, "strncpy", strncpy_begin, NULL);               // char *strncpy(char *dest, const char *src, size_t n);
      register_handlers(mod, "__memcpy_chk", memcpy_begin, NULL);           // void *memcpy(void *dest, const void *src, size_t n);
      register_handlers(mod, "fopen", fopen_begin, fopen_end);              // FILE *fopen(const char *path, const char *mode);
      register_handlers(mod, "fread", fread_begin, fread_end);              // size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream);
@@ -429,6 +447,7 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "strlen");
      ignore_handlers(mod, "snprintf");
      ignore_handlers(mod, "fclose");
+     ignore_handlers(mod, "free");
      
 
 
