@@ -17,6 +17,7 @@ typedef struct {
   const char *s1, *s2;
   void *v1, *v2;
   long long i1, i2;
+  int should;
 
 } arg_data_struct;
 
@@ -331,6 +332,51 @@ static void fread_end(DBG_END_TAINTING_FUNC_ALONE)
   }
 }
 
+static void strtol_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  const char *s = (const char *) get_arg(0);
+  uint64_t endptr = (uint64_t ) get_arg(1);
+
+  // Detaint location pointed by endptr.
+  for (int i = 0; i < 8; i++)
+  {
+    int index = mem_taint_find_index(endptr, i);
+
+    MEMTAINTRM(index, endptr + i);
+  }
+
+  // Check if first char in string is tainted.
+  int index = mem_taint_find_index((uint64_t) s, 0);
+  int id    = MEMTAINTVAL(index, (uint64_t) s);
+
+  if (id > 0)
+  {
+    arg_data.should = 1;
+
+    // Also we need copy of uid to create new ids for integer.
+    arg_data.i1 = ID2UID(id);
+  }
+  else
+  {
+    arg_data.should = 0;
+  }
+}
+
+static void strtol_end(DBG_END_TAINTING_FUNC_ALONE)
+{
+  if (arg_data.should)
+  {
+    LTEST("SKIPPER:\t\tTainting EAX by uid %d.\n", arg_data.i1);
+
+    // We should create new ids from uid and taint EAX.
+    for (unsigned int i = 0; i < REGSIZE(DR_REG_EAX); i++)
+    {
+      SETREGTAINTVAL(DR_REG_EAX, i, nshr_tid_new_id(arg_data.i1));
+    }
+
+  }
+}
+
 static void fopen_begin(DBG_END_TAINTING_FUNC_ALONE)
 {
   arg_data.s1 = (const char *) get_arg(0);
@@ -434,6 +480,7 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      register_handlers(mod, "__memcpy_chk", memcpy_begin, NULL);           // void *memcpy(void *dest, const void *src, size_t n);
      register_handlers(mod, "fopen", fopen_begin, fopen_end);              // FILE *fopen(const char *path, const char *mode);
      register_handlers(mod, "fread", fread_begin, fread_end);              // size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream);
+     register_handlers(mod, "strtol", strtol_begin, strtol_end);           // long int strtol(const char *nptr, char **endptr, int base);
 
 
      ignore_handlers(mod, "__printf_chk");

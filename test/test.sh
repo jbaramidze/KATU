@@ -1,5 +1,6 @@
 #!/bin/bash
 export LD_LIBRARY_PATH=`pwd`/../third_party/lp_solve_5.5/
+export LD_BIND_NOW=1
 
 
 echo "Testing vulnerable cases"
@@ -48,7 +49,7 @@ echo ""
 
 echo -n "Testing scanf_vuln working case.......  "
 
-echo "work" | ~/Thesis/installer/dynamorio/build/bin64/drrun -c /home/zhani/Thesis/project/build/bin/libnashromi.so \
+echo "121" | ~/Thesis/installer/dynamorio/build/bin64/drrun -c /home/zhani/Thesis/project/build/bin/libnashromi.so \
         -- "/home/zhani/Thesis/project/test/build/testcases/scanf_vuln" 2>&1 | grep --silent "\!\!\!VULNERABILITY\!\!\!"
 
 
@@ -62,7 +63,7 @@ echo "work" | ~/Thesis/installer/dynamorio/build/bin64/drrun -c /home/zhani/Thes
 
   echo -n "Testing scanf_vuln vulnerable case.......  "
 
-echo "workwork" | ~/Thesis/installer/dynamorio/build/bin64/drrun -c /home/zhani/Thesis/project/build/bin/libnashromi.so \
+echo "121212" | ~/Thesis/installer/dynamorio/build/bin64/drrun -c /home/zhani/Thesis/project/build/bin/libnashromi.so \
         -- "/home/zhani/Thesis/project/test/build/testcases/scanf_vuln" 2>&1 | grep --silent "\!\!\!VULNERABILITY\!\!\!"
 
 

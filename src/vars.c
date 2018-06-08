@@ -574,58 +574,91 @@ void bound(int *ids, int mask)
 // Returns: -1 on vulnerability
 //           1 on safe
 //           0 on could not decide
-int check_bounds_separately(int id DBG_END_TAINTING_FUNC)
+int check_bounds_separately(int *ids DBG_END_TAINTING_FUNC)
 {
-  int uid = ID2UID(id);
+  int vulnerables = 0;
+  int tainted_ids = 0;
+  int well_bounds = 0;
 
-  int vuln1 = 0;
-  int vuln2 = 0;
-
-  if (!lower_bound(uid) || !higher_bound(uid))
+  for (int i = 0; i < 8; i++)
   {
-    vuln1 = 1;
-  }
+    int id = ids[i];
 
-  for (int i = 0; i < ID2OPSIZE(id); i++)
-  {
-    int tuid = ID2OP(id, i).value;
+    if (id == -1)
+    {
+      continue;
+    }
+
+    tainted_ids++;
+
+    int uid = ID2UID(id);
+
+    int vuln1 = 0;
+    int vuln2 = 0;
 
     if (!lower_bound(uid) || !higher_bound(uid))
     {
-      vuln2 = 1;
+      vuln1 = 1;
+    }
+
+    for (int i = 0; i < ID2OPSIZE(id); i++)
+    {
+      int tuid = ID2OP(id, i).value;
+
+      if (!lower_bound(uid) || !higher_bound(uid))
+      {
+        vuln2 = 1;
+      }
+    }
+
+    // all participants are well bound.
+    if (vuln1 == 0 && vuln2 == 0)
+    {
+      well_bounds++;
+
+      continue;
+    }
+
+    // only one uid participating, it's not bounded and there are no related group restrictions....
+    if (ID2OPSIZE(id) == 0 && vuln1 == 1 && uids_[ID2UID(id)].gr == NULL)
+    {
+      vulnerables++;
     }
   }
 
-  // all participants are well bound.
-  if (vuln1 == 0 && vuln2 == 0)
-  {
-    return 1;
-  }
-
-  // only one uid participating, it's not bounded and there are no related group restrictions....
-  if (ID2OPSIZE(id) == 0 && vuln1 == 1 && uids_[ID2UID(id)].gr == NULL)
+  if (vulnerables >= MIN_VULNERABILITIES)
   {
     #ifdef DBG_PASS_INSTR
     drsym_info_t *func = get_func(instr_get_app_pc(dbg_instr));
     if (func != NULL)
     {
-      LWARNING("!!!VULNERABILITY!!! Detected unbounded access for ID#%d (UID#%d), at %s  %s:%d\n", 
-                      id, ID2UID(id), func -> name, func -> file, func -> line);
+      LWARNING("!!!VULNERABILITY!!! Detected unbounded access at %s  %s:%d\n", 
+                     func -> name, func -> file, func -> line);
     }
     else
     {
-      LWARNING("!!!VULNERABILITY!!! Detected unbounded access for ID#%d (UID#%d)\n", id, ID2UID(id));
+      LWARNING("!!!VULNERABILITY!!! Detected unbounded access.\n");
     }
     #else
-    LWARNING("!!!VULNERABILITY!!! Detected unbounded access for ID#%d (UID#%d)\n", id, ID2UID(id));
+    LWARNING("!!!VULNERABILITY!!! Detected unbounded access.\n");
     #endif
+
+    LWARNING("Participating ids: ");
+    for (int i = 0; i < 8; i++) LWARNING("%d, ", ids[i]);
+    LWARNING("\n");
 
     vulnerability_detected();
 
     return -1;
   }
-
-  return 0;
+  else if (tainted_ids == well_bounds)
+  {
+    return 1;
+  }
+  else
+  {
+    return 0;
+  }
 }
 
 void vulnerability_detected()
@@ -636,30 +669,27 @@ void vulnerability_detected()
   exit(0);
 }
 
-void check_bounds_id(int id DBG_END_TAINTING_FUNC)
+void check_bounds_id(int *ids DBG_END_TAINTING_FUNC)
 {
-  if (check_bounds_separately(id DGB_END_CALL_ARG) != 0) // if 0 we need ILP to solve.
+  if (check_bounds_separately(ids DGB_END_CALL_ARG) != 0) // if 0 we need ILP to solve.
   {
     return;
   }
   else
   {
-    solve_ilp(id DGB_END_CALL_ARG);
+    solve_ilp(ids DGB_END_CALL_ARG);
   }
 }
 
 void check_bounds_mem(uint64_t addr, int size DBG_END_TAINTING_FUNC)
 {
-  for (int i = 0; i < size; i++)
+  if (MEMTAINTEDANY(addr, size))
   {
-    int index = mem_taint_find_index(addr, i);
+    int ids[8];
 
-    int id = MEMTAINTVAL(index, addr + i);
+    get_mem_taint(addr, size, ids);
 
-    if (id > 0)
-    {
-      check_bounds_id(id DGB_END_CALL_ARG);
-    }
+    check_bounds_id(ids DGB_END_CALL_ARG);
   }
 }
 
@@ -670,14 +700,13 @@ void check_bounds_reg(int reg DBG_END_TAINTING_FUNC)
     return;
   }
 
-  for (unsigned int i = 0; i < REGSIZE(reg); i++)
+  if (REGTAINTEDANY(reg))
   {
-    int id = REGTAINTVAL(reg, i);
-  
-    if (id > 0)
-    {
-      check_bounds_id(id DGB_END_CALL_ARG);
-    }
+    int ids[8];
+
+    get_reg_taint(reg, ids);
+
+    check_bounds_id(ids DGB_END_CALL_ARG);
   }
 }
 
@@ -690,4 +719,50 @@ uint64_t low_trim(uint64_t data, int size)
   data = data & s;
 
   return data; 
+}
+
+void get_reg_taint(int reg, int *ids)
+{
+  for (unsigned int i = 0; i < REGSIZE(reg); i++)
+  {
+    ids[i] = REGTAINTVAL(reg, i);
+  }
+
+  for (unsigned int i = REGSIZE(reg); i < 8; i++)
+  {
+    ids[i] = -1;
+  }
+}
+
+void set_reg_taint(int reg, int *ids)
+{
+  for (unsigned int i = 0; i < REGSIZE(reg); i++)
+  {
+    SETREGTAINTVAL(reg, i, ids[i]);
+  }
+}
+
+void get_mem_taint(uint64_t addr, int size, int *ids)
+{
+  for (int i = 0; i < size; i++)
+  {
+    int index = mem_taint_find_index(addr, i);
+
+    ids[i] = MEMTAINTVAL(index, addr + i);
+  }
+
+  for (unsigned int i = size; i < 8; i++)
+  {
+    ids[i] = -1;
+  }
+}
+
+void set_mem_taint(uint64_t addr, int size, int *ids)
+{
+  for (int i = 0; i < size; i++)
+  {
+    int index = mem_taint_find_index(addr, i);
+
+    SETMEMTAINTVAL(index, addr + i, ids[i]);
+  }
 }

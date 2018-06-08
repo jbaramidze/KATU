@@ -101,8 +101,15 @@ extern int instr_next_pointer;
 // Things to tweak.
 //
 
+
+// How big shifts shall we ignore and on how big shall we detaint?
 #define DETAINT_SHIFT 0.8
 #define IGNORE_SHIFT  0.1
+
+// How many bytes in index shall be unbounded to consider it a vulnerability? 
+// (e.g. if 1, we consider indexing by unbounded char vulnerability, whereas it is 
+// observed in many correct situations.)
+#define MIN_VULNERABILITIES 2
 
 enum prop_type {
   // MOV's
@@ -465,8 +472,8 @@ int get_eflags_type();
 void bound(int *ids, int mask);
 void check_bounds_reg(int reg DBG_END_TAINTING_FUNC);
 void check_bounds_mem(uint64_t addr, int size DBG_END_TAINTING_FUNC);
-void check_bounds_id(int id DBG_END_TAINTING_FUNC);
-int solve_ilp(int id DBG_END_TAINTING_FUNC);
+void check_bounds_id(int *ids DBG_END_TAINTING_FUNC);
+int solve_ilp(int *ids DBG_END_TAINTING_FUNC);
 
 drsym_info_t *get_func(app_pc pc);
 
@@ -585,4 +592,9 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded);
 void update_bounds_strings_equal(uint64_t saddr, uint64_t daddr, int bytes DBG_END_TAINTING_FUNC);
 
 uint64_t low_trim(uint64_t data, int size);
+void get_reg_taint(int reg, int *ids);
+void set_reg_taint(int reg, int *ids);
+void get_mem_taint(uint64_t addr, int size, int *ids);
+void set_mem_taint(uint64_t addr, int size, int *ids);
+
 #endif

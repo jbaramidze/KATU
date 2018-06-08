@@ -179,7 +179,7 @@ static void recursively_get_uids_constr(int id, int type)
   }
 }
 
-int solve_ilp(int id DBG_END_TAINTING_FUNC)
+int solve_ilp_for_id(int id DBG_END_TAINTING_FUNC)
 {
   LDEBUG("ILP:\tStarting ILP for ID#%d.\n", id);
 
@@ -314,8 +314,6 @@ int solve_ilp(int id DBG_END_TAINTING_FUNC)
     }
   }
 
-
-
   LDUMP("ILP:\tPrinting total: \n");
 
   for (int i = 1; i < uids_counter; i++) 
@@ -376,16 +374,49 @@ int solve_ilp(int id DBG_END_TAINTING_FUNC)
   }
   else
   {
+    return 0;
+  }
+}
+
+int solve_ilp(int *ids DBG_END_TAINTING_FUNC)
+{
+  int vulnerables = 0;
+
+  for (int i = 0; i < 8; i++)
+  {
+    int id = ids[i];
+
+    if (id == -1)
+    {
+      continue;
+    }
+
+    int r = solve_ilp_for_id(id DGB_END_CALL_ARG);
+
+    if (r == 0)
+    {
+      vulnerables++;
+    }
+  }
+
+  if (vulnerables >= MIN_VULNERABILITIES)
+  {
     #ifdef DBG_PASS_INSTR
     drsym_info_t *func = get_func(instr_get_app_pc(dbg_instr));
-    LWARNING("!!!VULNERABILITY!!! ILP Detected unbounded access for ID#%d (UID#%d), at %s  %s:%d\n", 
-                     id, ID2UID(id), func -> name, func -> file, func -> line);
+    LWARNING("!!!VULNERABILITY!!! ILP Detected unbounded access at %s  %s:%d\n", 
+                     func -> name, func -> file, func -> line);
     #else
-    LWARNING("!!!VULNERABILITY!!! ILP Detected unbounded access for ID#%d (UID#%d)\n", id, ID2UID(id));
+    LWARNING("!!!VULNERABILITY!!! ILP Detected unbounded access\n");
     #endif
+
+    LWARNING("Participating ids: ");
+    for (int i = 0; i < 8; i++) LWARNING("%d, ", ids[i]);
+    LWARNING("\n");
 
     vulnerability_detected();
 
-    return 0;
+    return -1;
   }
+
+  return 1;
 }

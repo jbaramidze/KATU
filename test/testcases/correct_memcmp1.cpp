@@ -1,6 +1,3 @@
-//#include "/custobuilds/include/stdio.h"
-//#include "/custobuilds/include/stdlib.h"
-//#include "/custobuilds/include/string.h" 
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h" 
@@ -10,21 +7,22 @@
 
 int A[50];
 
-const char *xixo = "babs";
+const char *xixo = "123";
 
 int main(int argc, char **argv)
 {
   char q[6];
-  q[0] = 'b';
-  q[1] = 'a';
-  q[2] = 'b';
-  q[3] = 's';
-  q[4] = 0;
+  q[0] = '1';
+  q[1] = '2';
+  q[2] = '3';
+  q[3] = 0;
 
   nshrtaint((long long int) &q, 6);
 
   volatile int b = strcmp(q, xixo);
 
-  volatile int qis = A[q[0]];
+  int a = atoi(q);
+
+  volatile int qis = A[a];
 
 }

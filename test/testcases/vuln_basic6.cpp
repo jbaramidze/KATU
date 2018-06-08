@@ -7,7 +7,7 @@
 
 int A[500];
 
-const char *xixo = "125";
+const char *xixo = "123";
 
 int main(int argc, char **argv)
 {
@@ -18,8 +18,6 @@ int main(int argc, char **argv)
   q[3] = 0;
 
   nshrtaint((long long int) &q, 6);
-
-  volatile int b = strcmp(q, xixo);
 
   int a = atoi(q);
 

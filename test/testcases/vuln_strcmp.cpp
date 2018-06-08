@@ -7,17 +7,17 @@ int A[10];
 
 int main(int argc, char **argv)
 {
-  char data[20];
+  char data[200];
 
-  data[0] = 'a';
-  data[1] = 'b';
-  data[2] = 'c';
-  data[3] = 'd';
-  data[4] = '\0';
+  data[0] = '1';
+  data[1] = '2';
+  data[2] = '3';
+  data[3] = '\0';
 
   nshrtaint((long long int) &data, 20);
 
-
-  int q = strcmp(data, "abed");
-  volatile int b = A[data[q+1]];
+  volatile int s = strcmp(data, "21");
+  
+  int a = atoi(data);
+  volatile int b = A[a];
 }

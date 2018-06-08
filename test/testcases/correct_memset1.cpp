@@ -17,5 +17,7 @@ int main(int argc, char **argv)
 
   memset(data, 2, 20);
 
-  volatile int q = A[data[3]];
+  volatile int a = atoi(data);
+
+  volatile int q = A[a];
 }

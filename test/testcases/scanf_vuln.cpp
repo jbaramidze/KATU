@@ -9,7 +9,11 @@ int main(int argc, char **argv)
 {
   char data[20];
 
+  memset(data, 0, sizeof(data));
+
   scanf("%s", data);
 
-  volatile int b = A[data[6]];
+  volatile int a = atoi(data+ 4);
+
+  volatile int b = A[a];
 }

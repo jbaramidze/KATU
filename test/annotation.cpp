@@ -1,17 +1,23 @@
-#include <stdio.h>
-#include <string.h>
+#include "stdio.h"
+#include "stdlib.h"
+#include "string.h"
+#include "dr_annotations_zhani.h"
 
-#define SIZE 1
-#define NUMELEM 5
+int A[10];
 
-int A[100];
-
-int main(void)
+int main(int argc, char **argv)
 {
-    unsigned long long a;
-    scanf("%llu", &a);
+  char data[200];
 
-    printf("%d.\n", __builtin_clzll(a));
+  data[0] = '1';
+  data[1] = '2';
+  data[2] = '3';
+  data[3] = '\0';
 
-    return 0;
+  nshrtaint((long long int) &data, 20);
+
+  volatile int t = strcmp(data, "123");
+
+  int a = atoi(data);
+  volatile int b = A[a];
 }

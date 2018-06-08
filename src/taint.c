@@ -201,7 +201,7 @@ void nshr_taint_mv_constmem2regzx(uint64 addr, int dst_reg, int extended_from_si
 
   for (unsigned int i = extended_from_size; i < REGSIZE(dst_reg); i++)
   {
-  	REGTAINTRM(dst_reg, i);
+    REGTAINTRM(dst_reg, i);
   }
 }
 
@@ -227,12 +227,8 @@ void nshr_taint_mv_constmem2regsx(uint64 addr, int dst_reg, int extended_from_si
   {
     int index = mem_taint_find_index(addr, i);
 
-  	/*
-  	 Quite tricky, try this before we see it fail.
-  	 This just puts last byte's taint ID to all 'extended' bytes. 
-  	*/
-
-  	MEMTAINT2REGTAINT(index, addr + extended_from_size - 1, dst_reg, i);
+    REGTAINTRM(dst_reg, i);
+  	//MEMTAINT2REGTAINT(index, addr + extended_from_size - 1, dst_reg, i);
   }
 }
 
@@ -300,18 +296,12 @@ void nshr_taint_rest_imm2reg(uint64_t value, int dst_reg, int type DBG_END_TAINT
   if (REGTAINTEDANY(dst_reg))
   {
     int ids[8];
-
-    for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
-    {
-      ids[i] = REGTAINTVAL(dst_reg, i);
-    }
+    
+    get_reg_taint(dst_reg, ids);
 
     process_restrictor_imm(ids, value, REGSIZE(dst_reg), type DGB_END_CALL_ARG);
 
-    for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
-    {
-      SETREGTAINTVAL(dst_reg, i, ids[i]);
-    }
+    set_reg_taint(dst_reg, ids);
   }
   else
   {
@@ -328,11 +318,8 @@ void nshr_taint_rest_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING
   int ids1[8];
   int ids2[8];
 
-  for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
-  {
-    ids1[i] = REGTAINTVAL(src_reg, i);
-    ids2[i] = REGTAINTVAL(dst_reg, i);
-  }
+  get_reg_taint(src_reg, ids1);
+  get_reg_taint(dst_reg, ids2);
 
   if (tainted1 && tainted2)
   {
@@ -351,11 +338,8 @@ void nshr_taint_rest_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING
     invalidate_eflags();
   }
 
-  for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
-  {
-    SETREGTAINTVAL(src_reg, i, ids1[i]);
-    SETREGTAINTVAL(dst_reg, i, ids2[i]);
-  }
+  set_reg_taint(src_reg, ids1);
+  set_reg_taint(dst_reg, ids2);
 }
 
 
@@ -367,21 +351,11 @@ void nshr_taint_rest_imm2mem(uint64_t value, int seg_reg, int base_reg, int inde
   {
     int ids[8];
 
-    for (int i = 0; i < access_size; i++)
-    {
-      int index = mem_taint_find_index(addr, i);
-
-      ids[i] = MEMTAINTVAL(index, addr + i);
-    }
+    get_mem_taint(addr, access_size, ids);
 
     process_restrictor_imm(ids, value, access_size, type DGB_END_CALL_ARG);
 
-    for (int i = 0; i < access_size; i++)
-    {
-      int index = mem_taint_find_index(addr, i);
-
-      SETMEMTAINTVAL(index, addr + i, ids[i]);
-    }
+    set_mem_taint(addr, access_size, ids);
   }
   else
   {
@@ -399,13 +373,8 @@ void nshr_taint_rest_mem2reg(int seg_reg, int base_reg, int index_reg, int scale
   int ids1[8];
   int ids2[8];
 
-  for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
-  {
-    int index = mem_taint_find_index(addr, i);
-
-    ids1[i] = MEMTAINTVAL(index, addr + i);
-    ids2[i] = REGTAINTVAL(dst_reg, i);
-  }
+  get_mem_taint(addr, REGSIZE(dst_reg), ids1);
+  get_reg_taint(dst_reg, ids2);
 
   if (tainted1 && tainted2)
   {
@@ -424,13 +393,8 @@ void nshr_taint_rest_mem2reg(int seg_reg, int base_reg, int index_reg, int scale
     invalidate_eflags();
   }
 
-  for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
-  {
-    int index = mem_taint_find_index(addr, i);
-      
-    SETMEMTAINTVAL(index, addr + i, ids1[i]);
-    SETREGTAINTVAL(dst_reg, i, ids2[i]);
-  }
+  set_mem_taint(addr, REGSIZE(dst_reg), ids1);
+  set_reg_taint(dst_reg, ids2);
 }
 
 void nshr_taint_strsto_rep(int size DBG_END_TAINTING_FUNC)
@@ -1053,7 +1017,8 @@ void nshr_taint_mv_regbyte2regsx(int src_reg, int src_index, int dst_reg DBG_END
                                    REGTAINTVAL(dst_reg, i), REGSIZE(dst_reg));
 
 
-    REGTAINT2REGTAINT(src_reg, src_index, dst_reg, i);
+     REGTAINTRM(dst_reg, i);
+    //REGTAINT2REGTAINT(src_reg, src_index, dst_reg, i);
   }
 }
 
@@ -1078,13 +1043,9 @@ void nshr_taint_mv_reg2regsx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
 
   for (unsigned int i = REGSIZE(src_reg); i < REGSIZE(dst_reg); i++)
   {
+     REGTAINTRM(dst_reg, i);
 
-  	/*
-  	 Quite tricky, try this before we see it fail.
-  	 This just puts last byte's taint ID to all 'extended' bytes. 
-  	*/
-
-    REGTAINT2REGTAINT(src_reg, REGSIZE(src_reg) - 1, dst_reg, i);
+    //REGTAINT2REGTAINT(src_reg, REGSIZE(src_reg) - 1, dst_reg, i);
   }
 }
 
