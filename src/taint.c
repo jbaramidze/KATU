@@ -658,7 +658,6 @@ void nshr_taint_cond_set_reg(int dst_reg, int type, instr_t *instr DBG_END_TAINT
 {
   if (is_valid_eflags())
   {
-    FAIL(); // Not yet tested!
 
     GET_CONTEXT();
 
@@ -670,9 +669,12 @@ void nshr_taint_cond_set_reg(int dst_reg, int type, instr_t *instr DBG_END_TAINT
     FIXME: Workaround because DR is missing correct functionality.
     */
 
-    instr_set_opcode(instr, opcode);
 
-    int taken = instr_jcc_taken(instr, mcontext.xflags);
+    instr_t *newinstr = INSTR_CREATE_jcc_short(drcontext, opcode, opnd_create_pc(0));
+
+    int taken = instr_jcc_taken(newinstr, mcontext.xflags);
+
+    LDEBUG_TAINT(false, "Converted to opcode %d, taken = %d.\n", opcode, taken);
 
     process_cond_statement(type, taken DGB_END_CALL_ARG);
   }
