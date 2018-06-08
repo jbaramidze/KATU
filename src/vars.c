@@ -542,7 +542,7 @@ void bound2(int *ids1, int *ids2, int type)
     if (ids1[i] != -1 && ids2[i] != -1)
     {
       // ids1 < ids2 is same as ids1 - ids2 is tainted from above.
-      if (type == COND_LESS)
+      if (type == COND_LESS || type == COND_LESS_UNSIGNED)
       {
         int newid = nshr_tid_copy_id(ids1[i]);
         nshr_id_add_op(newid, PROP_SUB, ids2[i]);

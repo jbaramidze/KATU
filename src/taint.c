@@ -601,8 +601,8 @@ static void process_cond_statement(int type, int taken DBG_END_TAINTING_FUNC)
       else if (type == COND_MORE)           bound2(t2, t1, COND_LESS);
       else if (type == COND_NONZERO)        { FAIL(); }
       else if (type == COND_ZERO)           { FAIL(); }
-      else if (type == COND_LESS_UNSIGNED)  { FAIL(); }
-      else if (type == COND_MORE_UNSIGNED)  { FAIL(); }
+      else if (type == COND_LESS_UNSIGNED)  bound2(t1, t2, COND_LESS_UNSIGNED);
+      else if (type == COND_MORE_UNSIGNED)  bound2(t2, t1, COND_LESS_UNSIGNED);
       else if (type == COND_SIGN_BIT)       { FAIL(); }
       else if (type == COND_NOT_SIGN_BIT)   { FAIL(); }
       else                                  { FAIL(); }
@@ -642,8 +642,8 @@ static void process_cond_statement(int type, int taken DBG_END_TAINTING_FUNC)
       else if (type == COND_MORE)           bound2(t1, t2, COND_LESS);
       else if (type == COND_NONZERO)        { FAIL(); }
       else if (type == COND_ZERO)           { FAIL(); }
-      else if (type == COND_LESS_UNSIGNED)  { FAIL(); }
-      else if (type == COND_MORE_UNSIGNED)  { FAIL(); }
+      else if (type == COND_LESS_UNSIGNED)  bound2(t2, t1, COND_LESS_UNSIGNED);
+      else if (type == COND_MORE_UNSIGNED)  bound2(t1, t2, COND_LESS_UNSIGNED);
       else if (type == COND_SIGN_BIT)       { FAIL(); }
       else if (type == COND_NOT_SIGN_BIT)   { FAIL(); }
       else                                  { FAIL(); }

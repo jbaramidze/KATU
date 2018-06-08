@@ -534,6 +534,7 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "__xstat");
      ignore_handlers(mod, "_IO_puts");
      ignore_handlers(mod, "rand_r");
+     ignore_handlers(mod, "write");
      ignore_handlers(mod, "strlen");
      ignore_handlers(mod, "snprintf");
      ignore_handlers(mod, "fclose");
