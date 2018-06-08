@@ -274,6 +274,29 @@ static void post_scanf(DBG_END_TAINTING_FUNC_ALONE)
   }
 }
 
+static void ncmp_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  arg_data.s1 = (const char *) get_arg(0);
+  arg_data.s2 = (const char *) get_arg(1);
+  arg_data.i1 = (long long) get_arg(2);
+}
+
+static void ncmp_end(DBG_END_TAINTING_FUNC_ALONE)
+{
+  int t = get_ret();
+
+  if (t == 0)
+  {
+    update_bounds_strings_equal((uint64_t) arg_data.s1, (uint64_t) arg_data.s2, arg_data.i1 DGB_END_CALL_ARG);
+  }
+}
+
+static void strcmp_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  arg_data.s1 = (const char *) get_arg(0);
+  arg_data.s2 = (const char *) get_arg(1);
+}
+
 static void strcmp_end(DBG_END_TAINTING_FUNC_ALONE)
 {
   int t = get_ret();
@@ -284,10 +307,16 @@ static void strcmp_end(DBG_END_TAINTING_FUNC_ALONE)
   }
 }
 
-static void strcmp_begin(DBG_END_TAINTING_FUNC_ALONE)
+static void memset_begin(DBG_END_TAINTING_FUNC_ALONE)
 {
-  arg_data.s1 = (const char *) get_arg(0);
-  arg_data.s2 = (const char *) get_arg(1);
+  void *dst = (void *) get_arg(0);
+
+  // we need to get byte, even thought it's int.
+  int src_reg = get_arg_reg(1, 1);
+
+  int n = (int)  get_arg(2);
+
+  memset_reg2mem(src_reg, (uint64_t) dst, n DGB_END_CALL_ARG);
 }
 
 static void memcpy_begin(DBG_END_TAINTING_FUNC_ALONE)
@@ -295,6 +324,16 @@ static void memcpy_begin(DBG_END_TAINTING_FUNC_ALONE)
   void *dst = (void *) get_arg(0);
   void *src = (void *) get_arg(1);
   unsigned int size  = (int) get_arg(2);
+
+  nshr_taint_mv_constmem2constmem((uint64) src, (uint64) dst, size DGB_END_CALL_ARG);
+}
+
+static void strcpy_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  void *dst = (void *) get_arg(0);
+  void *src = (void *) get_arg(1);
+
+  unsigned int size = strlen(src);
 
   nshr_taint_mv_constmem2constmem((uint64) src, (uint64) dst, size DGB_END_CALL_ARG);
 }
@@ -475,9 +514,13 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      register_handlers(mod, "malloc", check_arg0_8, NULL);                 // void *malloc(size_t size);
      register_handlers(mod, "getenv", NULL, taint_retstr);                 // char *getenv(const char *name);
      register_handlers(mod, "strcmp", strcmp_begin, strcmp_end);           // int strcmp(const char *s1, const char *s2);
-     register_handlers(mod, "memcpy", memcpy_begin, NULL);                 // void *memcpy(void *dest, const void *src, size_t n);
+     register_handlers(mod, "strncmp", ncmp_begin, ncmp_end);              // int strncmp(const char *s1, const char *s2, size_t n);
+     register_handlers(mod, "memcmp", ncmp_begin, ncmp_begin);             // int memcmp(const void *s1, const void *s2, size_t n);
+     register_handlers(mod, "strcpy", strcpy_begin, NULL);                 // char *strcpy(char *dest, const char *src);
      register_handlers(mod, "strncpy", strncpy_begin, NULL);               // char *strncpy(char *dest, const char *src, size_t n);
      register_handlers(mod, "__memcpy_chk", memcpy_begin, NULL);           // void *memcpy(void *dest, const void *src, size_t n);
+     register_handlers(mod, "memcpy", memcpy_begin, NULL);                 // void *memcpy(void *dest, const void *src, size_t n);
+     register_handlers(mod, "memset", memset_begin, NULL);                 // void *memset(void *s, int c, size_t n);
      register_handlers(mod, "fopen", fopen_begin, fopen_end);              // FILE *fopen(const char *path, const char *mode);
      register_handlers(mod, "fread", fread_begin, fread_end);              // size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream);
      register_handlers(mod, "strtol", strtol_begin, strtol_end);           // long int strtol(const char *nptr, char **endptr, int base);

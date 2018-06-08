@@ -590,6 +590,7 @@ void nshr_init_opcodes(void);
 void module_load_event(void *drcontext, const module_data_t *mod, bool loaded);
 
 void update_bounds_strings_equal(uint64_t saddr, uint64_t daddr, int bytes DBG_END_TAINTING_FUNC);
+void memset_reg2mem(int reg, uint64_t mem, int size DBG_END_TAINTING_FUNC);
 
 uint64_t low_trim(uint64_t data, int size);
 void get_reg_taint(int reg, int *ids);

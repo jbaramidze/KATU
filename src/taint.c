@@ -82,6 +82,24 @@ static int get_A_of_size(int size)
   FAIL();
 }
 
+void memset_reg2mem(int reg, uint64_t addr, int size DBG_END_TAINTING_FUNC)
+{
+  for (int i = 0; i < size; i++)
+  {
+    for (unsigned int j = 0; j < REGSIZE(reg); j++)
+    {
+      int index = mem_taint_find_index(addr, i*size + j);
+
+      LDUMP_TAINT(i, (REGTAINTED(reg, j) || MEMTAINTED(index, addr + i*size + j)), 
+                       "  REG %s byte %d TAINT#%d -> MEM %p TAINT#%d INDEX %d TOTAL %d.\n", 
+                           REGNAME(reg), j, REGTAINTVAL(reg, j), ADDR(addr + i*size + j), 
+                                MEMTAINTVAL(index, addr + i*size + j), index, REGSIZE(reg)*size);
+
+      REGTAINT2MEMTAINT(reg, j, index, addr + i*size + j);
+    }
+  }
+}
+
 void update_bounds_strings_equal(uint64_t saddr, uint64_t daddr, int bytes DBG_END_TAINTING_FUNC)
 {
   for (int i = 0; i < bytes; i++)
@@ -411,20 +429,7 @@ void nshr_taint_strsto_rep(int size DBG_END_TAINTING_FUNC)
   
   uint64_t daddr = (uint64_t) di;
 
-  for (unsigned int i = 0; i < bytes; i++)
-  {
-    for (int j = 0; j < size; j++)
-    {
-      int index = mem_taint_find_index(daddr, i*size + j);
-
-      LDUMP_TAINT(i, (REGTAINTED(reg, j) || MEMTAINTED(index, daddr + i*size + j)), 
-                       "  REG %s byte %d TAINT#%d -> MEM %p TAINT#%d INDEX %d TOTAL %d.\n", 
-                           REGNAME(reg), j, REGTAINTVAL(reg, j), ADDR(daddr + i*size + j), 
-                                MEMTAINTVAL(index, daddr + i*size + j), index, bytes*size);
-
-      REGTAINT2MEMTAINT(reg, j, index, daddr + i*size + j);
-    }
-  }
+  memset_reg2mem(reg, daddr, bytes DGB_END_CALL_ARG);
 }
 
 // Proceeds before first non-equal or ecx
@@ -1203,7 +1208,7 @@ void nshr_taint_mix_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING_
     else if (src_taint > 0)
     {
       LDUMP_TAINT(i, true, "  REG %s byte %d TAINT#%d -> REG %s byte %d TAINT#%d TOTAL %d.\n", 
-                       REGNAME(src_taint), i, REGTAINTVAL(src_taint, i),
+                       REGNAME(src_reg), i, REGTAINTVAL(src_reg, i),
                              REGNAME(dst_reg), i, REGTAINTVAL(dst_reg, i), REGSIZE(dst_reg));
 
 
