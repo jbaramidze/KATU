@@ -595,9 +595,19 @@ static void process_cond_statement(int type, int taken DBG_END_TAINTING_FUNC)
 
   if (taken) // taken.
   {
-    FAILIF(t1 != NULL && t2 != NULL);
-
-    if (t2 == NULL)
+    if (t1 != NULL && t2 != NULL)
+    {     
+      if      (type == COND_LESS)           bound2(t1, t2, COND_LESS);
+      else if (type == COND_MORE)           bound2(t2, t1, COND_LESS);
+      else if (type == COND_NONZERO)        { FAIL(); }
+      else if (type == COND_ZERO)           { FAIL(); }
+      else if (type == COND_LESS_UNSIGNED)  { FAIL(); }
+      else if (type == COND_MORE_UNSIGNED)  { FAIL(); }
+      else if (type == COND_SIGN_BIT)       { FAIL(); }
+      else if (type == COND_NOT_SIGN_BIT)   { FAIL(); }
+      else                                  { FAIL(); }
+    }
+    else if (t2 == NULL)
     {
       if      (type == COND_LESS)           bound(t1, TAINT_BOUND_HIGH);
       else if (type == COND_MORE)           bound(t1, TAINT_BOUND_LOW);
@@ -627,8 +637,16 @@ static void process_cond_statement(int type, int taken DBG_END_TAINTING_FUNC)
   else
   {
     if (t1 != NULL && t2 != NULL)
-    {
-      FAIL();
+    {      
+      if      (type == COND_LESS)           bound2(t2, t1, COND_LESS);
+      else if (type == COND_MORE)           bound2(t1, t2, COND_LESS);
+      else if (type == COND_NONZERO)        { FAIL(); }
+      else if (type == COND_ZERO)           { FAIL(); }
+      else if (type == COND_LESS_UNSIGNED)  { FAIL(); }
+      else if (type == COND_MORE_UNSIGNED)  { FAIL(); }
+      else if (type == COND_SIGN_BIT)       { FAIL(); }
+      else if (type == COND_NOT_SIGN_BIT)   { FAIL(); }
+      else                                  { FAIL(); }
     }
     else if (t2 == NULL)
     {
@@ -678,6 +696,8 @@ void nshr_taint_cond_set_reg(int dst_reg, int type, instr_t *instr DBG_END_TAINT
     instr_t *newinstr = INSTR_CREATE_jcc_short(drcontext, opcode, opnd_create_pc(0));
 
     int taken = instr_jcc_taken(newinstr, mcontext.xflags);
+
+    instr_destroy(drcontext, newinstr);
 
     LDEBUG_TAINT(false, "Converted to opcode %d, taken = %d.\n", opcode, taken);
 

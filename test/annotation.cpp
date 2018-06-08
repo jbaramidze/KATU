@@ -7,17 +7,17 @@ int A[10];
 
 int main(int argc, char **argv)
 {
-  char data[200];
+  int a = 9;
+  int b = 3;
+  nshrtaint((long long int) &a, 4);
+  nshrtaint((long long int) &b, 4);
 
-  data[0] = '1';
-  data[1] = '2';
-  data[2] = '3';
-  data[3] = '\0';
-
-  nshrtaint((long long int) &data, 20);
-
-  volatile int t = strcmp(data, "123");
-
-  int a = atoi(data);
-  volatile int b = A[a];
+  if (a > b)
+  {
+  	 if (b > 0 && a < 100)
+  	 {
+  	 	volatile int c = A[b];
+  	 	c+=10;
+  	 }
+  }
 }

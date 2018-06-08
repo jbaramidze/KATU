@@ -535,6 +535,41 @@ int *get_taint2_eflags()
   return NULL;
 }
 
+void bound2(int *ids1, int *ids2, int type)
+{
+  for (int i = 0; i < 8; i++)
+  {
+    if (ids1[i] != -1 && ids2[i] != -1)
+    {
+      // ids1 < ids2 is same as ids1 - ids2 is tainted from above.
+      if (type == COND_LESS)
+      {
+        int newid = nshr_tid_copy_id(ids1[i]);
+        nshr_id_add_op(newid, PROP_SUB, ids2[i]);
+
+        Group_restriction *gr = (Group_restriction *) malloc(sizeof(Group_restriction));
+        gr -> id = newid;
+        gr -> bound_type = TAINT_BOUND_HIGH;
+        gr -> next = uids_[ID2UID(newid)].gr;
+
+        uids_[ID2UID(newid)].gr = gr;
+      }
+      else
+      {
+        FAIL();
+      }
+    }
+    else if (ids1[i] == -1 && ids2[i] == -1)
+    {
+      // Nothing.
+    }
+    else
+    {
+      FAIL()
+    }
+  }
+}
+
 void bound(int *ids, int mask)
 {
   for (int i = 0; i < 8; i++)
@@ -765,4 +800,9 @@ void set_mem_taint(uint64_t addr, int size, int *ids)
 
     SETMEMTAINTVAL(index, addr + i, ids[i]);
   }
+}
+
+void hashtable_del_entry(void *p)
+{
+  free(p);
 }

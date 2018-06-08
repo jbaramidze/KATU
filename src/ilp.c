@@ -148,6 +148,10 @@ static void recursively_get_uids_constr(int id, int type)
     {
       uids_constr_vector[uids_constr_vector_size][1] = -1;
     }
+    else
+    {
+      FAIL();
+    }
 
     uids_constr_vector_size++;
 
@@ -210,7 +214,7 @@ int solve_ilp_for_id(int id DBG_END_TAINTING_FUNC)
   for (int i = 0; i < uids_objective_vector_size; i++) 
   {
     LDUMP("%d*%d (%d)  ", uids_objective_vector[i][1], uids_objective_vector[i][0], 
-                                uids_total_map[uids_objective_vector[i]]);
+                                uids_total_map[uids_objective_vector[i][0]]);
   }
 
   LDUMP("\n");

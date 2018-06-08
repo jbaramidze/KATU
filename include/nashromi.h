@@ -413,6 +413,8 @@ extern lprec *lp;
 
 extern hashtable_t func_hashtable;
 
+void hashtable_del_entry(void *p);
+
 
 /****************************************************
         T A I N T   M E M   S T R U C T U R E
@@ -470,6 +472,7 @@ int *get_taint2_eflags();
 int get_eflags_type();
 
 void bound(int *ids, int mask);
+void bound2(int *ids1, int *ids2, int mask);
 void check_bounds_reg(int reg DBG_END_TAINTING_FUNC);
 void check_bounds_mem(uint64_t addr, int size DBG_END_TAINTING_FUNC);
 void check_bounds_id(int *ids DBG_END_TAINTING_FUNC);

@@ -331,7 +331,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
         value = low_trim(value, 8*opnd_size_in_bytes(opnd_get_size(src)));
 
-        dr_printf("InsDetail:\tRestricting by '%s' taint at %s by 0x%x\n", PROP_NAMES[type], REGNAME(dst_reg), value);
+        LDUMP("InsDetail:\tRestricting by '%s' taint at %s by 0x%x\n", PROP_NAMES[type], REGNAME(dst_reg), value);
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_rest_imm2reg, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT64(value), OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(type) 

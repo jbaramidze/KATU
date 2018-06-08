@@ -70,7 +70,7 @@ void dump()
 static void
 event_exit(void)
 {
-    dr_printf("Info:\t\tExit.\n");
+    dr_printf("Info:\t\tStartint to exit.\n");
 
     //drwrap_exit();
 
@@ -93,6 +93,22 @@ event_exit(void)
 
     hashtable_delete(&func_hashtable);
     hashtable_delete(&FILEs_);
+
+    for (int i = 1; i < nshr_tid_new_uid_get(); i++)
+    {
+      Group_restriction *gr = uids_[i].gr;
+
+      while(gr != NULL)
+      {
+        Group_restriction *next = gr -> next;
+
+        free(gr);
+
+        gr = next;
+      }
+  }
+
+  dr_printf("Info:\t\tExitting.\n");
 }
 
 static void nshr_handle_taint(long long addr, int size)
@@ -175,8 +191,8 @@ void init(void)
     DIE("ERROR! Failed making LP\n");
   }
 
-  hashtable_init(&func_hashtable, HASH_BITS, HASH_INTPTR, false);
-  hashtable_init(&FILEs_,         4,         HASH_INTPTR, false);
+  hashtable_init_ex(&func_hashtable, HASH_BITS, HASH_INTPTR, false, true, hashtable_del_entry, NULL, NULL);
+  hashtable_init_ex(&FILEs_,         4,         HASH_INTPTR, false, true, hashtable_del_entry, NULL, NULL);
 }
 
 DR_EXPORT void
