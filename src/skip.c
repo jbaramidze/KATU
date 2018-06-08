@@ -50,7 +50,7 @@ static reg_t get_ret()
   return  reg_get_value(DR_REG_RAX, &mcontext);
 }
 
-static reg_t get_arg(int arg)
+reg_t get_arg(int arg)
 {
   GET_CONTEXT();
 

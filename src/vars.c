@@ -36,6 +36,10 @@ lprec           *lp;
 instr_t *instr_pointers[1024*16];
 int instr_next_pointer = 0;
 
+
+const char *manual_taint_path  = "<manually tainted>";
+const char *cmd_arg_taint_path = "<command line>";
+
 void add_bound(int uid, int mask)
 {
   uids_[uid].bounded |= mask;

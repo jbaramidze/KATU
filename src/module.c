@@ -44,7 +44,7 @@ void dump()
 
   for (int i = 1; i < nshr_tid_new_uid_get(); i++)
   {
-    char *path;
+    const char *path;
 
     if (uids_[i].descr_type == 0)
     {
@@ -113,7 +113,7 @@ event_exit(void)
 
 static void nshr_handle_taint(long long addr, int size)
 {
-  nshr_taint_by_fd(addr, size, 900);
+  nshr_taint_by_fd(addr, size, FD_MANUAL_TAINT);
 }
 
 static void nshr_handle_dump(long long addr)
@@ -193,6 +193,9 @@ void init(void)
 
   hashtable_init_ex(&func_hashtable, HASH_BITS, HASH_INTPTR, false, true, hashtable_del_entry, NULL, NULL);
   hashtable_init_ex(&FILEs_,         4,         HASH_INTPTR, false, true, hashtable_del_entry, NULL, NULL);
+
+  fds_[FD_MANUAL_TAINT].path = cmd_arg_taint_path;
+  fds_[FD_CMD_ARG].path      = cmd_arg_taint_path;
 }
 
 DR_EXPORT void

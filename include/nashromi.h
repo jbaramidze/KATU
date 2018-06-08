@@ -111,6 +111,13 @@ extern int instr_next_pointer;
 // observed in many correct situations.)
 #define MIN_VULNERABILITIES 2
 
+
+#define FD_MANUAL_TAINT 900
+#define FD_CMD_ARG      901
+
+extern const char *manual_taint_path;
+extern const char *cmd_arg_taint_path;
+
 enum prop_type {
   // MOV's
   PROP_MOV,
@@ -180,7 +187,7 @@ enum mode {
 
 typedef struct {
   bool used;
-  char *path;
+  const char *path;
 
 } Fd_entity;
 
@@ -600,5 +607,7 @@ void get_reg_taint(int reg, int *ids);
 void set_reg_taint(int reg, int *ids);
 void get_mem_taint(uint64_t addr, int size, int *ids);
 void set_mem_taint(uint64_t addr, int size, int *ids);
+
+reg_t get_arg(int arg);
 
 #endif

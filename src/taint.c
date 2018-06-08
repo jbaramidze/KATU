@@ -1254,7 +1254,7 @@ void nshr_taint_mv_reg_rm(int mask DBG_END_TAINTING_FUNC)
 
 void nshr_taint_by_file(reg_t addr, unsigned int size, void *file)
 {
-  LDEBUG("ADD MEM %p size %d mark %d\n", addr, size, nshr_tid_new_iid_get());
+  LDEBUG("ADD MEM %p size %d mark %d\n", addr, size, nshr_tid_new_id_get());
 
   for (unsigned int i = 0; i < size; i++)
   {
@@ -1272,8 +1272,8 @@ void nshr_taint_by_file(reg_t addr, unsigned int size, void *file)
     else
     {
       int newid = nshr_tid_new_uid_by_file(file);
-      dr_printf("  ADD MEM %p mark %d TAINT#%d INDEX %d TOTAL %d.\n", 
-                         ADDR(addr + i), nshr_tid_new_iid_get(), newid, index, size);
+      dr_printf("  ADD MEM %p TAINT#%d INDEX %d TOTAL %d.\n", 
+                         ADDR(addr + i), newid, index, size);
 
       SETMEMTAINTVAL(index, addr + i, newid);
     }
@@ -1282,7 +1282,7 @@ void nshr_taint_by_file(reg_t addr, unsigned int size, void *file)
 
 void nshr_taint_by_fd(reg_t addr, unsigned int size, int fd)
 {
-  LDEBUG("ADD MEM %p size %d mark %d\n", addr, size, nshr_tid_new_iid_get());
+  LDEBUG("ADD MEM %p size %d mark %d\n", addr, size, nshr_tid_new_id_get());
 
   for (unsigned int i = 0; i < size; i++)
   {
@@ -1300,8 +1300,8 @@ void nshr_taint_by_fd(reg_t addr, unsigned int size, int fd)
     else
     {
       int newid = nshr_tid_new_uid_by_fd(fd);
-      dr_printf("  ADD MEM %p mark %d TAINT#%d INDEX %d TOTAL %d.\n", 
-      	                 ADDR(addr + i), nshr_tid_new_iid_get(), newid, index, size);
+      dr_printf("  ADD MEM %p TAINT#%d INDEX %d TOTAL %d.\n", 
+      	                 ADDR(addr + i), newid, index, size);
 
       SETMEMTAINTVAL(index, addr + i, newid);
     }
@@ -1439,7 +1439,18 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
 
     if (strcmp(sym.name, "main") == 0)
     {
-      LDEBUG_TAINT(false, "Jumping to main.\n");
+      LDEBUG_TAINT(false, "Jumping to main with %d args.\n", get_arg(0));
+
+      const char **argv = (const char **) get_arg(1);
+
+      // Taint all the args.
+      for (unsigned int i = 1; i < get_arg(0); i++)
+      {
+        const char *addr = argv[i];
+
+        nshr_taint_by_fd((uint64_t) addr, strlen(addr), FD_CMD_ARG);
+      }
+
 
       started_ = MODE_ACTIVE;
 
