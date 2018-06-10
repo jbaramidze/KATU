@@ -1422,6 +1422,28 @@ static void opcode_imul(void *drcontext, instr_t *instr, instrlist_t *ilist)
                                   OPND_CREATE_INT32(dst1_reg), OPND_CREATE_INT32(DR_REG_NULL) 
                                        DBG_END_DR_CLEANCALL);
     }
+    else if (opnd_is_reg(src2) && opnd_is_base_disp(src1) &&
+           opnd_is_reg(dst1))
+    {
+      int src2_reg   = opnd_get_reg(src2);
+      int dst1_reg   = opnd_get_reg(dst1);
+
+      reg_id_t base_reg  = opnd_get_base(src1);
+      reg_id_t index_reg = opnd_get_index(src1);
+      reg_id_t seg_reg   = opnd_get_segment(src1);
+      int scale          = opnd_get_scale(src1);
+      int disp           = opnd_get_disp(src1);
+
+      int access_size = opnd_size_in_bytes(opnd_get_size(src1));
+
+      LDUMP("InsDetail:\tMultiplying %s and [%s:%s + %d*%s + %d] -> %s.\n", REGNAME(src2_reg), REGNAME(seg_reg), 
+                 REGNAME(base_reg), scale, REGNAME(index_reg), disp REGNAME(dst1_reg));
+
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mul_mem2reg, false, DBG_TAINT_NUM_PARAMS(8),
+                            OPND_CREATE_INT32(src2_reg), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
+                                OPND_CREATE_INT32(index_reg),OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp),
+                                    OPND_CREATE_INT32(access_size), OPND_CREATE_INT32(dst1_reg) DBG_END_DR_CLEANCALL);
+    }
     else
     {
       FAIL();

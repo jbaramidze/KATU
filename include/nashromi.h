@@ -514,7 +514,7 @@ int nshr_tid_new_uid_by_fd(int fd);
 int nshr_tid_new_uid_by_file(void *file);
 int nshr_tid_new_uid_get();
 int nshr_tid_copy_id(int id);
-int nshr_make_id_by_merging_all_ids_in2regs(int reg1, int reg2);
+int nshr_make_id_by_merging_all_ids(int *ids1, int *ids2);
 int nshr_tid_modify_id_by_symbol(int dst_taint, enum prop_type operation, int src_taint);
 void nshr_id_add_op(int id, enum prop_type operation, int modify_by);
 
@@ -561,6 +561,8 @@ void nshr_taint_mv_mem_rm(uint64 addr, int size DBG_END_TAINTING_FUNC);
 void nshr_taint_div(int dividend1_reg, int dividend2_reg, int divisor_reg, int quotinent_reg, int remainder_reg DBG_END_TAINTING_FUNC);
 void nshr_taint_mul_reg2reg(int src1_reg, int src2_reg, int dst1_reg, int dst2_reg DBG_END_TAINTING_FUNC);
 void nshr_taint_mul_imm2reg(int src1_reg, int64 value, int dst1_reg, int dst2_reg DBG_END_TAINTING_FUNC);
+void nshr_taint_mul_immbyconstmem2reg(int64 value, uint64_t addr, int access_size, int dst_reg DBG_END_TAINTING_FUNC);
+void nshr_taint_mul_mem2reg(int src1_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int dst_reg DBG_END_TAINTING_FUNC);
 
 void nshr_taint_cond_mv_reg2reg(int src_reg, int dst_reg, instr_t *instr, int type DBG_END_TAINTING_FUNC);
 

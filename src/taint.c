@@ -1646,6 +1646,82 @@ void nshr_taint_div(int dividend1_reg, int dividend2_reg, int divisor_reg, int q
   }
 }
 
+void nshr_taint_mul_mem2reg(int src1_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int dst_reg DBG_END_TAINTING_FUNC)
+{
+  reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
+
+  int src1_tainted = REGTAINTEDANY(src1_reg);
+  int src2_tainted = MEMTAINTEDANY(addr, access_size);
+
+  if (!src1_tainted && !src2_tainted)
+  {
+    return;
+  }
+
+  if (src1_tainted && src2_tainted)
+  {
+    int ids1[8];
+    int ids2[8];
+    
+    get_reg_taint(src1_reg, ids1);
+    get_mem_taint(addr, access_size, ids2);
+  
+    int newid = nshr_make_id_by_merging_all_ids(ids1, ids2);
+
+    for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
+    {
+      SETREGTAINTVAL(dst_reg, i, newid);
+    }
+  }
+  else
+  {
+    GET_CONTEXT();
+
+    if (src1_tainted)
+    {
+      reg_t bytes = MEMVAL(addr);
+
+      nshr_taint_mul_imm2reg(src1_reg, bytes, dst_reg, DR_REG_NULL DGB_END_CALL_ARG);
+    }
+    else
+    {
+      reg_t bytes = reg_get_value(src1_reg, &mcontext);
+
+      nshr_taint_mul_immbyconstmem2reg(bytes, addr, access_size, dst_reg DGB_END_CALL_ARG);
+    }
+  }
+}
+
+
+void nshr_taint_mul_immbyconstmem2reg(int64 value, uint64_t addr, int access_size, int dst_reg DBG_END_TAINTING_FUNC)
+{
+  int src1_tainted = MEMTAINTEDANY(value, access_size);
+
+  if (!src1_tainted)
+  {
+    return;
+  }
+
+  int ids1[8];
+  int ids2[8];
+    
+  get_mem_taint(addr, access_size, ids1);
+  get_mem_taint(addr, access_size, ids2);
+
+  // FIXME: Make another function for merging just 1.
+  int newid = nshr_make_id_by_merging_all_ids(ids1, ids2);
+
+  if (value < 0)
+  {
+    newid = nshr_tid_modify_id_by_symbol(newid, PROP_NEG, 0);
+  }
+
+  for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
+  {
+    SETREGTAINTVAL(dst_reg, i, newid);
+  }
+}
+
 void nshr_taint_mul_reg2reg(int src1_reg, int src2_reg, int dst1_reg, int dst2_reg DBG_END_TAINTING_FUNC)
 {
   int src1_tainted = REGTAINTEDANY(src1_reg);
@@ -1658,7 +1734,14 @@ void nshr_taint_mul_reg2reg(int src1_reg, int src2_reg, int dst1_reg, int dst2_r
 
   if (src1_tainted && src2_tainted)
   {
-    int newid = nshr_make_id_by_merging_all_ids_in2regs(src1_reg, src2_reg);
+
+    int ids1[8];
+    int ids2[8];
+    
+    get_reg_taint(src1_reg, ids1);
+    get_reg_taint(src2_reg, ids2);
+  
+    int newid = nshr_make_id_by_merging_all_ids(ids1, ids2);
 
     for (unsigned int i = 0; i < REGSIZE(dst1_reg); i++)
     {
@@ -1701,8 +1784,14 @@ void nshr_taint_mul_imm2reg(int src1_reg, int64 value, int dst1_reg, int dst2_re
   {
     return;
   }
+
+  int ids1[8];
+  int ids2[8];
+    
+  get_reg_taint(src1_reg, ids1);
+  get_reg_taint(src1_reg, ids2);
   
-  int newid = nshr_make_id_by_merging_all_ids_in2regs(src1_reg, src1_reg);
+  int newid = nshr_make_id_by_merging_all_ids(ids1, ids2);
 
   if (value < 0)
   {

@@ -166,25 +166,23 @@ static int higher_bound(int uid)
 
 
 // first copy to a teporary register.
-int nshr_make_id_by_merging_all_ids_in2regs(int reg1, int reg2)
+int nshr_make_id_by_merging_all_ids(int *ids1, int *ids2)
 {
-  FAILIF(REGSIZE(reg1) != REGSIZE(reg2));
-
   // First, make sure at least one of them is tainted.
   int tainted = 0;
   int uid     = -1;
 
-  for(unsigned int i = 0; i < REGSIZE(reg1); i++)
+  for(unsigned int i = 0; i < 8; i++)
   {
-    if (REGTAINTED(reg1, i))
+    if (ids1[i] > 0)
     {
       tainted = 1;
-      uid = ID2UID(REGTAINTVAL(reg1, i));
+      uid = ID2UID(ids1[i]);
     }
-    else if (REGTAINTED(reg2, i))
+    else if (ids2[i] > 0)
     {
       tainted = 1;
-      uid = ID2UID(REGTAINTVAL(reg2, i));
+      uid = ID2UID(ids2[i]);
     }
   }
 
@@ -195,23 +193,16 @@ int nshr_make_id_by_merging_all_ids_in2regs(int reg1, int reg2)
 
   int newid = nshr_tid_new_id(uid);
 
-  for(unsigned int i = 0; i < REGSIZE(reg1); i++)
+  for(unsigned int i = 0; i < 8; i++)
   {
-    int t = REGTAINTVAL(reg1, i);
-
-    if (t > 0)
+    if (ids1[i] > 0)
     {
-      nshr_id_add_op(newid, PROP_ADD, t);
+      nshr_id_add_op(newid, PROP_ADD, ids1[i]);
     }
-  }
 
-  for(unsigned int i = 0; i < REGSIZE(reg1); i++)
-  {
-    int t = REGTAINTVAL(reg2, i);
-
-    if (t > 0)
+    if (ids2[i] > 0)
     {
-      nshr_id_add_op(newid, PROP_ADD, t);
+      nshr_id_add_op(newid, PROP_ADD, ids2[i]);
     }
   }
 
