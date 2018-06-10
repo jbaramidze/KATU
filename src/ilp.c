@@ -405,20 +405,6 @@ int solve_ilp(int *ids DBG_END_TAINTING_FUNC)
 
   if (vulnerables >= MIN_VULNERABILITIES)
   {
-    #ifdef DBG_PASS_INSTR
-    drsym_info_t *func = get_func(instr_get_app_pc(dbg_instr));
-    LWARNING("!!!VULNERABILITY!!! ILP Detected unbounded access at %s  %s:%d\n", 
-                     func -> name, func -> file, func -> line);
-    #else
-    LWARNING("!!!VULNERABILITY!!! ILP Detected unbounded access\n");
-    #endif
-
-    LWARNING("Participating ids: ");
-    for (int i = 0; i < 8; i++) LWARNING("%d, ", ids[i]);
-    LWARNING("\n");
-
-    vulnerability_detected();
-
     return -1;
   }
 

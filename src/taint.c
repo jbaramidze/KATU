@@ -272,9 +272,9 @@ void nshr_taint_mv_constmem2reg(uint64 addr, int dst_reg DBG_END_TAINTING_FUNC)
 
 int process_restrictor_id(int *ids1, int *ids2, int size, int type)
 {
-   FAIL();
-
-   return 0;
+  FAIL(); 
+  
+  return 0;
 }
 
 void process_restrictor_imm(int *ids, uint64_t imm2, int size, int type DBG_END_TAINTING_FUNC)

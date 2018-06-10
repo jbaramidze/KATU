@@ -73,3 +73,18 @@ echo "121212" | ~/Thesis/installer/dynamorio/build/bin64/drrun -c /home/zhani/Th
   else
     echo "Success."
   fi
+
+
+echo -n "Testing commandline args....... "
+
+     ~/Thesis/installer/dynamorio/build/bin64/drrun -c /home/zhani/Thesis/project/build/bin/libnashromi.so \
+        -- "/home/zhani/Thesis/project/test/build/testcases/cmdline_vuln1" "21" 2>&1 | grep --silent "\!\!\!VULNERABILITY\!\!\!"
+
+
+  if [ "$?" -ne "0" ]; then
+    echo "FAIL!"
+    exit
+  else
+    echo "Success."
+  fi
+

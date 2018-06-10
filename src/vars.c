@@ -667,27 +667,6 @@ int check_bounds_separately(int *ids DBG_END_TAINTING_FUNC)
 
   if (vulnerables >= MIN_VULNERABILITIES)
   {
-    #ifdef DBG_PASS_INSTR
-    drsym_info_t *func = get_func(instr_get_app_pc(dbg_instr));
-    if (func != NULL)
-    {
-      LWARNING("!!!VULNERABILITY!!! Detected unbounded access at %s  %s:%d\n", 
-                     func -> name, func -> file, func -> line);
-    }
-    else
-    {
-      LWARNING("!!!VULNERABILITY!!! Detected unbounded access.\n");
-    }
-    #else
-    LWARNING("!!!VULNERABILITY!!! Detected unbounded access.\n");
-    #endif
-
-    LWARNING("Participating ids: ");
-    for (int i = 0; i < 8; i++) LWARNING("%d, ", ids[i]);
-    LWARNING("\n");
-
-    vulnerability_detected();
-
     return -1;
   }
   else if (tainted_ids == well_bounds)
@@ -708,15 +687,17 @@ void vulnerability_detected()
   exit(0);
 }
 
-void check_bounds_id(int *ids DBG_END_TAINTING_FUNC)
+int check_bounds_id(int *ids DBG_END_TAINTING_FUNC)
 {
-  if (check_bounds_separately(ids DGB_END_CALL_ARG) != 0) // if 0 we need ILP to solve.
+  int separate = check_bounds_separately(ids DGB_END_CALL_ARG);
+
+  if (separate == 0)
   {
-    return;
+    return solve_ilp(ids DGB_END_CALL_ARG);
   }
   else
   {
-    solve_ilp(ids DGB_END_CALL_ARG);
+    return separate;
   }
 }
 
@@ -728,7 +709,24 @@ void check_bounds_mem(uint64_t addr, int size DBG_END_TAINTING_FUNC)
 
     get_mem_taint(addr, size, ids);
 
-    check_bounds_id(ids DGB_END_CALL_ARG);
+    int bounded = check_bounds_id(ids DGB_END_CALL_ARG);
+
+    if (bounded == -1)
+    {
+      #ifdef DBG_PASS_INSTR
+      drsym_info_t *func = get_func(instr_get_app_pc(dbg_instr));
+      LWARNING("!!!VULNERABILITY!!! ILP Detected unbounded access at %s  %s:%d\n", 
+                       func -> name, func -> file, func -> line);
+      #else
+      LWARNING("!!!VULNERABILITY!!! ILP Detected unbounded access\n");
+      #endif
+
+      LWARNING("Participating ids: ");
+      for (int i = 0; i < 8; i++) LWARNING("%d, ", ids[i]);
+      LWARNING("\n");
+
+      vulnerability_detected();
+    }
   }
 }
 
@@ -745,7 +743,24 @@ void check_bounds_reg(int reg DBG_END_TAINTING_FUNC)
 
     get_reg_taint(reg, ids);
 
-    check_bounds_id(ids DGB_END_CALL_ARG);
+    int bounded = check_bounds_id(ids DGB_END_CALL_ARG);
+
+    if (bounded == -1)
+    {
+      #ifdef DBG_PASS_INSTR
+      drsym_info_t *func = get_func(instr_get_app_pc(dbg_instr));
+      LWARNING("!!!VULNERABILITY!!! ILP Detected unbounded access at %s  %s:%d\n", 
+                       func -> name, func -> file, func -> line);
+      #else
+      LWARNING("!!!VULNERABILITY!!! ILP Detected unbounded access\n");
+      #endif
+
+      LWARNING("Participating ids: ");
+      for (int i = 0; i < 8; i++) LWARNING("%d, ", ids[i]);
+      LWARNING("\n");
+
+      vulnerability_detected();
+    }
   }
 }
 

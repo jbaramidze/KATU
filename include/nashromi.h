@@ -482,7 +482,7 @@ void bound(int *ids, int mask);
 void bound2(int *ids1, int *ids2, int mask);
 void check_bounds_reg(int reg DBG_END_TAINTING_FUNC);
 void check_bounds_mem(uint64_t addr, int size DBG_END_TAINTING_FUNC);
-void check_bounds_id(int *ids DBG_END_TAINTING_FUNC);
+int check_bounds_id(int *ids DBG_END_TAINTING_FUNC);
 int solve_ilp(int *ids DBG_END_TAINTING_FUNC);
 
 drsym_info_t *get_func(app_pc pc);
