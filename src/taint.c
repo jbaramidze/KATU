@@ -381,6 +381,41 @@ void nshr_taint_rest_imm2mem(uint64_t value, int seg_reg, int base_reg, int inde
   }
 }
 
+
+void nshr_taint_rest_reg2mem(int src_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC)
+{
+  reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
+
+  int tainted1 = REGTAINTEDANY(src_reg);
+  int tainted2 = MEMTAINTEDANY(addr, REGSIZE(src_reg));
+
+  int ids1[8];
+  int ids2[8];
+
+  get_reg_taint(src_reg, ids1);
+  get_mem_taint(addr, REGSIZE(src_reg), ids2);
+
+  if (tainted1 && tainted2)
+  {
+    process_restrictor_id(ids1, ids2, REGSIZE(src_reg), type);
+  }
+  else if (tainted1)
+  {
+    process_restrictor_imm(ids1, MEMVAL(addr), REGSIZE(src_reg), type DGB_END_CALL_ARG);
+  }
+  else if (tainted2)
+  {
+    process_restrictor_imm(ids2, REGVAL(src_reg), REGSIZE(src_reg), type DGB_END_CALL_ARG);
+  }
+  else
+  {
+    invalidate_eflags();
+  }
+
+  set_reg_taint(src_reg, ids1);
+  set_mem_taint(addr, REGSIZE(src_reg), ids2);
+}
+
 void nshr_taint_rest_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int type DBG_END_TAINTING_FUNC)
 {
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
@@ -471,9 +506,9 @@ void nshr_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC)
   }
 }
 
-// Problematic due stupid gcc optimizing divisions by constants to multiplication & shifts.
+// Problematic due gcc optimizing divisions by constants to multiplication & shifts.
 // This one looks more or less safe, generally very hard to decide when to untaint.
-void nshr_taint_shift_imm(int dst_reg, int64 value, int type DBG_END_TAINTING_FUNC)
+void nshr_taint_shift_regbyimm(int dst_reg, int64 value, int type DBG_END_TAINTING_FUNC)
 {
   if (REGTAINTEDANY(dst_reg))
   {
@@ -496,18 +531,49 @@ void nshr_taint_shift_imm(int dst_reg, int64 value, int type DBG_END_TAINTING_FU
   }
 }
 
-
-void nshr_taint_shift_reg(int dst_reg, int src_reg, int type DBG_END_TAINTING_FUNC)
+void nshr_taint_shift_regbyreg(int dst_reg, int src_reg, int type DBG_END_TAINTING_FUNC)
 {
-  for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
+  if (REGTAINTEDANY(dst_reg) || REGTAINTEDANY(src_reg))
   {
-    int id   = REGTAINTVAL(dst_reg, i);
+    FAIL();
+  }
+}
 
-    if (id > 0)
+
+void nshr_taint_shift_membyimm(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int64 value, int type DBG_END_TAINTING_FUNC)
+{
+  reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
+
+  if (MEMTAINTEDANY(addr, access_size))
+  {    
+    float p = value;
+
+    p /= (8*access_size);
+
+    if (p > DETAINT_SHIFT)
+    {
+      MEMTAINTRMALL(addr, access_size);
+    }
+    else if (p < IGNORE_SHIFT)
+    {
+      return;
+    }
+    else
     {
       FAIL();
     }
   }
+}
+
+void nshr_taint_shift_membyreg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int src_reg, int type DBG_END_TAINTING_FUNC)
+{
+  reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
+
+  if (MEMTAINTEDANY(addr, access_size) || REGTAINTEDANY(src_reg))
+  {
+    FAIL();
+  }
+
 }
 
 void nshr_taint_mv_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg DBG_END_TAINTING_FUNC)
@@ -599,8 +665,8 @@ static void process_cond_statement(int type, int taken DBG_END_TAINTING_FUNC)
     {     
       if      (type == COND_LESS)           bound2(t1, t2, COND_LESS);
       else if (type == COND_MORE)           bound2(t2, t1, COND_LESS);
-      else if (type == COND_NONZERO)        { FAIL(); }
-      else if (type == COND_ZERO)           { FAIL(); }
+      else if (type == COND_NONZERO)        {} // Gives no info.
+      else if (type == COND_ZERO)           bound2(t1, t2, COND_EQ);
       else if (type == COND_LESS_UNSIGNED)  bound2(t1, t2, COND_LESS_UNSIGNED);
       else if (type == COND_MORE_UNSIGNED)  bound2(t2, t1, COND_LESS_UNSIGNED);
       else if (type == COND_SIGN_BIT)       { FAIL(); }
@@ -640,8 +706,8 @@ static void process_cond_statement(int type, int taken DBG_END_TAINTING_FUNC)
     {      
       if      (type == COND_LESS)           bound2(t2, t1, COND_LESS);
       else if (type == COND_MORE)           bound2(t1, t2, COND_LESS);
-      else if (type == COND_NONZERO)        { FAIL(); }
-      else if (type == COND_ZERO)           { FAIL(); }
+      else if (type == COND_NONZERO)        bound2(t1, t2, COND_EQ);
+      else if (type == COND_ZERO)           {} // Gives no info
       else if (type == COND_LESS_UNSIGNED)  bound2(t2, t1, COND_LESS_UNSIGNED);
       else if (type == COND_MORE_UNSIGNED)  bound2(t1, t2, COND_LESS_UNSIGNED);
       else if (type == COND_SIGN_BIT)       { FAIL(); }
@@ -911,7 +977,7 @@ void nshr_taint_cond_mv_reg2reg(int src_reg, int dst_reg, instr_t *instr, int ty
 
   int taken = instr_cmovcc_triggered(instr, mcontext.xflags);
   
-  dr_printf("taken: %d.\n", taken);
+  LDEBUG("taken: %d.\n", taken);
 
   process_cond_statement(type, taken DGB_END_CALL_ARG);
 
@@ -1272,7 +1338,7 @@ void nshr_taint_by_file(reg_t addr, unsigned int size, void *file)
     else
     {
       int newid = nshr_tid_new_uid_by_file(file);
-      dr_printf("  ADD MEM %p TAINT#%d INDEX %d TOTAL %d.\n", 
+      LDUMP("  ADD MEM %p TAINT#%d INDEX %d TOTAL %d.\n", 
                          ADDR(addr + i), newid, index, size);
 
       SETMEMTAINTVAL(index, addr + i, newid);
@@ -1300,7 +1366,7 @@ void nshr_taint_by_fd(reg_t addr, unsigned int size, int fd)
     else
     {
       int newid = nshr_tid_new_uid_by_fd(fd);
-      dr_printf("  ADD MEM %p TAINT#%d INDEX %d TOTAL %d.\n", 
+      LDUMP("  ADD MEM %p TAINT#%d INDEX %d TOTAL %d.\n", 
       	                 ADDR(addr + i), newid, index, size);
 
       SETMEMTAINTVAL(index, addr + i, newid);

@@ -467,8 +467,15 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
                                          OPND_CREATE_INT32(disp), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
       }
       else if (prop_is_restrictor(type))
-      {
-        FAIL();
+      {        
+        LDUMP("InsDetail:\tRestricting by '%s' mem at[%s:%s + %d*%s + %d] with %s.\n", PROP_NAMES[type], 
+                                  REGNAME(src_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), 
+                                           disp, REGNAME(src_reg));
+
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_rest_reg2mem, false, DBG_TAINT_NUM_PARAMS(7),
+                                 OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
+                                    OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), 
+                                         OPND_CREATE_INT32(disp), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
       }
       else
       {
@@ -1171,71 +1178,170 @@ static void opcode_shift(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
   FAILIF(!opnd_same(src, src1));
 
-  FAILIF(!opnd_is_reg(dst));
-  
-  int dst_reg = opnd_get_reg(dst);
   int opcode  = instr_get_opcode(instr);
-
-  if (opnd_is_reg(src))
+  
+  if (opnd_is_reg(dst))
   {
-    int src_reg = opnd_get_reg(src);
+    int dst_reg = opnd_get_reg(dst);
 
-     if (opcode == OP_shl)
+    if (opnd_is_reg(src))
     {
-      LDUMP("InsDetail:\tShifting left %s by %s bytes.\n", REGNAME(dst_reg), REGNAME(src_reg));
-
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_reg, false, DBG_TAINT_NUM_PARAMS(3),
-                               OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(0)
-                                   DBG_END_DR_CLEANCALL);
+      int src_reg = opnd_get_reg(src);
+  
+       if (opcode == OP_shl)
+      {
+        LDUMP("InsDetail:\tShifting left %s by %s bytes.\n", REGNAME(dst_reg), REGNAME(src_reg));
+  
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_regbyreg, false, DBG_TAINT_NUM_PARAMS(3),
+                                 OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(0)
+                                     DBG_END_DR_CLEANCALL);
+      }
+      else if (opcode == OP_shr)
+      {
+        LDUMP("InsDetail:\tShifting right %s by %s bytes.\n", REGNAME(dst_reg), REGNAME(src_reg));
+  
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_regbyreg, false, DBG_TAINT_NUM_PARAMS(3),
+                                 OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(1)
+                                     DBG_END_DR_CLEANCALL);
+      }
+      else if (opcode == OP_sar)
+      {
+        LDUMP("InsDetail:\tShifting arithmetically right %s by %s bytes.\n", REGNAME(dst_reg), REGNAME(src_reg));
+  
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_regbyreg, false, DBG_TAINT_NUM_PARAMS(3),
+                                 OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(2)
+                                     DBG_END_DR_CLEANCALL);
+      }
+      else
+      {
+        FAIL();
+      }
     }
-    else if (opcode == OP_shr)
+    else if (opnd_is_immed(src))
     {
-      LDUMP("InsDetail:\tShifting right %s by %s bytes.\n", REGNAME(dst_reg), REGNAME(src_reg));
-
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_reg, false, DBG_TAINT_NUM_PARAMS(3),
-                               OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(1)
-                                   DBG_END_DR_CLEANCALL);
-    }
-    else if (opcode == OP_sar)
-    {
-      LDUMP("InsDetail:\tShifting arithmetically right %s by %s bytes.\n", REGNAME(dst_reg), REGNAME(src_reg));
-
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_reg, false, DBG_TAINT_NUM_PARAMS(3),
-                               OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(2)
-                                   DBG_END_DR_CLEANCALL);
+      int64 value = opnd_get_immed_int(src);
+  
+      if (opcode == OP_shl)
+      {
+        LDUMP("InsDetail:\tShifting left %s by %lld bytes.\n", REGNAME(dst_reg), value);
+  
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_regbyimm, false, DBG_TAINT_NUM_PARAMS(3),
+                                 OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT64(value), OPND_CREATE_INT32(0)
+                                     DBG_END_DR_CLEANCALL);
+      }
+      else if (opcode == OP_shr)
+      {
+        LDUMP("InsDetail:\tShifting right %s by %lld bytes.\n", REGNAME(dst_reg), value);
+  
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_regbyimm, false, DBG_TAINT_NUM_PARAMS(3),
+                                 OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT64(value), OPND_CREATE_INT32(1)
+                                     DBG_END_DR_CLEANCALL);
+      }
+      else if (opcode == OP_sar)
+      {
+        LDUMP("InsDetail:\tShifting arithmetically right %s by %lld bytes.\n", REGNAME(dst_reg), value);
+  
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_regbyimm, false, DBG_TAINT_NUM_PARAMS(3),
+                                 OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT64(value), OPND_CREATE_INT32(2)
+                                     DBG_END_DR_CLEANCALL);
+      }
+      else
+      {
+        FAIL();
+      }
     }
     else
     {
       FAIL();
     }
   }
-  else if (opnd_is_immed(src))
+  else if (opnd_is_base_disp(dst))
   {
-    int64 value = opnd_get_immed_int(src);
+    reg_id_t base_reg  = opnd_get_base(dst);
+    reg_id_t index_reg = opnd_get_index(dst);
+    reg_id_t seg_reg   = opnd_get_segment(dst);
+    int scale          = opnd_get_scale(dst);
+    int disp           = opnd_get_disp(dst);
 
-    if (opcode == OP_shl)
+    int access_size = opnd_size_in_bytes(opnd_get_size(dst));
+
+    if (opnd_is_reg(src))
     {
-      LDUMP("InsDetail:\tShifting left %s by %lld bytes.\n", REGNAME(dst_reg), value);
-
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_imm, false, DBG_TAINT_NUM_PARAMS(3),
-                               OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT64(value), OPND_CREATE_INT32(0)
-                                   DBG_END_DR_CLEANCALL);
+      int src_reg = opnd_get_reg(src);
+  
+       if (opcode == OP_shl)
+      {
+        LDUMP("InsDetail:\tShifting left %d bytes of [%s:%s + %d*%s + %d] by %s bytes.\n", access_size, REGNAME(seg_reg), 
+                             REGNAME(base_reg), scale, REGNAME(index_reg), disp, REGNAME(src_reg));
+  
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_membyreg, false, DBG_TAINT_NUM_PARAMS(8),
+                                 OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
+                                     OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(access_size),
+                                         OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(0) DBG_END_DR_CLEANCALL);
+      }
+      else if (opcode == OP_shr)
+      {
+        LDUMP("InsDetail:\tShifting right %d bytes of [%s:%s + %d*%s + %d] by %s bytes.\n", access_size, REGNAME(seg_reg), 
+                             REGNAME(base_reg), scale, REGNAME(index_reg), disp, REGNAME(src_reg));
+  
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_membyreg, false, DBG_TAINT_NUM_PARAMS(8),
+                                 OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
+                                     OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(access_size),
+                                         OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(1) DBG_END_DR_CLEANCALL);
+      }
+      else if (opcode == OP_sar)
+      {
+        LDUMP("InsDetail:\tShifting arithmetically right %d bytes of [%s:%s + %d*%s + %d] by %s bytes.\n", access_size, 
+                            REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, REGNAME(src_reg));
+  
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_membyreg, false, DBG_TAINT_NUM_PARAMS(8),
+                                 OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
+                                     OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(access_size),
+                                         OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(2)  DBG_END_DR_CLEANCALL);
+      }
+      else
+      {
+        FAIL();
+      }
     }
-    else if (opcode == OP_shr)
+    else if (opnd_is_immed(src))
     {
-      LDUMP("InsDetail:\tShifting right %s by %lld bytes.\n", REGNAME(dst_reg), value);
-
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_imm, false, DBG_TAINT_NUM_PARAMS(3),
-                               OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT64(value), OPND_CREATE_INT32(1)
-                                   DBG_END_DR_CLEANCALL);
-    }
-    else if (opcode == OP_sar)
-    {
-      LDUMP("InsDetail:\tShifting arithmetically right %s by %lld bytes.\n", REGNAME(dst_reg), value);
-
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_imm, false, DBG_TAINT_NUM_PARAMS(3),
-                               OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT64(value), OPND_CREATE_INT32(2)
-                                   DBG_END_DR_CLEANCALL);
+      int64 value = opnd_get_immed_int(src);
+  
+      if (opcode == OP_shl)
+      {
+        LDUMP("InsDetail:\tShifting left %d bytes of [%s:%s + %d*%s + %d] by %lld bytes.\n", access_size, REGNAME(seg_reg), 
+                             REGNAME(base_reg), scale, REGNAME(index_reg), disp, value);
+  
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_membyimm, false, DBG_TAINT_NUM_PARAMS(8),
+                                 OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
+                                     OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(access_size),
+                                         OPND_CREATE_INT64(value), OPND_CREATE_INT32(0) DBG_END_DR_CLEANCALL);
+      }
+      else if (opcode == OP_shr)
+      {
+        LDUMP("InsDetail:\tShifting right %d bytes of [%s:%s + %d*%s + %d] by %lld bytes.\n", access_size, REGNAME(seg_reg), 
+                             REGNAME(base_reg), scale, REGNAME(index_reg), disp, value);
+  
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_membyimm, false, DBG_TAINT_NUM_PARAMS(8),
+                                 OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
+                                     OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), OPND_CREATE_INT32(access_size),
+                                         OPND_CREATE_INT64(value), OPND_CREATE_INT32(1) DBG_END_DR_CLEANCALL);
+      }
+      else if (opcode == OP_sar)
+      {
+        LDUMP("InsDetail:\tShifting arithmetically right %d bytes of [%s:%s + %d*%s + %d] by %lld bytes.\n", access_size, 
+                           REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, value);
+  
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_membyimm, false, DBG_TAINT_NUM_PARAMS(8),
+                                 OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
+                                     OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp),  OPND_CREATE_INT32(access_size),
+                                         OPND_CREATE_INT64(value), OPND_CREATE_INT32(2)  DBG_END_DR_CLEANCALL);
+      }
+      else
+      {
+        FAIL();
+      }
     }
     else
     {

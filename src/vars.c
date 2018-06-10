@@ -33,9 +33,11 @@ int             nextIID                      = 1;
 
 lprec           *lp;
 
-instr_t *instr_pointers[1024*16];
+instr_t *instr_pointers[INSTR_DUPL_SIZE];
 int instr_next_pointer = 0;
 
+file_t logfile, dumpfile;
+FILE * logfile_stream;
 
 const char *manual_taint_path  = "<manually tainted>";
 const char *cmd_arg_taint_path = "<command line>";
@@ -343,6 +345,16 @@ void reg_taint_rm_all(int reg)
   } 
 }
 
+void mem_taint_rm_all(uint64_t addr, int size)
+{
+  for (int i = 0; i < size; i++)
+  {
+    int index = mem_taint_find_index(addr, i);
+
+    MEMTAINTRM(index, addr + i);
+  }
+}
+
 int mem_taint_any(uint64_t addr, int size)
 {
   for (int i = 0; i < size; i++)
@@ -382,7 +394,7 @@ void log_instr(instr_t *instr)
 
   instr_disassemble_to_buffer(drcontext, instr, str, 64);
 
-  dr_printf("TAINT! %s: ", str);
+  dr_fprintf(logfile, "TAINT! %s: ", str);
 
   return;
 }
@@ -393,9 +405,9 @@ instr_t *instr_dupl(instr_t *instr)
 
   instr_pointers[instr_next_pointer++] = copy;
 
-  if (instr_next_pointer >= 1024*16)
+  if (instr_next_pointer >= INSTR_DUPL_SIZE)
   {
-    DIE("ERROR! instr. dumpl. failure at [A]\n");
+    DIE("ERROR! instr. dupl. failure at [A]\n");
   }
 
   return copy;
@@ -554,6 +566,19 @@ void bound2(int *ids1, int *ids2, int type)
         Group_restriction *gr = (Group_restriction *) malloc(sizeof(Group_restriction));
         gr -> id = newid;
         gr -> bound_type = TAINT_BOUND_HIGH;
+        gr -> next = uids_[ID2UID(newid)].gr;
+
+        uids_[ID2UID(newid)].gr = gr;
+      }
+      // ids1 == ids2 can be interpreted as ids1 - ids2 is fixed.
+      else if (type == COND_EQ)
+      {
+        int newid = nshr_tid_copy_id(ids1[i]);
+        nshr_id_add_op(newid, PROP_SUB, ids2[i]);
+
+        Group_restriction *gr = (Group_restriction *) malloc(sizeof(Group_restriction));
+        gr -> id = newid;
+        gr -> bound_type = TAINT_BOUND_FIX;
         gr -> next = uids_[ID2UID(newid)].gr;
 
         uids_[ID2UID(newid)].gr = gr;

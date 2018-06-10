@@ -17,6 +17,7 @@ typedef struct {
   const char *s1, *s2;
   void *v1, *v2;
   long long i1, i2;
+  int ids[8];
   int should;
 
 } arg_data_struct;
@@ -307,6 +308,19 @@ static void strcmp_end(DBG_END_TAINTING_FUNC_ALONE)
   }
 }
 
+static void toupper_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  int reg = get_arg_reg(0, sizeof(int));
+
+  get_reg_taint(reg, arg_data.ids);
+}
+
+static void toupper_end(DBG_END_TAINTING_FUNC_ALONE)
+{
+  // Taint output reg with same taints.
+  set_reg_taint(DR_REG_RAX, arg_data.ids);
+}
+
 static void memset_begin(DBG_END_TAINTING_FUNC_ALONE)
 {
   void *dst = (void *) get_arg(0);
@@ -559,6 +573,9 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      register_handlers(mod, "fread", fread_begin, fread_end);              // size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream);
      register_handlers(mod, "strtol", strtol_begin, strtol_end);           // long int strtol(const char *nptr, char **endptr, int base);
      register_handlers(mod, "atoi", atoi_begin, atoi_end);                 // int atoi(const char *nptr);
+     register_handlers(mod, "toupper", toupper_begin, toupper_end);        // int toupper(int c);
+     register_handlers(mod, "tolower", toupper_begin, toupper_end);        // int tolower(int c);
+
 
 
      ignore_handlers(mod, "__printf_chk");

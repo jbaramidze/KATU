@@ -12,8 +12,9 @@
 // Pass instruction among other params when tainting, to debug.
 #define DBG_PASS_INSTR
 
-extern instr_t *instr_pointers[1024*16];
-extern int instr_next_pointer;
+// Log paths.
+#define NSHR_LOGFILE_PATH "/home/zhani/Thesis/project/build/nshr.log"
+#define NSHR_DUMPFILE_PATH "/home/zhani/Thesis/project/build/nshr.dump"
 
 #ifdef DBG_PASS_INSTR
 
@@ -31,17 +32,17 @@ extern int instr_next_pointer;
   */
   
   #if defined LOGDEBUG
-  #define LDEBUG_TAINT(A, ...) { log_instr(dbg_instr); dr_printf(__VA_ARGS__); }
+  #define LDEBUG_TAINT(A, ...) { log_instr(dbg_instr); dr_fprintf(logfile, __VA_ARGS__); }
   #elif defined LOGTEST
-  #define LDEBUG_TAINT(A, ...) if (A) { log_instr(dbg_instr); dr_printf(__VA_ARGS__); }
+  #define LDEBUG_TAINT(A, ...) if (A) { log_instr(dbg_instr); dr_fprintf(logfile, __VA_ARGS__); }
   #else
   #define LDEBUG_TAINT(A, ...)
   #endif
   
   #if defined LOGDUMP
-  #define LDUMP_TAINT(i, A, ...) { log_instr(dbg_instr); dr_printf(__VA_ARGS__); }
+  #define LDUMP_TAINT(i, A, ...) { log_instr(dbg_instr); dr_fprintf(logfile, __VA_ARGS__); }
   #elif defined LOGTEST
-  #define LDUMP_TAINT(i, A, ...) if ((A) && i == 0) { log_instr(dbg_instr); dr_printf(__VA_ARGS__); }
+  #define LDUMP_TAINT(i, A, ...) if ((A) && i == 0) { log_instr(dbg_instr); dr_fprintf(logfile, __VA_ARGS__); }
   #else
   #define LDUMP_TAINT(i, A, ...)
   #endif
@@ -61,17 +62,17 @@ extern int instr_next_pointer;
   */
   
   #if defined LOGDEBUG
-  #define LDEBUG_TAINT(A, ...) dr_printf(__VA_ARGS__)
+  #define LDEBUG_TAINT(A, ...) dr_fprintf(logfile, __VA_ARGS__)
   #elif defined LOGTEST
-  #define LDEBUG_TAINT(A, ...) if (A) dr_printf(__VA_ARGS__)
+  #define LDEBUG_TAINT(A, ...) if (A) dr_fprintf(logfile, __VA_ARGS__)
   #else
   #define LDEBUG_TAINT(A, ...)
   #endif
   
   #if defined LOGDUMP
-  #define LDUMP_TAINT(i, A, ...) dr_printf(__VA_ARGS__)
+  #define LDUMP_TAINT(i, A, ...) dr_fprintf(logfile, __VA_ARGS__)
   #elif defined LOGTEST
-  #define LDUMP_TAINT(i, A, ...) if ((A) && i == 0) dr_printf(__VA_ARGS__)        
+  #define LDUMP_TAINT(i, A, ...) if ((A) && i == 0) dr_fprintf(logfile, __VA_ARGS__)        
   #else
   #define LDUMP_TAINT(i, A, ...)
   #endif
@@ -96,6 +97,7 @@ extern int instr_next_pointer;
 #define TAINTMAP_SIZE         65536
 #define ILP_MAX_CONSTR        1000
 #define HASH_BITS             13
+#define INSTR_DUPL_SIZE       1048576
 
 //
 // Things to tweak.
@@ -117,6 +119,12 @@ extern int instr_next_pointer;
 
 extern const char *manual_taint_path;
 extern const char *cmd_arg_taint_path;
+
+extern instr_t *instr_pointers[INSTR_DUPL_SIZE];
+extern int instr_next_pointer;
+
+extern file_t logfile, dumpfile;
+extern FILE * logfile_stream;
 
 enum prop_type {
   // MOV's
@@ -281,7 +289,7 @@ typedef void (*handleFunc)(DBG_END_TAINTING_FUNC_ALONE);
                                              dump(); \
                                              exit(-1); } }
 
-#define DIE(text) { dr_printf(text); exit(-1); }
+#define DIE(text) { dr_printf(text); dr_flush_file(logfile); dr_flush_file(dumpfile); exit(-1); }
 
 #define GET_CONTEXT()      dr_mcontext_t mcontext = {sizeof(mcontext),DR_MC_ALL}; \
                            void *drcontext = dr_get_current_drcontext(); \
@@ -342,6 +350,7 @@ static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 #define REGTAINT2REGTAINT(mask1, offset1, mask2, offset2)     reg_taint_set_value(mask2, offset2,   reg_taint_get_value(mask1, offset1))
 
 #define REGTAINTRMALL(reg)                   reg_taint_rm_all(reg)
+#define MEMTAINTRMALL(addr, size)            mem_taint_rm_all(addr, size);
 #define REGTAINTRM(reg, offset)              reg_taint_set_value(reg,  offset, -1)
 #define MEMTAINTRM(index, address)           mem_taint_set_value(index, address, -1)
 
@@ -367,35 +376,35 @@ static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 //
 
 #ifdef LOGWARNING
-#define LWARNING(...) dr_printf(__VA_ARGS__)
+#define LWARNING(...) dr_fprintf(logfile, __VA_ARGS__)
 #else
 #define LWARNING(...) 
 #endif
 
 
 #ifdef LOGTEST
-#define LTEST(...) dr_printf(__VA_ARGS__)
+#define LTEST(...) dr_fprintf(logfile, __VA_ARGS__)
 #else
 #define LTEST(...) 
 #endif
 
 #ifdef LOGDEBUG
-#define LDEBUG(...) dr_printf(__VA_ARGS__)
+#define LDEBUG(...) dr_fprintf(logfile, __VA_ARGS__)
 #else
 #define LDEBUG(...) 
 #endif
 
 #ifdef LOGDUMP
   #ifdef LOG_LINES
-  #define LDUMP(...) { dr_printf("AT %d:  ", __LINE__); dr_printf(__VA_ARGS__); }
+  #define LDUMP(...) { dr_fprintf(logfile, "AT %d:  ", __LINE__); dr_fprintf(logfile, __VA_ARGS__); }
   #else
-  #define LDUMP(...) dr_printf(__VA_ARGS__)
+  #define LDUMP(...) dr_fprintf(logfile, __VA_ARGS__)
   #endif
 #else
 #define LDUMP(...)
 #endif
 
-#define LERROR(...) dr_printf(__VA_ARGS__)
+#define LERROR(...) dr_fprintf(logfile, __VA_ARGS__)
 
 
 //
@@ -465,6 +474,7 @@ int64_t  reg_taint_get_value(int reg, int offset);
 void     reg_taint_rm_all(int reg);
 int      reg_taint_any(int reg);
 int      mem_taint_any(uint64_t mem, int size);
+void     mem_taint_rm_all(uint64_t addr, int size);
 void     reg_taint_set_value(int reg, int offset, uint64_t value);
 
 void log_instr(instr_t *instr);
@@ -576,13 +586,16 @@ void nshr_taint_cmp_mem2imm(int seg_reg, int base_reg, int index_reg, int scale,
 void nshr_taint_cmp_constmem2reg(uint64_t addr, int size, int reg, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_cmp_constmem2imm(uint64_t addr, int size, int type DBG_END_TAINTING_FUNC);
 
+void nshr_taint_rest_reg2mem(int src_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_rest_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_rest_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_rest_imm2reg(uint64_t value, int dst_reg, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_rest_imm2mem(uint64_t value, int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int type DBG_END_TAINTING_FUNC);
 
-void nshr_taint_shift_imm(int dst_reg, int64 value, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_shift_reg(int dst_reg, int src_reg, int type DBG_END_TAINTING_FUNC);
+void nshr_taint_shift_regbyimm(int dst_reg, int64 value, int type DBG_END_TAINTING_FUNC);
+void nshr_taint_shift_regbyreg(int dst_reg, int src_reg, int type DBG_END_TAINTING_FUNC);
+void nshr_taint_shift_membyreg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int src_reg, int type DBG_END_TAINTING_FUNC);
+void nshr_taint_shift_membyimm(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int64 value, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC);
 void nshr_taint_strsto_rep(int size DBG_END_TAINTING_FUNC);
 void nshr_taint_neg(int dst_reg DBG_END_TAINTING_FUNC);

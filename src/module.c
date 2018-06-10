@@ -9,23 +9,23 @@
 
 void dump()
 {
-  /*dr_printf("\n\nStarting dump of IID:\n");
+  /*dr_fprintf(dumpfile, "\n\nStarting dump of IID:\n");
 
   for (int i = 1; i < nshr_tid_new_iid_get(); i++)
   {
-    dr_printf("IID #%d\t\t -> id %d index %d\n", i, iids_[i].id, iids_[i].index);
+    dr_fprintf(dumpfile, "IID #%d\t\t -> id %d index %d\n", i, iids_[i].id, iids_[i].index);
   }
   */
 
-  dr_printf("\n\nStarting dump of ID:\n");
+  dr_fprintf(dumpfile, "\n\nStarting dump of ID:\n");
 
   for (int i = 1; i < nshr_tid_new_id_get(); i++)
   {
-    dr_printf("ID #%d\t\t -> uid %d size %d ops_size: %d\n", i, ids_[i].uid, ids_[i].size, ids_[i].ops_size);
+    dr_fprintf(dumpfile, "ID #%d\t\t -> uid %d size %d ops_size: %d\n", i, ids_[i].uid, ids_[i].size, ids_[i].ops_size);
 
     if (ids_[i].ops_size > 0)
     {
-      dr_printf("\tOperations:\n");
+      dr_fprintf(dumpfile, "\tOperations:\n");
       if (ids_[i].ops_size > DEFAULT_OPERATIONS)
       {
         FAIL();
@@ -33,14 +33,14 @@ void dump()
 
       for (int j = 0; j < ids_[i].ops_size; j++)
       {
-        dr_printf("\tOperation #%d: '%s' by %lld\n", j, PROP_NAMES[ids_[i].ops[j].type],
+        dr_fprintf(dumpfile, "\tOperation #%d: '%s' by %lld\n", j, PROP_NAMES[ids_[i].ops[j].type],
           ids_[i].ops[j].value);
       }
     }
   }
 
 
-  dr_printf("\n\nStarting dump of UID:\n");
+  dr_fprintf(dumpfile, "\n\nStarting dump of UID:\n");
 
   for (int i = 1; i < nshr_tid_new_uid_get(); i++)
   {
@@ -55,13 +55,13 @@ void dump()
       path = hashtable_lookup(&FILEs_, uids_[i].descriptor.file);
     }
 
-    dr_printf("UID #%d\t\t -> path %s bounded %d\n", i, path, uids_[i].bounded);
+    dr_fprintf(dumpfile, "UID #%d\t\t -> path %s bounded %d\n", i, path, uids_[i].bounded);
 
     Group_restriction *gr = uids_[i].gr;
 
     while(gr != NULL)
     {
-      dr_printf("\tGroup restriction id %d type %d.\n", gr -> id, gr -> bound_type);
+      dr_fprintf(dumpfile, "\tGroup restriction id %d type %d.\n", gr -> id, gr -> bound_type);
       gr = gr -> next;
     }
   }
@@ -107,6 +107,9 @@ event_exit(void)
         gr = next;
       }
   }
+
+  dr_close_file(logfile);
+  dr_close_file(dumpfile);
 
   dr_printf("Info:\t\tExitting.\n");
 }
@@ -185,6 +188,7 @@ void init(void)
   eflags_.valid = -1;
 
   lp = make_lp(0, ILP_MAX_CONSTR);
+  set_outputstream(lp, logfile_stream);
 
   if (lp == NULL)
   {
@@ -236,6 +240,16 @@ dr_init(client_id_t client_id)
   {  
     DIE("ERROR! Failed starting drwrap.\n");
   }*/
+
+  logfile  = dr_open_file(NSHR_LOGFILE_PATH, DR_FILE_WRITE_OVERWRITE);
+  dumpfile = dr_open_file(NSHR_DUMPFILE_PATH, DR_FILE_WRITE_OVERWRITE);
+
+  if (logfile == INVALID_FILE || dumpfile == INVALID_FILE) 
+  {
+    DIE("ERROR:! Failed opening log files.\n");
+  }
+
+  logfile_stream = fdopen(logfile, "w+");
 
   init();
 

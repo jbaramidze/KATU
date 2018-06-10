@@ -258,8 +258,7 @@ int solve_ilp_for_id(int id DBG_END_TAINTING_FUNC)
 
     if (uids_[curr_uid].bounded & TAINT_BOUND_FIX)
     {
-      ilp_bound(&uids_total_map[curr_uid], 1, LE);
-      ilp_bound(&uids_total_map[curr_uid], 1, GE);
+      ilp_bound(&uids_total_map[curr_uid], 1, EQ);
     }   
 
     Group_restriction *gr = uids_[curr_uid].gr;
@@ -334,7 +333,7 @@ int solve_ilp_for_id(int id DBG_END_TAINTING_FUNC)
   set_maxim(lp);
 
   #ifdef DEBUG
-  write_LP(lp, stdout);
+  write_LP(lp, logfile_stream);
   set_verbose(lp, IMPORTANT);
   #else
   set_verbose(lp, CRITICAL);
@@ -352,7 +351,7 @@ int solve_ilp_for_id(int id DBG_END_TAINTING_FUNC)
   set_minim(lp);
 
   #ifdef DEBUG
-  write_LP(lp, stdout);
+  write_LP(lp, logfile_stream);
   set_verbose(lp, IMPORTANT);
   #else
   set_verbose(lp, CRITICAL);
