@@ -1514,63 +1514,113 @@ static void opcode_mul(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
 static void opcode_div(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
-  int reg = opnd_get_reg(instr_get_src(instr, 0));
+  opnd_t src = instr_get_src(instr, 0);
 
-  if (REGSIZE(reg) == 8)
+  int size = 0;
+  reg_id_t base_reg;
+  reg_id_t index_reg;
+  reg_id_t seg_reg;
+  int scale; 
+  int disp;
+
+  if (opnd_is_reg(src))
+  {
+    size = REGSIZE(opnd_get_reg(src));
+  }
+  else if (opnd_is_base_disp(src))
+  {
+    base_reg = opnd_get_base(src);
+    index_reg = opnd_get_index(src);
+    seg_reg = opnd_get_segment(src);
+    scale = opnd_get_scale(src);
+    disp = opnd_get_disp(src);
+    size = opnd_size_in_bytes(opnd_get_size(src));
+  }
+  else
+  {
+    FAIL();
+  }
+
+  if (size == 8)
   {
     FAILIF(instr_num_srcs(instr) != 3 && instr_num_dsts(instr) == 2);
     FAILIF(!opnd_equals_reg(instr_get_src(instr, 1), DR_REG_RDX));
     FAILIF(!opnd_equals_reg(instr_get_src(instr, 2), DR_REG_RAX));
     FAILIF(!opnd_equals_reg(instr_get_dst(instr, 0), DR_REG_RDX));
     FAILIF(!opnd_equals_reg(instr_get_dst(instr, 1), DR_REG_RAX));
- 
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_div, false, DBG_TAINT_NUM_PARAMS(5),
-                            OPND_CREATE_INT32(DR_REG_RDX), OPND_CREATE_INT32(DR_REG_RAX), OPND_CREATE_INT32(reg),
-                                 OPND_CREATE_INT32(DR_REG_RAX), OPND_CREATE_INT32(DR_REG_RDX) 
-                                      DBG_END_DR_CLEANCALL);
   }
-  else if (REGSIZE(reg) == 4)
+  else if (size == 4)
   {
     FAILIF(instr_num_srcs(instr) != 3 && instr_num_dsts(instr) == 2);
     FAILIF(!opnd_equals_reg(instr_get_src(instr, 1), DR_REG_EDX));
     FAILIF(!opnd_equals_reg(instr_get_src(instr, 2), DR_REG_EAX));
     FAILIF(!opnd_equals_reg(instr_get_dst(instr, 0), DR_REG_EDX));
     FAILIF(!opnd_equals_reg(instr_get_dst(instr, 1), DR_REG_EAX));
-
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_div, false, DBG_TAINT_NUM_PARAMS(5),
-                            OPND_CREATE_INT32(DR_REG_EDX), OPND_CREATE_INT32(DR_REG_EAX), OPND_CREATE_INT32(reg),
-                                 OPND_CREATE_INT32(DR_REG_EAX), OPND_CREATE_INT32(DR_REG_EDX) 
-                                      DBG_END_DR_CLEANCALL);
   }
-  else if (REGSIZE(reg) == 2)
+  else if (size == 2)
   {
     FAILIF(instr_num_srcs(instr) != 3 && instr_num_dsts(instr) == 2);
     FAILIF(!opnd_equals_reg(instr_get_src(instr, 1), DR_REG_DX));
     FAILIF(!opnd_equals_reg(instr_get_src(instr, 2), DR_REG_AX));
     FAILIF(!opnd_equals_reg(instr_get_dst(instr, 0), DR_REG_DX));
     FAILIF(!opnd_equals_reg(instr_get_dst(instr, 1), DR_REG_AX));
-
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_div, false, DBG_TAINT_NUM_PARAMS(5),
-                            OPND_CREATE_INT32(DR_REG_DX), OPND_CREATE_INT32(DR_REG_AX), OPND_CREATE_INT32(reg),
-                                 OPND_CREATE_INT32(DR_REG_AX), OPND_CREATE_INT32(DR_REG_DX) 
-                                      DBG_END_DR_CLEANCALL);
   }
-  else if (REGSIZE(reg) == 1)
+  else if (size == 1)
   {
     FAILIF(instr_num_srcs(instr) != 2 && instr_num_dsts(instr) == 2);
     FAILIF(!opnd_equals_reg(instr_get_src(instr, 1), DR_REG_AX));
     FAILIF(!opnd_equals_reg(instr_get_dst(instr, 0), DR_REG_AH));
     FAILIF(!opnd_equals_reg(instr_get_dst(instr, 1), DR_REG_AL));
-
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_div, false, DBG_TAINT_NUM_PARAMS(5),
-                            OPND_CREATE_INT32(DR_REG_AH), OPND_CREATE_INT32(DR_REG_AL), OPND_CREATE_INT32(reg),
-                                 OPND_CREATE_INT32(DR_REG_AL), OPND_CREATE_INT32(DR_REG_AH) 
-                                      DBG_END_DR_CLEANCALL);
   }
   else
   {
     FAIL();
   }
+
+  if (size != 1)
+  {
+    if (opnd_is_reg(src))
+    {
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_div_reg, false, DBG_TAINT_NUM_PARAMS(5),
+                              OPND_CREATE_INT32(opnd_get_reg(instr_get_src(instr, 1))), 
+                                  OPND_CREATE_INT32(opnd_get_reg(instr_get_src(instr, 2))),
+                                      OPND_CREATE_INT32(opnd_get_reg(src)),
+                                          OPND_CREATE_INT32(opnd_get_reg(instr_get_dst(instr, 1))), 
+                                              OPND_CREATE_INT32(opnd_get_reg(instr_get_dst(instr, 0))) 
+                                                  DBG_END_DR_CLEANCALL);
+    }
+    else
+    {
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_div_mem, false, DBG_TAINT_NUM_PARAMS(10),
+                              OPND_CREATE_INT32(opnd_get_reg(instr_get_src(instr, 1))), 
+                                  OPND_CREATE_INT32(opnd_get_reg(instr_get_src(instr, 2))),
+                                    OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg), 
+                                        OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(size),
+                                          OPND_CREATE_INT32(opnd_get_reg(instr_get_dst(instr, 1))), 
+                                              OPND_CREATE_INT32(opnd_get_reg(instr_get_dst(instr, 0))) 
+                                                 DBG_END_DR_CLEANCALL);
+    }
+  }
+  else
+  {
+    if (opnd_is_reg(src))
+    {
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_div_reg, false, DBG_TAINT_NUM_PARAMS(5),
+                              OPND_CREATE_INT32(DR_REG_AH), OPND_CREATE_INT32(DR_REG_AL), OPND_CREATE_INT32(opnd_get_reg(src)),
+                                   OPND_CREATE_INT32(DR_REG_AL), OPND_CREATE_INT32(DR_REG_AH) 
+                                        DBG_END_DR_CLEANCALL);
+    }
+    else
+    {
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_div_mem, false, DBG_TAINT_NUM_PARAMS(10),
+                              OPND_CREATE_INT32(DR_REG_AH), OPND_CREATE_INT32(DR_REG_AL),
+                                    OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg), 
+                                        OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(size),
+                                            OPND_CREATE_INT32(DR_REG_AL), OPND_CREATE_INT32(DR_REG_AH)
+                                                 DBG_END_DR_CLEANCALL);
+    }
+  }
+  
 }
 
 // src2 == dst

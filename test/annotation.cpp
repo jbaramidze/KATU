@@ -8,10 +8,8 @@ int A[10];
 
 int main(int argc, char **argv)
 {
-  volatile int a = 6;
-  nshrtaint((long long int) &a, 4);
-  volatile int b = toupper(a);
-  volatile int c = tolower(b);
+  char d[10];
+  d[0] = 
 
   volatile int d = A[c];
 }

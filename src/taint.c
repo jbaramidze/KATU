@@ -1613,8 +1613,43 @@ void nshr_taint_check_jmp_immed(uint64_t pc DBG_END_TAINTING_FUNC)
   process_jump((unsigned char *) pc, 0 DGB_END_CALL_ARG);
 }
 
+void nshr_taint_div_mem(int dividend1_reg, int dividend2_reg, int divisor_seg_reg, int divisor_base_reg, int divisor_index_reg, int divisor_scale, 
+                                                 int divisor_disp, int access_size, int quotinent_reg, int remainder_reg DBG_END_TAINTING_FUNC)
+{
+  reg_t addr = decode_addr(divisor_seg_reg, divisor_base_reg, divisor_index_reg, divisor_scale, divisor_disp DGB_END_CALL_ARG);
 
-void nshr_taint_div(int dividend1_reg, int dividend2_reg, int divisor_reg, int quotinent_reg, int remainder_reg DBG_END_TAINTING_FUNC)
+  int divident1_tainted = REGTAINTEDANY(dividend1_reg);
+  int divident2_tainted = REGTAINTEDANY(dividend2_reg);
+  int divisor_tainted   = MEMTAINTEDANY(addr, access_size);
+
+  // Don't know what to do....
+  if (divident1_tainted)
+  {
+    FAIL();
+  }
+
+  // Just copy taint to quotinent, remove from remainder (it's tainted but bounded, so ignore)
+  if (divisor_tainted == 0)
+  {
+    FAILIF(REGSIZE(dividend2_reg) != REGSIZE(quotinent_reg));
+
+    nshr_taint_mv_reg2reg(dividend2_reg, quotinent_reg DGB_END_CALL_ARG);
+
+    nshr_taint_mv_reg_rm(remainder_reg DGB_END_CALL_ARG);
+  }
+  else
+  {
+    // Hard to tell what is the right decision, for now let's opt for 'safest'. Do the same.
+    FAILIF(REGSIZE(dividend2_reg) != REGSIZE(quotinent_reg));
+
+    nshr_taint_mv_reg2reg(dividend2_reg, quotinent_reg DGB_END_CALL_ARG);
+
+    nshr_taint_mv_reg_rm(remainder_reg DGB_END_CALL_ARG);
+  }
+}
+
+
+void nshr_taint_div_reg(int dividend1_reg, int dividend2_reg, int divisor_reg, int quotinent_reg, int remainder_reg DBG_END_TAINTING_FUNC)
 {
   int divident1_tainted = REGTAINTEDANY(dividend1_reg);
   int divident2_tainted = REGTAINTEDANY(dividend2_reg);
