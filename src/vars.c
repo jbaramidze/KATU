@@ -841,8 +841,10 @@ void set_mem_taint(uint64_t addr, int size, int *ids)
 
 void hashtable_del_entry(void *p)
 {
+/*
   handleFunc *e = (handleFunc *) p;
 
   free((char *) (e[2]));
   free(p);
+  */
 }

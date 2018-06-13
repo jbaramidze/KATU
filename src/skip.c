@@ -617,29 +617,32 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
 
 
 
-     ignore_handlers(mod, "__printf_chk");
-
-     // Problematic one, toupper defined as 
-     // return __c >= -128 && __c < 256 ? (*__ctype_toupper_loc ())[__c] : __c;
-     ignore_handlers(mod, "__ctype_toupper_loc"); 
-     ignore_handlers(mod, "__xstat");
-     ignore_handlers(mod, "__fxstat");
-     ignore_handlers(mod, "__lxstat");
-     ignore_handlers(mod, "_IO_puts");
      ignore_handlers(mod, "rand_r");
-     ignore_handlers(mod, "write");
      ignore_handlers(mod, "strlen");
      ignore_handlers(mod, "strerror");
      ignore_handlers(mod, "snprintf");
+     ignore_handlers(mod, "fwrite");
      ignore_handlers(mod, "fclose");
+     ignore_handlers(mod, "fflush");
+     ignore_handlers(mod, "write");
      ignore_handlers(mod, "close");
      ignore_handlers(mod, "poll");
      ignore_handlers(mod, "free");
      ignore_handlers(mod, "printf");
      ignore_handlers(mod, "bsd_signal");
      ignore_handlers(mod, "getpid");
-     ignore_handlers(mod, "fflush");
+     ignore_handlers(mod, "getuid");
+     ignore_handlers(mod, "exit");
      ignore_handlers(mod, "__errno_location");
+     ignore_handlers(mod, "__ctype_b_loc");
+     // Problematic one, toupper defined as 
+     // return __c >= -128 && __c < 256 ? (*__ctype_toupper_loc ())[__c] : __c;
+     ignore_handlers(mod, "__ctype_toupper_loc"); 
+     ignore_handlers(mod, "__xstat");
+     ignore_handlers(mod, "__fxstat");
+     ignore_handlers(mod, "__printf_chk");
+     ignore_handlers(mod, "__lxstat");
+     ignore_handlers(mod, "_IO_puts");
      
 
 

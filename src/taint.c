@@ -1627,7 +1627,7 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
       {
         LERROR("ERROR! Failed jumping to %s[%s] at %s  %s:%d.\n", sym.name, modname, data -> full_path, 
                                           sym.file, sym.line);
-        FAIL();
+//        FAIL();
       }
     }
   }
