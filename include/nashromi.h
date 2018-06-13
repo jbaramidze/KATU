@@ -200,6 +200,7 @@ enum mode {
 
 typedef struct {
   bool used;
+  int secure;
   const char *path;
 
 } Fd_entity;
@@ -623,6 +624,7 @@ dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr
 void nshr_init_opcodes(void);
 
 void module_load_event(void *drcontext, const module_data_t *mod, bool loaded);
+int is_path_secure(const char *path);
 
 void update_bounds_strings_equal(uint64_t saddr, uint64_t daddr, int bytes DBG_END_TAINTING_FUNC);
 void memset_reg2mem(int reg, uint64_t mem, int size DBG_END_TAINTING_FUNC);

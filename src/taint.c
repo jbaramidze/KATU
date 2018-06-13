@@ -1354,6 +1354,15 @@ void nshr_taint_mv_reg_rm(int mask DBG_END_TAINTING_FUNC)
 
 void nshr_taint_by_file(reg_t addr, unsigned int size, void *file)
 {
+  Fd_entity *f = (Fd_entity *) hashtable_lookup(&FILEs_, file);
+
+  if (f -> secure)
+  {
+    LDEBUG("NOT Tainting %d bytes from %s.\n", size, f -> path);
+
+    return;
+  }
+
   LDEBUG("ADD MEM %p size %d mark %d\n", addr, size, nshr_tid_new_id_get());
 
   for (unsigned int i = 0; i < size; i++)
@@ -1382,6 +1391,13 @@ void nshr_taint_by_file(reg_t addr, unsigned int size, void *file)
 
 void nshr_taint_by_fd(reg_t addr, unsigned int size, int fd)
 {
+  if (fds_[fd].secure)
+  {
+    LDEBUG("NOT Tainting %d bytes from %s.\n", size, fds_[fd].path);
+
+    return;
+  }
+
   LDEBUG("ADD MEM %p size %d mark %d\n", addr, size, nshr_tid_new_id_get());
 
   for (unsigned int i = 0; i < size; i++)
@@ -1627,6 +1643,9 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
       {
         LERROR("ERROR! Failed jumping to %s[%s] at %s  %s:%d.\n", sym.name, modname, data -> full_path, 
                                           sym.file, sym.line);
+
+
+        return_from_libc = NULL;
 //        FAIL();
       }
     }

@@ -848,3 +848,18 @@ void hashtable_del_entry(void *p)
   free(p);
   */
 }
+
+
+int is_path_secure(const char *path)
+{
+  // They are used for crypto-computations,
+  // if we taint them they will go under complicated taint propagtions
+  // but will never be used to access mem. Thus, let's assume they are secure.
+  if (strcmp(path, "/dev/urandom") == 0 ||
+      strcmp(path, "/dev/random") == 0)
+  {
+    return 1;
+  }
+
+  return 0;
+}

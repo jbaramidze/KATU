@@ -41,7 +41,8 @@ static void post_open(void *drcontext)
   {
     LTEST("Syscall:\tOpened %s as FD#%d.\n", open_path, result);
 
-    fds_[result].used = true;
+    fds_[result].used   = 1;
+    fds_[result].secure = is_path_secure(open_path);
     fds_[result].path = open_path;
   }
 }

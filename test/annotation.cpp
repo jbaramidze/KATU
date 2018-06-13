@@ -1,17 +1,19 @@
-#include <unistd.h>
-#include <fcntl.h>
+/* fread example: read an entire file */
 #include <stdio.h>
 #include <stdlib.h>
- 
-int A[50];
 
-int main()
-{
-    asm volatile (
-     "shld   $0x5,%%ebx,%%eax"
-     :::
-    	);
+int main () {
+  FILE * pFile;
 
- 
-    return 0;
+  pFile = fopen ( "/dev/random" , "r" );
+  fclose(pFile);
+  pFile = fopen ( "/dev/random" , "r" );
+
+  char buff[1024];
+  fgets(buff, 10, pFile);
+
+  printf("Read: %s", buff);
+
+  fclose(pFile);
+  return 0;
 }
