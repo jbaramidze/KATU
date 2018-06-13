@@ -39,6 +39,8 @@ int instr_next_pointer = 0;
 file_t logfile, dumpfile;
 FILE * logfile_stream;
 
+app_pc main_address;
+
 const char *manual_taint_path  = "<manually tainted>";
 const char *cmd_arg_taint_path = "<command line>";
 
@@ -731,15 +733,15 @@ void check_bounds_mem(uint64_t addr, int size DBG_END_TAINTING_FUNC)
     {
       #ifdef DBG_PASS_INSTR
       drsym_info_t *func = get_func(instr_get_app_pc(dbg_instr));
-      LWARNING("!!!VULNERABILITY!!! ILP Detected unbounded access at %s  %s:%d\n", 
+      LERROR("!!!VULNERABILITY!!! ILP Detected unbounded access at %s  %s:%d\n", 
                        func -> name, func -> file, func -> line);
       #else
-      LWARNING("!!!VULNERABILITY!!! ILP Detected unbounded access\n");
+      LERROR("!!!VULNERABILITY!!! ILP Detected unbounded access\n");
       #endif
 
-      LWARNING("Participating ids: ");
+      LERROR("Participating ids: ");
       for (int i = 0; i < 8; i++) LWARNING("%d, ", ids[i]);
-      LWARNING("\n");
+      LERROR("\n");
 
       vulnerability_detected();
     }
@@ -765,15 +767,15 @@ void check_bounds_reg(int reg DBG_END_TAINTING_FUNC)
     {
       #ifdef DBG_PASS_INSTR
       drsym_info_t *func = get_func(instr_get_app_pc(dbg_instr));
-      LWARNING("!!!VULNERABILITY!!! ILP Detected unbounded access at %s  %s:%d\n", 
+      LERROR("!!!VULNERABILITY!!! ILP Detected unbounded access at %s  %s:%d\n", 
                        func -> name, func -> file, func -> line);
       #else
-      LWARNING("!!!VULNERABILITY!!! ILP Detected unbounded access\n");
+      LERROR("!!!VULNERABILITY!!! ILP Detected unbounded access\n");
       #endif
 
-      LWARNING("Participating ids: ");
+      LERROR("Participating ids: ");
       for (int i = 0; i < 8; i++) LWARNING("%d, ", ids[i]);
-      LWARNING("\n");
+      LERROR("\n");
 
       vulnerability_detected();
     }
@@ -839,5 +841,8 @@ void set_mem_taint(uint64_t addr, int size, int *ids)
 
 void hashtable_del_entry(void *p)
 {
+  handleFunc *e = (handleFunc *) p;
+
+  free((char *) (e[2]));
   free(p);
 }

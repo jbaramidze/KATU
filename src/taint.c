@@ -450,6 +450,14 @@ void nshr_taint_rest_mem2reg(int seg_reg, int base_reg, int index_reg, int scale
   set_reg_taint(dst_reg, ids2);
 }
 
+void nshr_taint_bswap(int dst_reg DBG_END_TAINTING_FUNC)
+{
+  if (REGTAINTEDANY(dst_reg))
+  {
+    FAIL();
+  }
+}
+
 void nshr_taint_strsto_rep(int size DBG_END_TAINTING_FUNC)
 {
   GET_CONTEXT();
@@ -539,6 +547,13 @@ void nshr_taint_shift_regbyreg(int dst_reg, int src_reg, int type DBG_END_TAINTI
   }
 }
 
+void nshr_taint_shift_regbyimm_feedreg(int src_reg, int imm, int feed_reg, int type DBG_END_TAINTING_FUNC)
+{
+  if (REGTAINTEDANY(src_reg) || REGTAINTEDANY(feed_reg))
+  {
+    FAIL();
+  }
+}
 
 void nshr_taint_shift_membyimm(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int64 value, int type DBG_END_TAINTING_FUNC)
 {
@@ -968,22 +983,41 @@ void nshr_taint_mv_baseindexmem_rm(int seg_reg, int base_reg, int index_reg, int
 
 void nshr_taint_cond_mv_reg2reg(int src_reg, int dst_reg, instr_t *instr, int type DBG_END_TAINTING_FUNC)
 {
-  if (!is_valid_eflags())
-  {
-    return;
-  }
-
   GET_CONTEXT();  
 
   int taken = instr_cmovcc_triggered(instr, mcontext.xflags);
   
   LDEBUG("taken: %d.\n", taken);
 
-  process_cond_statement(type, taken DGB_END_CALL_ARG);
+  if (is_valid_eflags())
+  {
+    process_cond_statement(type, taken DGB_END_CALL_ARG);
+  }
 
   if (taken)
   {
     nshr_taint_mv_reg2reg(src_reg, dst_reg DGB_END_CALL_ARG);
+  }
+}
+
+void nshr_taint_cond_mv_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, instr_t *instr, int type DBG_END_TAINTING_FUNC)
+{
+  GET_CONTEXT();  
+
+  int taken = instr_cmovcc_triggered(instr, mcontext.xflags);
+  
+  LDEBUG("taken: %d.\n", taken);
+
+  if (is_valid_eflags())
+  {
+    process_cond_statement(type, taken DGB_END_CALL_ARG);
+  }
+
+  if (taken)
+  {
+    reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
+
+    nshr_taint_mv_constmem2reg(addr, dst_reg DGB_END_CALL_ARG);
   }
 }
 
@@ -1443,8 +1477,15 @@ void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_E
   }
 }
 
+
 static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
 {
+  /*
+  static int js = 0;
+  js++;
+  if (js%10000==0) dr_printf("js: %d.\n", js);
+  */
+
   module_data_t *data = dr_lookup_module(pc);
 
   if (data == NULL)
@@ -1471,11 +1512,11 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
   sym.file = file_buf;
   sym.file_size = 1024;
 
-  drsym_error_t symres;
-
   if (started_ == MODE_IN_LIBC && (strcmp(modname, LIBC_NAME) != 0 && strcmp(modname, LD_LINUX) != 0))
   {
-    symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
+    #ifdef DBG_PARSE_JUMPS
+    
+    drsym_error_t symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
 
   	if (symres == DRSYM_SUCCESS)
     {
@@ -1486,6 +1527,12 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
     {
   	  LDUMP_TAINT(0, true, "Returning to Active mode in [%s] at %s.\n", modname, data -> full_path);
     }
+
+    #else
+
+    LDUMP_TAINT(0, true, "Returning to Active mode\n");
+
+    #endif
 
     started_ = MODE_ACTIVE;
 
@@ -1501,9 +1548,7 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
 
   if (started_ == MODE_BEFORE_MAIN)
   {
-    symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
-
-    if (strcmp(sym.name, "main") == 0)
+    if (pc == main_address)
     {
       LDEBUG_TAINT(false, "Jumping to main with %d args.\n", get_arg(0));
 
@@ -1517,7 +1562,7 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
         nshr_taint_by_fd((uint64_t) addr, strlen(addr), FD_CMD_ARG);
       }
 
-
+      
       started_ = MODE_ACTIVE;
 
       dr_free_module_data(data);
@@ -1533,7 +1578,9 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
   	return;
   }
 
-  symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
+  #ifdef DBG_PARSE_JUMPS
+
+  drsym_error_t symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
 
   if (symres == DRSYM_SUCCESS)
   {
@@ -1545,31 +1592,41 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
   	LDUMP_TAINT(0, true, "Missing symbols for call to [%s] at %s.\n", modname, data -> full_path);
   }
 
+  #endif
+
   if (strcmp(LD_LINUX, modname) == 0 || strcmp(LIBC_NAME, modname) == 0)
   {
 
-  	LDUMP_TAINT(0, true, "Goind into MODE_IN_LIBC mode.\n");
-
   	started_ = MODE_IN_LIBC;
 
-    if (strcmp(sym.name, "__libc_start_main") != 0 &&
-        strcmp(sym.name, "_dl_fini") != 0)
+    handleFunc *handler = hashtable_lookup(&func_hashtable, pc);
+
+    if (handler != NULL) 
     {
-      handleFunc *handler = hashtable_lookup(&func_hashtable, pc);
+      LDUMP_TAINT(0, true, "Goind into MODE_IN_LIBC mode to <%s>.\n", handler[2]);
 
-      if (handler != NULL) 
+      // Call pre-funciton.
+      if (handler[0] != NULL)
       {
-        // Call pre-funciton.
-        if (handler[0] != NULL)
-        {
-          handler[0](DGB_END_CALL_ARG_ALONE);
-        }
-
-        // Register post-function.
-        return_from_libc = handler[1];
+        handler[0](DGB_END_CALL_ARG_ALONE);
       }
-      else
+
+      // Register post-function.
+      return_from_libc = handler[1];
+    }
+    else
+    {
+      // Check if it's known failure.
+      drsym_error_t symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
+
+      LDUMP_TAINT(0, true, "Goind into MODE_IN_LIBC mode to '%s'.\n", sym.name);
+
+      if (strcmp(sym.name, "__libc_start_main") != 0 &&
+          strcmp(sym.name, "_dl_fini") != 0 &&
+          strcmp(sym.name, "msort_with_tmp.part.0") != 0)
       {
+        LERROR("ERROR! Failed jumping to %s[%s] at %s  %s:%d.\n", sym.name, modname, data -> full_path, 
+                                          sym.file, sym.line);
         FAIL();
       }
     }
@@ -1578,7 +1635,6 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
   // DON'T FORGET IT!
   dr_free_module_data(data);
 }
-
 
 void nshr_taint_check_ret(DBG_END_TAINTING_FUNC_ALONE)
 {

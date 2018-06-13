@@ -12,6 +12,9 @@
 // Pass instruction among other params when tainting, to debug.
 #define DBG_PASS_INSTR
 
+// Parse jump addresses
+#undef DBG_PARSE_JUMPS
+
 // Log paths.
 #define NSHR_LOGFILE_PATH "/home/zhani/Thesis/project/build/nshr.log"
 #define NSHR_DUMPFILE_PATH "/home/zhani/Thesis/project/build/nshr.dump"
@@ -125,6 +128,8 @@ extern int instr_next_pointer;
 
 extern file_t logfile, dumpfile;
 extern FILE * logfile_stream;
+
+extern app_pc main_address;
 
 enum prop_type {
   // MOV's
@@ -404,7 +409,7 @@ static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 #define LDUMP(...)
 #endif
 
-#define LERROR(...) dr_fprintf(logfile, __VA_ARGS__)
+#define LERROR(...) dr_printf(__VA_ARGS__)
 
 
 //
@@ -567,6 +572,7 @@ void nshr_taint_mul_immbyconstmem2reg(int64 value, uint64_t addr, int access_siz
 void nshr_taint_mul_mem2reg(int src1_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int dst_reg DBG_END_TAINTING_FUNC);
 
 void nshr_taint_cond_mv_reg2reg(int src_reg, int dst_reg, instr_t *instr, int type DBG_END_TAINTING_FUNC);
+void nshr_taint_cond_mv_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, instr_t *instr, int type DBG_END_TAINTING_FUNC);
 
 void nshr_taint_cond_set_reg(int dst_reg, int type, instr_t *instr DBG_END_TAINTING_FUNC);
 
@@ -600,9 +606,11 @@ void nshr_taint_shift_regbyimm(int dst_reg, int64 value, int type DBG_END_TAINTI
 void nshr_taint_shift_regbyreg(int dst_reg, int src_reg, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_shift_membyreg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int src_reg, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_shift_membyimm(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int64 value, int type DBG_END_TAINTING_FUNC);
+void nshr_taint_shift_regbyimm_feedreg(int src_reg, int imm, int feed_reg, int type DBG_END_TAINTING_FUNC);
+
 void nshr_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC);
 void nshr_taint_strsto_rep(int size DBG_END_TAINTING_FUNC);
-void nshr_taint_neg(int dst_reg DBG_END_TAINTING_FUNC);
+void nshr_taint_bswap(int dst_reg DBG_END_TAINTING_FUNC);
 
 void nshr_taint_check_ret(DBG_END_TAINTING_FUNC_ALONE);
 void nshr_taint_check_jmp_reg(int reg DBG_END_TAINTING_FUNC);

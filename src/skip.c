@@ -369,6 +369,22 @@ static void strncpy_begin(DBG_END_TAINTING_FUNC_ALONE)
   nshr_taint_mv_constmem2constmem((uint64) src, (uint64) dst, size DGB_END_CALL_ARG);
 }
 
+static void read_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  arg_data.i1 = (int)          get_arg(0);
+  arg_data.s1 = (const char *) get_arg(1);
+}
+
+static void read_end(DBG_END_TAINTING_FUNC_ALONE)
+{
+  uint64_t r = (uint64_t) get_ret();
+
+  if (r > 0)
+  {
+    nshr_taint_by_fd((reg_t) arg_data.s1, r, arg_data.i1);
+  }
+}
+
 static void fread_begin(DBG_END_TAINTING_FUNC_ALONE)
 {
   arg_data.s1 = (const char *) get_arg(0);
@@ -485,6 +501,17 @@ static void fopen_end(DBG_END_TAINTING_FUNC_ALONE)
   }
 }
 
+
+static void open_end(DBG_END_TAINTING_FUNC_ALONE)
+{
+  int r = (int) get_ret();
+
+  LTEST("SKIPPER:\t\tOpened %s at FD#%d.\n", arg_data.s1, r);
+
+  fds_[r].used = 1;
+  fds_[r].path = strdup(arg_data.s1);
+}
+
 static void check_arg0_8(DBG_END_TAINTING_FUNC_ALONE)
 {
   int reg = get_arg_reg(0, sizeof(size_t));
@@ -492,6 +519,12 @@ static void check_arg0_8(DBG_END_TAINTING_FUNC_ALONE)
   check_bounds_reg(reg DGB_END_CALL_ARG);
 }
 
+static void check_arg1_8(DBG_END_TAINTING_FUNC_ALONE)
+{
+  int reg = get_arg_reg(1, sizeof(size_t));
+
+  check_bounds_reg(reg DGB_END_CALL_ARG);
+}
 
 static void taint_retstr(DBG_END_TAINTING_FUNC_ALONE)
 {
@@ -514,9 +547,10 @@ static void ignore_handlers(const module_data_t *mod, const char *function)
     FAIL();
   }
 
-  handleFunc *e = malloc(sizeof(handleFunc) * 2);
+  handleFunc *e = malloc(sizeof(handleFunc) * 3);
   e[0] = NULL;
   e[1] = NULL;
+  e[2] = (handleFunc) strdup(function);
 
   // Fixme: Don't allocate for all ignore functions same thing. Make one, but deal with deallocation.
 
@@ -540,9 +574,10 @@ static void register_handlers(const module_data_t *mod, const char *function,
     FAIL();
   }
 
-  handleFunc *e = malloc(sizeof(handleFunc) * 2);
+  handleFunc *e = malloc(sizeof(handleFunc) * 3);
   e[0] = pre_func_cb;
   e[1] = post_func_cb;
+  e[2] = (handleFunc) strdup(function);
 
   if (!hashtable_add(&func_hashtable, addr, (void *)e))
   {
@@ -554,12 +589,13 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
 {
    const char *module = dr_module_preferred_name(mod);
 
-   dr_printf("Info:\t\tLoading %s.\n", module);
+   dr_printf("Info:\t\tLoading %s at 0x%llx.\n", module, mod -> start);
 
    if (strncmp(dr_module_preferred_name(mod), "libc.so", 7) == 0)
    {
      register_handlers(mod, "scanf", pre_scanf, post_scanf);
      register_handlers(mod, "malloc", check_arg0_8, NULL);                 // void *malloc(size_t size);
+     register_handlers(mod, "realloc", check_arg1_8, NULL);                // void *realloc(void *ptr, size_t size);
      register_handlers(mod, "getenv", NULL, taint_retstr);                 // char *getenv(const char *name);
      register_handlers(mod, "strcmp", strcmp_begin, strcmp_end);           // int strcmp(const char *s1, const char *s2);
      register_handlers(mod, "strncmp", ncmp_begin, ncmp_end);              // int strncmp(const char *s1, const char *s2, size_t n);
@@ -570,11 +606,14 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      register_handlers(mod, "memcpy", memcpy_begin, NULL);                 // void *memcpy(void *dest, const void *src, size_t n);
      register_handlers(mod, "memset", memset_begin, NULL);                 // void *memset(void *s, int c, size_t n);
      register_handlers(mod, "fopen", fopen_begin, fopen_end);              // FILE *fopen(const char *path, const char *mode);
+     register_handlers(mod, "open", fopen_begin, open_end);                // int open(const char *pathname, int flags, mode_t mode);
      register_handlers(mod, "fread", fread_begin, fread_end);              // size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream);
+     register_handlers(mod, "read", read_begin, read_end);                 // ssize_t read(int fd, void *buf, size_t count);
      register_handlers(mod, "strtol", strtol_begin, strtol_end);           // long int strtol(const char *nptr, char **endptr, int base);
      register_handlers(mod, "atoi", atoi_begin, atoi_end);                 // int atoi(const char *nptr);
      register_handlers(mod, "toupper", toupper_begin, toupper_end);        // int toupper(int c);
      register_handlers(mod, "tolower", toupper_begin, toupper_end);        // int tolower(int c);
+     register_handlers(mod, "qsort", check_arg1_8, NULL);                  // void qsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *));
 
 
 
@@ -584,13 +623,23 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      // return __c >= -128 && __c < 256 ? (*__ctype_toupper_loc ())[__c] : __c;
      ignore_handlers(mod, "__ctype_toupper_loc"); 
      ignore_handlers(mod, "__xstat");
+     ignore_handlers(mod, "__fxstat");
+     ignore_handlers(mod, "__lxstat");
      ignore_handlers(mod, "_IO_puts");
      ignore_handlers(mod, "rand_r");
      ignore_handlers(mod, "write");
      ignore_handlers(mod, "strlen");
+     ignore_handlers(mod, "strerror");
      ignore_handlers(mod, "snprintf");
      ignore_handlers(mod, "fclose");
+     ignore_handlers(mod, "close");
+     ignore_handlers(mod, "poll");
      ignore_handlers(mod, "free");
+     ignore_handlers(mod, "printf");
+     ignore_handlers(mod, "bsd_signal");
+     ignore_handlers(mod, "getpid");
+     ignore_handlers(mod, "fflush");
+     ignore_handlers(mod, "__errno_location");
      
 
 

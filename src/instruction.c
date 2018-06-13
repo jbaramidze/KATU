@@ -293,6 +293,16 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
                                           OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
       
       }
+      else if (prop_is_cond_mov(type))
+      {
+        LDUMP("InsDetail:\tConditional taint of '%s' from [%s:%s + %d*%s + %d] to %s.\n", PROP_NAMES[type], 
+                           REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, REGNAME(dst_reg));
+
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cond_mv_mem2reg, false, DBG_TAINT_NUM_PARAMS(8),
+                               OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
+                                  OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(dst_reg), 
+                                     OPND_CREATE_INT64(instr_dupl(instr)), OPND_CREATE_INT32(type)   DBG_END_DR_CLEANCALL);
+      }
       else
       {
         FAIL();
@@ -469,7 +479,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       else if (prop_is_restrictor(type))
       {        
         LDUMP("InsDetail:\tRestricting by '%s' mem at[%s:%s + %d*%s + %d] with %s.\n", PROP_NAMES[type], 
-                                  REGNAME(src_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), 
+                                  REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), 
                                            disp, REGNAME(src_reg));
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_rest_reg2mem, false, DBG_TAINT_NUM_PARAMS(7),
@@ -1168,6 +1178,78 @@ static void opcode_cmps(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
 }
 
+static void opcode_bswap(void *drcontext, instr_t *instr, instrlist_t *ilist)
+{
+  FAILIF(instr_num_srcs(instr) != 1 || instr_num_srcs(instr) != 1);
+
+  opnd_t src = instr_get_src(instr, 0);
+  opnd_t dst = instr_get_dst(instr, 0);
+
+  FAILIF(!opnd_same(src, dst));
+  FAILIF(!opnd_is_reg(src));
+
+  int src_reg = opnd_get_reg(src);
+
+  LDUMP("InsDetail:\tDoing bswap on %s.\n", REGNAME(src_reg));
+
+  dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_bswap, false, DBG_TAINT_NUM_PARAMS(1),
+                           OPND_CREATE_INT32(src_reg)  DBG_END_DR_CLEANCALL);
+}
+
+static void opcode_dblshift(void *drcontext, instr_t *instr, instrlist_t *ilist)
+{
+  FAILIF(instr_num_srcs(instr) != 3 || instr_num_dsts(instr) != 1);
+
+  opnd_t src0 = instr_get_src(instr, 0);
+  opnd_t src1 = instr_get_src(instr, 1);
+  opnd_t src2 = instr_get_src(instr, 2);
+  opnd_t dst =  instr_get_dst(instr, 0);
+
+  FAILIF(!opnd_same(src2, dst));
+  FAILIF(!opnd_is_reg(src0));
+
+  int opcode  = instr_get_opcode(instr);
+
+  // move src2 by src1 bytes, feeding by src0
+
+  if (opnd_is_reg(src2))
+  {
+    if (opnd_is_immed(src1))
+    {
+      // Shift reg by immed, fed by reg.
+      int src_reg = opnd_get_reg(src2);
+      int feed_reg = opnd_get_reg(src0);
+      int imm = opnd_get_immed_int(src1);
+      
+
+      if (opcode == OP_shld)
+      {
+        LDUMP("InsDetail:\tShifting left %s by %d bytes, fed by %s.\n", REGNAME(src_reg), imm, REGNAME(feed_reg));
+  
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_regbyimm_feedreg, false, DBG_TAINT_NUM_PARAMS(3),
+                                   OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(imm), OPND_CREATE_INT32(feed_reg),
+                                       OPND_CREATE_INT32(0) DBG_END_DR_CLEANCALL);
+      }
+      else if (opcode == OP_shrd)
+      {
+        LDUMP("InsDetail:\tShifting right %s by %d bytes, fed by %s.\n", REGNAME(src_reg), imm, REGNAME(feed_reg));
+  
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_regbyimm_feedreg, false, DBG_TAINT_NUM_PARAMS(3),
+                                   OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(imm), OPND_CREATE_INT32(feed_reg),
+                                       OPND_CREATE_INT32(1) DBG_END_DR_CLEANCALL);
+      }
+    }
+    else
+    {
+      FAIL();
+    }
+  }
+  else
+  {
+    FAIL();
+  }
+}
+
 static void opcode_shift(void *drcontext, instr_t *instr, instrlist_t *ilist)
 {
   FAILIF(instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 1);
@@ -1437,7 +1519,7 @@ static void opcode_imul(void *drcontext, instr_t *instr, instrlist_t *ilist)
       int access_size = opnd_size_in_bytes(opnd_get_size(src1));
 
       LDUMP("InsDetail:\tMultiplying %s and [%s:%s + %d*%s + %d] -> %s.\n", REGNAME(src2_reg), REGNAME(seg_reg), 
-                 REGNAME(base_reg), scale, REGNAME(index_reg), disp REGNAME(dst1_reg));
+                 REGNAME(base_reg), scale, REGNAME(index_reg), disp, REGNAME(dst1_reg));
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mul_mem2reg, false, DBG_TAINT_NUM_PARAMS(8),
                             OPND_CREATE_INT32(src2_reg), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
@@ -1461,7 +1543,7 @@ static void opcode_mul(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
   if (REGSIZE(reg) == 8)
   {
-    FAILIF(instr_num_srcs(instr) != 2 && instr_num_dsts(instr) == 2);
+    FAILIF(instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 2);
 
     FAILIF(!opnd_equals_reg(instr_get_src(instr, 1), DR_REG_RAX));
     FAILIF(!opnd_equals_reg(instr_get_dst(instr, 0), DR_REG_RDX));
@@ -1474,7 +1556,7 @@ static void opcode_mul(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
   else if (REGSIZE(reg) == 4)
   {
-    FAILIF(instr_num_srcs(instr) != 2 && instr_num_dsts(instr) == 2);
+    FAILIF(instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 2);
 
     FAILIF(!opnd_equals_reg(instr_get_src(instr, 1), DR_REG_EAX));
     FAILIF(!opnd_equals_reg(instr_get_dst(instr, 0), DR_REG_EDX));
@@ -1487,7 +1569,7 @@ static void opcode_mul(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
   else if (REGSIZE(reg) == 2)
   {
-    FAILIF(instr_num_srcs(instr) != 2 && instr_num_dsts(instr) == 2);
+    FAILIF(instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 2);
 
     FAILIF(!opnd_equals_reg(instr_get_src(instr, 1), DR_REG_AX));
     FAILIF(!opnd_equals_reg(instr_get_dst(instr, 0), DR_REG_DX));
@@ -1500,7 +1582,7 @@ static void opcode_mul(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
   else if (REGSIZE(reg) == 1)
   {
-    FAILIF(instr_num_srcs(instr) != 2 && instr_num_dsts(instr) == 1);
+    FAILIF(instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 1);
 
     FAILIF(!opnd_equals_reg(instr_get_src(instr, 1), DR_REG_AL));
     FAILIF(!opnd_equals_reg(instr_get_dst(instr, 0), DR_REG_AX));
@@ -1543,7 +1625,7 @@ static void opcode_div(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
   if (size == 8)
   {
-    FAILIF(instr_num_srcs(instr) != 3 && instr_num_dsts(instr) == 2);
+    FAILIF(instr_num_srcs(instr) != 3 || instr_num_dsts(instr) != 2);
     FAILIF(!opnd_equals_reg(instr_get_src(instr, 1), DR_REG_RDX));
     FAILIF(!opnd_equals_reg(instr_get_src(instr, 2), DR_REG_RAX));
     FAILIF(!opnd_equals_reg(instr_get_dst(instr, 0), DR_REG_RDX));
@@ -1551,7 +1633,7 @@ static void opcode_div(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
   else if (size == 4)
   {
-    FAILIF(instr_num_srcs(instr) != 3 && instr_num_dsts(instr) == 2);
+    FAILIF(instr_num_srcs(instr) != 3 || instr_num_dsts(instr) != 2);
     FAILIF(!opnd_equals_reg(instr_get_src(instr, 1), DR_REG_EDX));
     FAILIF(!opnd_equals_reg(instr_get_src(instr, 2), DR_REG_EAX));
     FAILIF(!opnd_equals_reg(instr_get_dst(instr, 0), DR_REG_EDX));
@@ -1559,7 +1641,7 @@ static void opcode_div(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
   else if (size == 2)
   {
-    FAILIF(instr_num_srcs(instr) != 3 && instr_num_dsts(instr) == 2);
+    FAILIF(instr_num_srcs(instr) != 3 || instr_num_dsts(instr) != 2);
     FAILIF(!opnd_equals_reg(instr_get_src(instr, 1), DR_REG_DX));
     FAILIF(!opnd_equals_reg(instr_get_src(instr, 2), DR_REG_AX));
     FAILIF(!opnd_equals_reg(instr_get_dst(instr, 0), DR_REG_DX));
@@ -1567,7 +1649,7 @@ static void opcode_div(void *drcontext, instr_t *instr, instrlist_t *ilist)
   }
   else if (size == 1)
   {
-    FAILIF(instr_num_srcs(instr) != 2 && instr_num_dsts(instr) == 2);
+    FAILIF(instr_num_srcs(instr) != 2 || instr_num_dsts(instr) != 2);
     FAILIF(!opnd_equals_reg(instr_get_src(instr, 1), DR_REG_AX));
     FAILIF(!opnd_equals_reg(instr_get_dst(instr, 0), DR_REG_AH));
     FAILIF(!opnd_equals_reg(instr_get_dst(instr, 1), DR_REG_AL));
@@ -1675,9 +1757,9 @@ static void opcode_ignore(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
 static void wrong_opcode(void *drcontext, instr_t *instr, instrlist_t *ilist)
 { 
-  LERROR("ERROR! instruction not implemented.\n");
+  LERROR("ERROR! instruction not implemented: %d.\n", instr_get_opcode(instr));
 
-  FAIL();
+//  FAIL();
 }
 
 static void opcode_neg(void *drcontext, instr_t *instr, instrlist_t *ilist)
@@ -1886,7 +1968,7 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_popa]                = wrong_opcode;     // 22
   instrFunctions[OP_bound]               = wrong_opcode;     // 23
   instrFunctions[OP_arpl]                = wrong_opcode;     // 24
-  instrFunctions[OP_imul]                = opcode_imul;      // 25
+  instrFunctions[OP_imul]                = opcode_imul;      // 25 
   instrFunctions[OP_jo_short]            = opcode_call;      // 26
   instrFunctions[OP_jno_short]           = opcode_call;      // 27
   instrFunctions[OP_jb_short]            = opcode_call;      // 28
@@ -1957,6 +2039,9 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_cmovle]              = opcode_cond_mov;  // 124
   instrFunctions[OP_cmovnle]             = opcode_cond_mov;  // 125
 
+  instrFunctions[OP_movdqu]              = opcode_ignore;    // 142
+  instrFunctions[OP_movdqa]              = opcode_ignore;    // 143   
+
   instrFunctions[OP_jo]                  = opcode_call;      // 152
   instrFunctions[OP_jno]                 = opcode_call;      // 153
   instrFunctions[OP_jb]                  = opcode_call;      // 154
@@ -1991,11 +2076,40 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_setnle]              = opcode_cond_set;  // 183
   instrFunctions[OP_cpuid]               = opcode_ignore;    // 184
   instrFunctions[OP_bt]                  = opcode_ignore;    // 185   FIXME: WE ARE LOSING BIT OF INFO HERE!
+  instrFunctions[OP_shld]                = opcode_dblshift;  // 186
+  instrFunctions[OP_rsm]                 = wrong_opcode;     // 187
+
+  instrFunctions[OP_shrd]                = opcode_dblshift;  // 189
 
   instrFunctions[OP_movzx]               = opcode_mov;       // 195
 
   instrFunctions[OP_movsx]               = opcode_mov;       // 200
 
+  instrFunctions[OP_pinsrw]              = opcode_ignore;    // 203
+
+  instrFunctions[OP_bswap]               = opcode_bswap;     // 205
+
+  instrFunctions[OP_paddq]               = opcode_ignore;    // 209
+  instrFunctions[OP_pand]                = opcode_ignore;    // 215
+  instrFunctions[OP_pandn]               = opcode_ignore;    // 219
+
+  instrFunctions[OP_pxor]                = opcode_ignore;    // 235
+
+
+
+  instrFunctions[OP_psubb]               = opcode_ignore;    // 244
+  instrFunctions[OP_psubw]               = opcode_ignore;    // 245
+  instrFunctions[OP_psubd]               = opcode_ignore;    // 246
+  instrFunctions[OP_psubq]               = opcode_ignore;    // 247
+  instrFunctions[OP_paddb]               = opcode_ignore;    // 248
+  instrFunctions[OP_paddw]               = opcode_ignore;    // 249
+  instrFunctions[OP_paddd]               = opcode_ignore;    // 250 
+  instrFunctions[OP_psrldq]              = opcode_ignore;    // 251
+  instrFunctions[OP_pslldq]              = opcode_ignore;    // 252
+  instrFunctions[OP_rol]                 = wrong_opcode;     // 253
+  instrFunctions[OP_ror]                 = wrong_opcode;     // 254
+  instrFunctions[OP_rcl]                 = wrong_opcode;     // 255
+  instrFunctions[OP_rcr]                 = wrong_opcode;     // 256
   instrFunctions[OP_shl]                 = opcode_shift;     // 257
   instrFunctions[OP_shr]                 = opcode_shift;     // 258
   instrFunctions[OP_sar]                 = opcode_shift;     // 259
@@ -2007,6 +2121,12 @@ void nshr_init_opcodes(void)
 
   instrFunctions[OP_movsd]               = opcode_ignore;    // 296
 
+  instrFunctions[OP_cvtsi2sd]            = opcode_ignore;    // 310
+
+  instrFunctions[OP_ucomisd]             = opcode_ignore;    // 320
+
+  instrFunctions[OP_addsd]               = opcode_ignore;    // 344
+
   instrFunctions[OP_nop]                 = opcode_ignore;    // 381
 
   instrFunctions[OP_stos]                = opcode_cmps;      // 389 (memset)
@@ -2017,7 +2137,12 @@ void nshr_init_opcodes(void)
 
   instrFunctions[OP_repne_scas]          = opcode_ignore;    // 398 (strlen)
 
+
+  for (int i = 523; i <= 596; i++) instrFunctions[i] = opcode_ignore; // 523 - 596 (SSE3 & SSE4)
+
   instrFunctions[OP_movsxd]              = opcode_mov;       // 597
+
+  for (int i = 636; i <= 890; i++) instrFunctions[i] = opcode_ignore; // 636 - 890 (AVX)
 }
 
 //

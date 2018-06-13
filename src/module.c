@@ -200,6 +200,19 @@ void init(void)
 
   fds_[FD_MANUAL_TAINT].path = cmd_arg_taint_path;
   fds_[FD_CMD_ARG].path      = cmd_arg_taint_path;
+
+  module_data_t *main_module = dr_get_main_module();
+
+  main_address = (app_pc) dr_get_proc_address(main_module -> handle, "main");
+
+  if (main_address == NULL)
+  {
+    dr_printf("ERROR! Failed getting address for main!!!!.\n");
+
+    FAIL();
+  }
+
+  dr_free_module_data(main_module);
 }
 
 DR_EXPORT void

@@ -1,15 +1,17 @@
-#include "stdio.h"
-#include "stdlib.h"
-#include "string.h"
-#include "dr_annotations_zhani.h"
-#include <ctype.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+ 
+int A[50];
 
-int A[10];
-
-int main(int argc, char **argv)
+int main()
 {
-  char d[10];
-  d[0] = 
+    asm volatile (
+     "shld   $0x5,%%ebx,%%eax"
+     :::
+    	);
 
-  volatile int d = A[c];
+ 
+    return 0;
 }
