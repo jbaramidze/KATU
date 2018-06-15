@@ -75,6 +75,11 @@ int nshr_tid_new_id(int uid)
   ids_[nextID].ops_size = 0;
   ids_[nextID].negated  = 0;
 
+  if (nextID >= MAX_ID)
+  {
+    FAIL();
+  }
+
   return nextID++;
 }
 
@@ -82,6 +87,11 @@ int nshr_tid_new_iid(int id, int index)
 {
   iids_[nextIID].id    = id;
   iids_[nextIID].index = index;
+
+  if (nextIID >= MAX_IID)
+  {
+    FAIL();
+  }
 
   return nextIID++;
 }
@@ -144,6 +154,11 @@ void nshr_id_add_op(int id, enum prop_type operation, int modify_by)
   ID2OP(id, ID2OPSIZE(id)).value = modify_by;
 
   ID2OPSIZE(id)++;
+
+  if (ID2OPSIZE(id) >= DEFAULT_OPERATIONS)
+  {
+    FAIL();
+  }
 }
 
 static int lower_bound(int uid)
@@ -236,6 +251,11 @@ int nshr_tid_new_uid_by_file(void *file)
 
   nextUID++;
 
+  if (nextUID >= MAX_UID)
+  {
+    FAIL();
+  }
+
   return newiid;
 }
 
@@ -252,6 +272,11 @@ int nshr_tid_new_uid_by_fd(int fd)
   ids_[newid].size         = 1;
 
   nextUID++;
+
+  if (nextUID >= MAX_UID)
+  {
+    FAIL();
+  }
 
   return newiid;
 }

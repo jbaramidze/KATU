@@ -1369,7 +1369,7 @@ void nshr_taint_by_file(reg_t addr, unsigned int size, void *file)
   {
     int index = 0;
   
-    while(index < TAINTMAP_NUM && !MEMTAINTISEMPTY(index, addr + i))
+    while(index < TAINTMAP_NUM && !MEMTAINTISEMPTY(index, addr + i) && (MEMTAINTADDR(index, addr + i) != addr + i))
     {
       index++;
     }
@@ -1404,7 +1404,7 @@ void nshr_taint_by_fd(reg_t addr, unsigned int size, int fd)
   {
     int index = 0;
   
-    while(index < TAINTMAP_NUM && !MEMTAINTISEMPTY(index, addr + i))
+    while(index < TAINTMAP_NUM && !MEMTAINTISEMPTY(index, addr + i) && (MEMTAINTADDR(index, addr + i) != addr + i))
     {
       index++;
     }

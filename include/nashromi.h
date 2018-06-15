@@ -91,7 +91,7 @@
 //
 
 #define MAX_FD                255
-#define MAX_UID               1000
+#define MAX_UID               100000
 #define MAX_ID                1000000
 #define MAX_IID               4000000
 #define MAX_OPCODE            2048
@@ -444,7 +444,7 @@ void hashtable_del_entry(void *p);
 typedef struct _TaintMemStruct
 {
   // This one is just used for hash matching.
-  int64_t address[TAINTMAP_NUM][TAINTMAP_SIZE];
+  uint64_t address[TAINTMAP_NUM][TAINTMAP_SIZE];
 
   // This one marks taint markings.
   int64_t value[TAINTMAP_NUM][TAINTMAP_SIZE];
