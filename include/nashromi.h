@@ -637,4 +637,8 @@ void set_mem_taint(uint64_t addr, int size, int *ids);
 
 reg_t get_arg(int arg);
 
+
+void log_location();
+extern byte *last_func_call;
+
 #endif

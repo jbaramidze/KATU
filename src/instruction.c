@@ -563,7 +563,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
         LDUMP("InsDetail:\tRestricting by '%s' taint at %s and %s to %s.\n", PROP_NAMES[type], REGNAME(src_reg), REGNAME(dst_reg), REGNAME(dst_reg));
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_rest_reg2reg, false, DBG_TAINT_NUM_PARAMS(2),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_rest_reg2reg, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(type) 
                                      DBG_END_DR_CLEANCALL);
       }

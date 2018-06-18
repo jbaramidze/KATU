@@ -84,6 +84,8 @@ static int get_A_of_size(int size)
 
 void memset_reg2mem(int reg, uint64_t addr, int size DBG_END_TAINTING_FUNC)
 {
+  LDEBUG_TAINT(false, "Doing memset of %d bytes at MEM 0x%llx from %s.\n", size, addr, REGNAME(reg));
+
   for (int i = 0; i < size; i++)
   {
     for (unsigned int j = 0; j < REGSIZE(reg); j++)
@@ -102,6 +104,8 @@ void memset_reg2mem(int reg, uint64_t addr, int size DBG_END_TAINTING_FUNC)
 
 void update_bounds_strings_equal(uint64_t saddr, uint64_t daddr, int bytes DBG_END_TAINTING_FUNC)
 {
+  LDEBUG_TAINT(false, "Strings at MEM 0x%llx and MEM 0x%llx compared equal, updating bounds.\n", saddr, daddr);
+
   for (int i = 0; i < bytes; i++)
   {
     int index1 = mem_taint_find_index(saddr, i);
@@ -165,20 +169,7 @@ void nshr_taint_mv_reg2mem(int src_reg, int seg_reg, int base_reg, int index_reg
 {
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
 
-  LDEBUG_TAINT(false, "REG %s -> MEM %p size %d.\n", 
-  	         REGNAME(src_reg), addr, REGSIZE(src_reg));
-
-  for (unsigned int i = 0; i < REGSIZE(src_reg); i++)
-  {
-    int index = mem_taint_find_index(addr, i);
-
-    LDUMP_TAINT(i, (REGTAINTED(src_reg, i) || MEMTAINTED(index, addr + i)), 
-    	                 "  REG %s byte %d TAINT#%d -> MEM %p TAINT#%d INDEX %d TOTAL %d.\n", 
-                           REGNAME(src_reg), i, REGTAINTVAL(src_reg, i),
-                               ADDR(addr + i), MEMTAINTVAL(index, addr + i), index, REGSIZE(src_reg));
-
-    REGTAINT2MEMTAINT(src_reg, i, index, addr + i);
-  }
+  nshr_taint_mv_reg2constmem(src_reg, addr DGB_END_CALL_ARG);
 }
 
 void nshr_taint_mv_reg2constmem(int src_reg, uint64 addr DBG_END_TAINTING_FUNC)
@@ -201,7 +192,6 @@ void nshr_taint_mv_reg2constmem(int src_reg, uint64 addr DBG_END_TAINTING_FUNC)
 
 void nshr_taint_mv_constmem2regzx(uint64 addr, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC)
 {
-
   LDEBUG_TAINT(false, "MEM %p -> REG %s size %d zero extended to %d.\n", 
              addr, REGNAME(dst_reg), extended_from_size, REGSIZE(dst_reg));
 
@@ -259,7 +249,6 @@ void nshr_taint_mv_constmem2reg(uint64 addr, int dst_reg DBG_END_TAINTING_FUNC)
   {
     int index = mem_taint_find_index(addr, i);
 
-
     LDUMP_TAINT(i, (REGTAINTED(dst_reg, i) || MEMTAINTED(index, addr + i)), 
                        "  MEM %p TAINT#%d -> REG %s byte %d TAINT#%d INDEX %d TOTAL %d.\n", 
                            ADDR(addr + i), MEMTAINTVAL(index, addr + i), REGNAME(dst_reg), 
@@ -303,14 +292,24 @@ void process_restrictor_imm(int *ids, uint64_t imm2, int size, int type DBG_END_
       for (int i = 0; i < size; i++) ids[i] = -1;
     }
   }
-  else
+  else if (type == PROP_OR)
   {
+    // Ignore OR with immediate.
+  }
+  else
+  {  
+    GET_CONTEXT();
+
+    log_location(mcontext.xip);
+
     FAIL(); 
   }
 }
 
 void nshr_taint_rest_imm2reg(uint64_t value, int dst_reg, int type DBG_END_TAINTING_FUNC)
 {
+  LDEBUG_TAINT(false, "Restricting %s with 0x%llx, type %s.\n", REGNAME(dst_reg), value, PROP_NAMES[type]);
+
   if (REGTAINTEDANY(dst_reg))
   {
     int ids[8];
@@ -330,6 +329,8 @@ void nshr_taint_rest_imm2reg(uint64_t value, int dst_reg, int type DBG_END_TAINT
 
 void nshr_taint_rest_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING_FUNC)
 {
+  LDEBUG_TAINT(false, "Restricting %s with %s, type %s.\n", REGNAME(src_reg), REGNAME(dst_reg), PROP_NAMES[type]);
+
   int tainted1 = REGTAINTEDANY(src_reg);
   int tainted2 = REGTAINTEDANY(dst_reg);
 
@@ -365,6 +366,8 @@ void nshr_taint_rest_imm2mem(uint64_t value, int seg_reg, int base_reg, int inde
 {
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
 
+  LDEBUG_TAINT(false, "Restricting MEM 0x%llx with 0x%llx, type %s.\n", addr, value, PROP_NAMES[type]);
+
   if (MEMTAINTEDANY(addr, access_size))
   {
     int ids[8];
@@ -385,6 +388,8 @@ void nshr_taint_rest_imm2mem(uint64_t value, int seg_reg, int base_reg, int inde
 void nshr_taint_rest_reg2mem(int src_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC)
 {
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
+
+  LDEBUG_TAINT(false, "Restricting MEM %llx with %s, type %s.\n", addr, REGNAME(src_reg), PROP_NAMES[type]);
 
   int tainted1 = REGTAINTEDANY(src_reg);
   int tainted2 = MEMTAINTEDANY(addr, REGSIZE(src_reg));
@@ -419,6 +424,8 @@ void nshr_taint_rest_reg2mem(int src_reg, int seg_reg, int base_reg, int index_r
 void nshr_taint_rest_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int type DBG_END_TAINTING_FUNC)
 {
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
+
+  LDEBUG_TAINT(false, "Restricting %s with MEM %llx, type %s.\n", REGNAME(dst_reg), addr, PROP_NAMES[type]);
 
   int tainted1 = MEMTAINTEDANY(addr, REGSIZE(dst_reg));
   int tainted2 = REGTAINTEDANY(dst_reg);
@@ -462,6 +469,8 @@ void nshr_taint_strsto_rep(int size DBG_END_TAINTING_FUNC)
 {
   GET_CONTEXT();
 
+  LDEBUG_TAINT(false, "InsDetail:\tDoing memset of %d bytes.\n", size);
+
   if (!direction_clear(mcontext.xflags)) FAIL();
 
   reg_t bytes = reg_get_value(DR_REG_ECX, &mcontext);
@@ -479,6 +488,8 @@ void nshr_taint_strsto_rep(int size DBG_END_TAINTING_FUNC)
 void nshr_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC)
 {
   GET_CONTEXT();
+
+  LDEBUG_TAINT(false, "InsDetail:\tDoing strcmp of %d bytes.\n", size);
 
   if (!direction_clear(mcontext.xflags)) FAIL();
 
@@ -518,6 +529,8 @@ void nshr_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC)
 // This one looks more or less safe, generally very hard to decide when to untaint.
 void nshr_taint_shift_regbyimm(int dst_reg, int64 value, int type DBG_END_TAINTING_FUNC)
 {
+  LDEBUG_TAINT(false, "Shifting %s by %d bytes.\n", REGNAME(dst_reg), value);
+
   if (REGTAINTEDANY(dst_reg))
   {
     float p = value;
@@ -559,6 +572,8 @@ void nshr_taint_shift_membyimm(int seg_reg, int base_reg, int index_reg, int sca
 {
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
 
+  LDEBUG_TAINT(false, "Shifting MEM 0x%llx by %d bytes.\n", addr, value);
+
   if (MEMTAINTEDANY(addr, access_size))
   {    
     float p = value;
@@ -583,6 +598,8 @@ void nshr_taint_shift_membyimm(int seg_reg, int base_reg, int index_reg, int sca
 void nshr_taint_shift_membyreg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int src_reg, int type DBG_END_TAINTING_FUNC)
 {
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
+
+  LDEBUG_TAINT(false, "Shifting MEM 0x%llx by %s bytes.\n", addr, REGNAME(src_reg));
 
   if (MEMTAINTEDANY(addr, access_size) || REGTAINTEDANY(src_reg))
   {
@@ -614,6 +631,8 @@ void nshr_taint_mv_mem2regsx(int seg_reg, int base_reg, int index_reg, int scale
 
 void nshr_taint_ind_jmp_reg(int src_reg DBG_END_TAINTING_FUNC)
 {
+  LDEBUG_TAINT(false, "Checking bounds of %s.\n", REGNAME(src_reg));
+
   check_bounds_reg(src_reg DGB_END_CALL_ARG);
 }
 
@@ -623,6 +642,8 @@ void nshr_taint_ind_jmp_mem(int seg_reg, int base_reg, int index_reg, int scale,
   // Second, we check if memory that we referenced is (tained || bounded)
 
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
+
+  LDEBUG_TAINT(false, "Checking bounds of MEM 0x%llx.\n", addr);
 
   check_bounds_mem(addr, size DGB_END_CALL_ARG);
 }
@@ -760,9 +781,10 @@ static void process_cond_statement(int type, int taken DBG_END_TAINTING_FUNC)
 
 void nshr_taint_cond_set_reg(int dst_reg, int type, instr_t *instr DBG_END_TAINTING_FUNC)
 {
+  LDUMP_TAINT(0, true, "Doing conditional set on %s.\n", REGNAME(dst_reg));
+
   if (is_valid_eflags())
   {
-
     GET_CONTEXT();
 
     int opcode_old = instr_get_opcode(instr);
@@ -780,8 +802,6 @@ void nshr_taint_cond_set_reg(int dst_reg, int type, instr_t *instr DBG_END_TAINT
 
     instr_destroy(drcontext, newinstr);
 
-    LDEBUG_TAINT(false, "Converted to opcode %d, taken = %d.\n", opcode, taken);
-
     process_cond_statement(type, taken DGB_END_CALL_ARG);
   }
 
@@ -794,6 +814,8 @@ void nshr_taint_cond_set_reg(int dst_reg, int type, instr_t *instr DBG_END_TAINT
 void nshr_taint_cond_jmp(instr_t *instr, int type DBG_END_TAINTING_FUNC)
 {
   STOP_IF_NOT_ACTIVE();
+
+  LDUMP_TAINT(0, true, "Doing conditional jump by %s.\n", PROP_NAMES[type]);
 
   if (!is_valid_eflags())
   {
@@ -810,6 +832,8 @@ void nshr_taint_cond_jmp(instr_t *instr, int type DBG_END_TAINTING_FUNC)
 void nshr_taint_cmp_reg2constmem(int reg1, uint64_t addr, int type DBG_END_TAINTING_FUNC)
 {
   int found = 0;
+
+  LDEBUG_TAINT(false, "Comparing %s with MEM 0x%llx by %s.\n", REGNAME(reg1), addr, PROP_NAMES[type]);
 
   for (unsigned int i = 0; i < REGSIZE(reg1); i++)
   {
@@ -841,6 +865,8 @@ void nshr_taint_cmp_reg2mem(int reg1, int seg_reg, int base_reg, int index_reg, 
 
 void nshr_taint_cmp_reg2reg(int reg1, int reg2, int type DBG_END_TAINTING_FUNC)
 {
+  LDEBUG_TAINT(false, "Comparing %s with %s by %s.\n", REGNAME(reg1), REGNAME(reg2), PROP_NAMES[type]);
+
   int found = 0;
 
   for (unsigned int i = 0; i < REGSIZE(reg1); i++)
@@ -864,6 +890,8 @@ void nshr_taint_cmp_reg2reg(int reg1, int reg2, int type DBG_END_TAINTING_FUNC)
 
 void nshr_taint_cmp_reg2imm(int reg1, int type DBG_END_TAINTING_FUNC)
 {
+  LDEBUG_TAINT(false, "Comparing %s with immediate by %s.\n", REGNAME(reg1), PROP_NAMES[type]);
+
   int found = 0;
 
   for (unsigned int i = 0; i < REGSIZE(reg1); i++)
@@ -900,6 +928,8 @@ void nshr_taint_cmp_mem2imm(int seg_reg, int base_reg, int index_reg, int scale,
 
 void nshr_taint_cmp_constmem2reg(uint64_t addr, int size, int reg2, int type DBG_END_TAINTING_FUNC)
 {
+  LDEBUG_TAINT(false, "Comparing MEM 0x%llx with %s by %s.\n", addr, REGNAME(reg2), PROP_NAMES[type]);
+
   int found = 0;
 
   for (int i = 0; i < size; i++)
@@ -915,6 +945,10 @@ void nshr_taint_cmp_constmem2reg(uint64_t addr, int size, int reg2, int type DBG
 
       update_eflags(type, i, t1, t2);
   	}
+    else
+    {
+      update_eflags(type, i, -1, -1);
+    }
   }
 
   if (!found)
@@ -926,6 +960,8 @@ void nshr_taint_cmp_constmem2reg(uint64_t addr, int size, int reg2, int type DBG
 void nshr_taint_cmp_constmem2imm(uint64_t addr, int size, int type DBG_END_TAINTING_FUNC)
 {
   int found = 0;
+
+  LDEBUG_TAINT(false, "Comparing MEM 0x%llx with immediate by %s.\n", addr, PROP_NAMES[type]);
 
   for (int i = 0; i < size; i++)
   {
@@ -985,9 +1021,9 @@ void nshr_taint_cond_mv_reg2reg(int src_reg, int dst_reg, instr_t *instr, int ty
 {
   GET_CONTEXT();  
 
+  LDEBUG_TAINT(false, "Conditionally moving %s to %s by %s.\n", REGNAME(src_reg), REGNAME(dst_reg), PROP_NAMES[type]);
+
   int taken = instr_cmovcc_triggered(instr, mcontext.xflags);
-  
-  LDEBUG("taken: %d.\n", taken);
 
   if (is_valid_eflags())
   {
@@ -1002,11 +1038,13 @@ void nshr_taint_cond_mv_reg2reg(int src_reg, int dst_reg, instr_t *instr, int ty
 
 void nshr_taint_cond_mv_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, instr_t *instr, int type DBG_END_TAINTING_FUNC)
 {
-  GET_CONTEXT();  
+  GET_CONTEXT();
 
-  int taken = instr_cmovcc_triggered(instr, mcontext.xflags);
+  LDEBUG_TAINT(false, "Conditionally moving MEM 0x%llx to %s by %s.\n", 
+                        decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG), 
+                              REGNAME(dst_reg), PROP_NAMES[type]);
   
-  LDEBUG("taken: %d.\n", taken);
+  int taken = instr_cmovcc_triggered(instr, mcontext.xflags);
 
   if (is_valid_eflags())
   {
@@ -1496,11 +1534,7 @@ void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_E
 
 static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
 {
-  /*
-  static int js = 0;
-  js++;
-  if (js%10000==0) dr_printf("js: %d.\n", js);
-  */
+  last_func_call = pc;
 
   module_data_t *data = dr_lookup_module(pc);
 
