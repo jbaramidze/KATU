@@ -6,6 +6,11 @@
 #include "dr_api.h"
 #include "drwrap.h"
 #include "core/unix/include/syscall.h"
+#include <sys/types.h>          /* See NOTES */
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include "nashromi.h"
 #include <stddef.h>
 #include <ctype.h>
@@ -275,6 +280,42 @@ static void post_scanf(DBG_END_TAINTING_FUNC_ALONE)
   }
 }
 
+static void recv_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  arg_data.i1 = (long long) get_arg(0);
+  arg_data.s1 = (const char *)    get_arg(1);
+}
+
+static void recv_end(DBG_END_TAINTING_FUNC_ALONE)
+{
+  int r = get_ret();  
+
+  if (r > 0)
+  {
+    nshr_taint_by_fd((reg_t) arg_data.s1, r, arg_data.i1);
+  }
+}
+
+static void accept_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  arg_data.v1 = (void *) get_arg(1);
+}
+
+static void accept_end(DBG_END_TAINTING_FUNC_ALONE)
+{
+  int r = get_ret();
+
+  struct sockaddr_in *addr_in = (struct sockaddr_in *) arg_data.v1;
+
+  char *str = inet_ntoa(addr_in->sin_addr);
+
+  LTEST("SKIPPER:\t\tAccepted socket from %s.\n", str);
+
+  fds_[r].used   = 1;
+  fds_[r].secure = 0;  // FIXME: add checking ips.
+  fds_[r].path = strdup(str);
+}
+
 static void ncmp_begin(DBG_END_TAINTING_FUNC_ALONE)
 {
   arg_data.s1 = (const char *) get_arg(0);
@@ -469,7 +510,8 @@ static void atoi_end(DBG_END_TAINTING_FUNC_ALONE)
     // We should create new ids from uid and taint EAX.
     for (unsigned int i = 0; i < REGSIZE(DR_REG_EAX); i++)
     {
-      SETREGTAINTVAL(DR_REG_EAX, i, nshr_tid_new_id(arg_data.i1));
+      int newid = nshr_tid_new_id(arg_data.i1);
+      SETREGTAINTVAL(DR_REG_EAX, i, nshr_tid_new_iid(newid, 0));
     }
   }
 }
@@ -513,7 +555,8 @@ static void strtol_end(DBG_END_TAINTING_FUNC_ALONE)
     // We should create new ids from uid and taint EAX.
     for (unsigned int i = 0; i < REGSIZE(DR_REG_EAX); i++)
     {
-      SETREGTAINTVAL(DR_REG_EAX, i, nshr_tid_new_id(arg_data.i1));
+      int newid = nshr_tid_new_id(arg_data.i1);
+      SETREGTAINTVAL(DR_REG_EAX, i, nshr_tid_new_iid(newid, 0));
     }
   }
 }
@@ -658,6 +701,8 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      register_handlers(mod, "fgets", fgets_begin, fgets_end);              // char *fgets(char *s, int size, FILE *stream);
      register_handlers(mod, "fclose", fclose_begin, NULL);                 // int fclose(FILE *stream);
      register_handlers(mod, "read", read_begin, read_end);                 // ssize_t read(int fd, void *buf, size_t count);
+     register_handlers(mod, "accept", accept_begin, accept_end);           // int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+     register_handlers(mod, "recv", recv_begin, recv_end);                 // ssize_t recv(int sockfd, void *buf, size_t len, int flags);
      register_handlers(mod, "strtol", strtol_begin, strtol_end);           // long int strtol(const char *nptr, char **endptr, int base);
      register_handlers(mod, "atoi", atoi_begin, atoi_end);                 // int atoi(const char *nptr);
      register_handlers(mod, "toupper", toupper_begin, toupper_end);        // int toupper(int c);
@@ -675,15 +720,23 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "fseek");
      ignore_handlers(mod, "ftell");
      ignore_handlers(mod, "write");
+     ignore_handlers(mod, "send");
      ignore_handlers(mod, "close");
      ignore_handlers(mod, "rewind");
      ignore_handlers(mod, "poll");
      ignore_handlers(mod, "free");
      ignore_handlers(mod, "printf");
+     ignore_handlers(mod, "fprintf");
      ignore_handlers(mod, "bsd_signal");
      ignore_handlers(mod, "getpid");
      ignore_handlers(mod, "getuid");
      ignore_handlers(mod, "exit");
+     ignore_handlers(mod, "htons");
+     ignore_handlers(mod, "htonl");
+     ignore_handlers(mod, "setsockopt");
+     ignore_handlers(mod, "bind");
+     ignore_handlers(mod, "listen");
+     ignore_handlers(mod, "socket");    // We care about connect() and accept()
      ignore_handlers(mod, "__errno_location");
      ignore_handlers(mod, "__ctype_b_loc");
      // Problematic one, toupper defined as 

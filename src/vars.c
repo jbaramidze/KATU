@@ -778,7 +778,7 @@ void check_bounds_mem(uint64_t addr, int size DBG_END_TAINTING_FUNC)
       #endif
 
       LERROR("Participating ids: ");
-      for (int i = 0; i < 8; i++) LWARNING("%d, ", ids[i]);
+      for (int i = 0; i < 8; i++) LERROR("%d, ", ids[i]);
       LERROR("\n");
 
       vulnerability_detected();
@@ -812,7 +812,7 @@ void check_bounds_reg(int reg DBG_END_TAINTING_FUNC)
       #endif
 
       LERROR("Participating ids: ");
-      for (int i = 0; i < 8; i++) LWARNING("%d, ", ids[i]);
+      for (int i = 0; i < 8; i++) LERROR("%d, ", ids[i]);
       LERROR("\n");
 
       vulnerability_detected();
