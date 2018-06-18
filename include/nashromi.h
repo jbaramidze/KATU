@@ -95,6 +95,7 @@
 #define MAX_ID                1000000
 #define MAX_IID               4000000
 #define MAX_OPCODE            2048
+#define MAX_FILE_HISTORY      1024
 #define DEFAULT_OPERATIONS    64
 #define TAINTMAP_NUM          10
 #define TAINTMAP_SIZE         65536
@@ -217,7 +218,7 @@ typedef struct Group_restriction Group_restriction;
 typedef struct {
   union {
     int fd;
-    void *file;
+    int file;
 
   } descriptor;
 
@@ -423,6 +424,10 @@ extern enum mode started_;
 extern Eflags eflags_;
 
 extern Fd_entity   fds_[MAX_FD];
+
+extern Fd_entity   files_history_[MAX_FILE_HISTORY];
+extern uint64_t files_history_index_;
+
 extern hashtable_t FILEs_;
 
 extern UID_entity uids_[MAX_UID];
@@ -489,6 +494,7 @@ instr_t *instr_dupl(instr_t *instr);
 reg_t decode_addr(int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC);
 void update_eflags(int opcode, int index, int taint1, int taint2);
 void invalidate_eflags();
+void clear_eflags();
 int is_valid_eflags();
 int *get_taint1_eflags();
 int *get_taint2_eflags();
@@ -517,7 +523,7 @@ int nshr_tid_new_id_get();
 int nshr_tid_new_iid(int id, int index);
 int nshr_tid_new_iid_get();
 int nshr_tid_new_uid_by_fd(int fd);
-int nshr_tid_new_uid_by_file(void *file);
+int nshr_tid_new_uid_by_file(int file);
 int nshr_tid_new_uid_get();
 int nshr_tid_copy_id(int id);
 int nshr_make_id_by_merging_all_ids(int *ids1, int *ids2);
@@ -538,7 +544,7 @@ bool nshr_syscall_filter(void *drcontext, int sysnum);
 
 // taint.
 void nshr_taint_by_fd(reg_t addr, unsigned int size, int fd);
-void nshr_taint_by_file(reg_t addr, unsigned int size, void *file);
+void nshr_taint_by_file(reg_t addr, unsigned int size, int file);
 
 void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_END_TAINTING_FUNC);
 void nshr_taint_mv_reg2reg(int src_reg, int dst_reg DBG_END_TAINTING_FUNC);

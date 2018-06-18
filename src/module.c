@@ -52,8 +52,7 @@ void dump()
     }
     else
     {
-      Fd_entity *f = (Fd_entity *) hashtable_lookup(&FILEs_, uids_[i].descriptor.file);
-      path = f -> path;
+      path = files_history_[uids_[i].descriptor.file].path;
     }
 
     dr_fprintf(dumpfile, "UID #%d\t\t -> path %s bounded %d\n", i, path, uids_[i].bounded);

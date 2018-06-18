@@ -385,6 +385,16 @@ static void read_end(DBG_END_TAINTING_FUNC_ALONE)
   }
 }
 
+static void fclose_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  void *v = (void *) get_arg(0);
+
+  if (!hashtable_remove(&FILEs_, v))
+  {
+    FAIL();
+  }
+}
+
 static void fgets_begin(DBG_END_TAINTING_FUNC_ALONE)
 {
   arg_data.s1 = (const char *) get_arg(0);
@@ -397,7 +407,13 @@ static void fgets_end(DBG_END_TAINTING_FUNC_ALONE)
 
   if (size > 0)
   {
-    nshr_taint_by_file((reg_t) arg_data.s1, size, arg_data.v1);
+    int *f = (int *) hashtable_lookup(&FILEs_, arg_data.v1);
+
+    if (f == NULL) FAIL();
+
+    int index = *f;
+
+    nshr_taint_by_file((reg_t) arg_data.s1, size, index);
   }
 }
 
@@ -413,7 +429,13 @@ static void fread_end(DBG_END_TAINTING_FUNC_ALONE)
 
   if (r > 0)
   {
-    nshr_taint_by_file((reg_t) arg_data.s1, r, arg_data.v1);
+    int *f = (int *) hashtable_lookup(&FILEs_, arg_data.v1);
+
+    if (f == NULL) FAIL();
+
+    int index = *f;
+
+    nshr_taint_by_file((reg_t) arg_data.s1, r, index);
   }
 }
 
@@ -507,25 +529,22 @@ static void fopen_end(DBG_END_TAINTING_FUNC_ALONE)
 
   LTEST("SKIPPER:\t\tFOpened %s at %p.\n", arg_data.s1, r);
 
-  Fd_entity *e = (Fd_entity *) malloc(sizeof(Fd_entity));
-  e -> path = strdup(arg_data.s1);
-  e -> used   = 1;
-  e -> secure = is_path_secure(arg_data.s1);
+  files_history_[files_history_index_].path = strdup(arg_data.s1);
+  files_history_[files_history_index_].used   = 1;
+  files_history_[files_history_index_].secure = is_path_secure(arg_data.s1);
 
-  if (!hashtable_add(&FILEs_, r, (void *)e))
+  int *e = (int *) malloc(sizeof(int));
+
+  *e = files_history_index_++;
+
+  if (files_history_index_ >= MAX_FILE_HISTORY)
   {
-    // Check if failure is because it's already opened.
-    Fd_entity *f = (Fd_entity *) hashtable_lookup(&FILEs_, r);
+    FAIL();
+  }
 
-    if (f == NULL)
-    {
-      FAIL();
-    }
-
-    if (strcmp(f -> path, e -> path) != 0)
-    {
-      FAIL();
-    }
+  if (!hashtable_add(&FILEs_, r, (void *) e))
+  {
+    FAIL();
   }
 }
 
@@ -637,6 +656,7 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      register_handlers(mod, "open", fopen_begin, open_end);                // int open(const char *pathname, int flags, mode_t mode);
      register_handlers(mod, "fread", fread_begin, fread_end);              // size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream);
      register_handlers(mod, "fgets", fgets_begin, fgets_end);              // char *fgets(char *s, int size, FILE *stream);
+     register_handlers(mod, "fclose", fclose_begin, NULL);                 // int fclose(FILE *stream);
      register_handlers(mod, "read", read_begin, read_end);                 // ssize_t read(int fd, void *buf, size_t count);
      register_handlers(mod, "strtol", strtol_begin, strtol_end);           // long int strtol(const char *nptr, char **endptr, int base);
      register_handlers(mod, "atoi", atoi_begin, atoi_end);                 // int atoi(const char *nptr);
@@ -651,7 +671,6 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "strerror");
      ignore_handlers(mod, "snprintf");
      ignore_handlers(mod, "fwrite");
-     ignore_handlers(mod, "fclose");
      ignore_handlers(mod, "fflush");
      ignore_handlers(mod, "fseek");
      ignore_handlers(mod, "ftell");

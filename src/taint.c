@@ -831,6 +831,8 @@ void nshr_taint_cond_jmp(instr_t *instr, int type DBG_END_TAINTING_FUNC)
 
 void nshr_taint_cmp_reg2constmem(int reg1, uint64_t addr, int type DBG_END_TAINTING_FUNC)
 {
+  clear_eflags();
+
   int found = 0;
 
   LDEBUG_TAINT(false, "Comparing %s with MEM 0x%llx by %s.\n", REGNAME(reg1), addr, PROP_NAMES[type]);
@@ -869,6 +871,8 @@ void nshr_taint_cmp_reg2reg(int reg1, int reg2, int type DBG_END_TAINTING_FUNC)
 
   int found = 0;
 
+  clear_eflags();
+
   for (unsigned int i = 0; i < REGSIZE(reg1); i++)
   {
   	int t1 = REGTAINTVAL(reg1, i);
@@ -893,6 +897,8 @@ void nshr_taint_cmp_reg2imm(int reg1, int type DBG_END_TAINTING_FUNC)
   LDEBUG_TAINT(false, "Comparing %s with immediate by %s.\n", REGNAME(reg1), PROP_NAMES[type]);
 
   int found = 0;
+
+  clear_eflags();
 
   for (unsigned int i = 0; i < REGSIZE(reg1); i++)
   {
@@ -932,6 +938,8 @@ void nshr_taint_cmp_constmem2reg(uint64_t addr, int size, int reg2, int type DBG
 
   int found = 0;
 
+  clear_eflags();
+
   for (int i = 0; i < size; i++)
   {
     int index = mem_taint_find_index(addr, i);
@@ -945,10 +953,6 @@ void nshr_taint_cmp_constmem2reg(uint64_t addr, int size, int reg2, int type DBG
 
       update_eflags(type, i, t1, t2);
   	}
-    else
-    {
-      update_eflags(type, i, -1, -1);
-    }
   }
 
   if (!found)
@@ -962,6 +966,8 @@ void nshr_taint_cmp_constmem2imm(uint64_t addr, int size, int type DBG_END_TAINT
   int found = 0;
 
   LDEBUG_TAINT(false, "Comparing MEM 0x%llx with immediate by %s.\n", addr, PROP_NAMES[type]);
+
+  clear_eflags();
 
   for (int i = 0; i < size; i++)
   {
@@ -1390,13 +1396,11 @@ void nshr_taint_mv_reg_rm(int mask DBG_END_TAINTING_FUNC)
 }
 
 
-void nshr_taint_by_file(reg_t addr, unsigned int size, void *file)
+void nshr_taint_by_file(reg_t addr, unsigned int size, int file)
 {
-  Fd_entity *f = (Fd_entity *) hashtable_lookup(&FILEs_, file);
-
-  if (f -> secure)
+  if (files_history_[file].secure)
   {
-    LDEBUG("NOT Tainting %d bytes from %s.\n", size, f -> path);
+    LDEBUG("NOT Tainting %d bytes from %s.\n", size, files_history_[file].path);
 
     return;
   }

@@ -21,6 +21,9 @@ IID_entity      iids_[MAX_IID];
 hashtable_t func_hashtable;
 hashtable_t FILEs_;
 
+Fd_entity   files_history_[1024];
+uint64_t files_history_index_                = 1;
+
 // Used to describe true taint sources (e.g. read())
 int             nextUID                      = 1;
 
@@ -237,7 +240,7 @@ int nshr_tid_modify_id_by_symbol(int dst_taint, enum prop_type operation, int sr
   return nshr_tid_new_iid(newid, 0);
 }
 
-int nshr_tid_new_uid_by_file(void *file)
+int nshr_tid_new_uid_by_file(int file)
 {
   uids_[nextUID].descriptor.file = file;
   uids_[nextUID].descr_type      = 1;
@@ -519,6 +522,16 @@ void update_eflags(int opcode, int index, int t1, int t2)
   eflags_.taint2[index] = t2;
 
   eflags_.valid = 1;
+}
+
+
+void clear_eflags()
+{
+  for (int i = 0; i < 8; i++)
+  {
+    eflags_.taint1[i] = -1;
+    eflags_.taint2[i] = -1;
+  }
 }
 
 void invalidate_eflags()
