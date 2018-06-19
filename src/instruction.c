@@ -2006,7 +2006,7 @@ void nshr_init_opcodes(void)
   instrFunctions[OP_jmp_far_ind]         = opcode_call;      // 50
   instrFunctions[OP_loopne]              = wrong_opcode;     // 51
   instrFunctions[OP_loope]               = wrong_opcode;     // 52
-  instrFunctions[OP_loop]                = wrong_opcode;     // 53
+  instrFunctions[OP_loop]                = opcode_ignore;    // 53
   instrFunctions[OP_jecxz]               = wrong_opcode;     // 54
   instrFunctions[OP_mov_ld]              = opcode_mov;       // 55  Can be: mem2reg
   instrFunctions[OP_mov_st]              = opcode_mov;       // 56  Can be: imm2mem, reg2mem, reg2reg.

@@ -1655,18 +1655,6 @@ static void process_jump(app_pc pc_from, app_pc pc, int is_ret DBG_END_TAINTING_
 
   #endif
 
-
-  // FIXME: Add more convenient way to ignore some libs.
-  if (strncmp(modname, "libcrypto", 9) == 0)
-  {
-    started_ = MODE_IN_LIBC;
-
-    LDUMP_TAINT(0, true, "Entering pseudo libc.\n");
-
-    return_from_libc = NULL;
-
-  }
-
   if (strcmp(LD_LINUX, modname) == 0 || strcmp(LIBC_NAME, modname) == 0)
   {
   	started_ = MODE_IN_LIBC;

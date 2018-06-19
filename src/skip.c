@@ -384,6 +384,21 @@ static void memset_begin(DBG_END_TAINTING_FUNC_ALONE)
   memset_reg2mem(src_reg, (uint64_t) dst, n DGB_END_CALL_ARG);
 }
 
+static void memmove_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  void *dst = (void *) get_arg(0);
+  void *src = (void *) get_arg(1);
+  unsigned int size  = (int) get_arg(2);
+
+  // copy to new location first
+  int *tmp = (int *) malloc(size);
+
+  nshr_taint_mv_constmem2constmem((uint64) src, (uint64) tmp, size DGB_END_CALL_ARG);
+  nshr_taint_mv_constmem2constmem((uint64) tmp, (uint64) dst, size DGB_END_CALL_ARG);
+
+  free(tmp);
+}
+
 static void memcpy_begin(DBG_END_TAINTING_FUNC_ALONE)
 {
   void *dst = (void *) get_arg(0);
@@ -704,6 +719,7 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      register_handlers(mod, "strncpy", strncpy_begin, NULL);               // char *strncpy(char *dest, const char *src, size_t n);
      register_handlers(mod, "__memcpy_chk", memcpy_begin, NULL);           // void *memcpy(void *dest, const void *src, size_t n);
      register_handlers(mod, "memcpy", memcpy_begin, NULL);                 // void *memcpy(void *dest, const void *src, size_t n);
+     register_handlers(mod, "memmove", memmove_begin, NULL);               // void *memmove(void *dest, const void *src, size_t n);
      register_handlers(mod, "memset", memset_begin, NULL);                 // void *memset(void *s, int c, size_t n);
      register_handlers(mod, "fopen", fopen_begin, fopen_end);              // FILE *fopen(const char *path, const char *mode);
      register_handlers(mod, "open", fopen_begin, open_end);                // int open(const char *pathname, int flags, mode_t mode);
@@ -734,7 +750,9 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "close");
      ignore_handlers(mod, "rewind");
      ignore_handlers(mod, "poll");
+     ignore_handlers(mod, "sleep");
      ignore_handlers(mod, "free");
+     ignore_handlers(mod, "shutdown");
      ignore_handlers(mod, "printf");
      ignore_handlers(mod, "fprintf");
      ignore_handlers(mod, "bsd_signal");
