@@ -93,7 +93,7 @@
 #define MAX_FD                255
 #define MAX_UID               100000
 #define MAX_ID                1000000
-#define MAX_IID               4000000
+#define MAX_IID               1000000
 #define MAX_OPCODE            2048
 #define MAX_FILE_HISTORY      1024
 #define DEFAULT_OPERATIONS    64
@@ -440,6 +440,8 @@ extern lprec *lp;
 
 extern hashtable_t func_hashtable;
 
+extern app_pc return_to;
+
 void hashtable_del_entry(void *p);
 
 
@@ -619,10 +621,10 @@ void nshr_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC);
 void nshr_taint_strsto_rep(int size DBG_END_TAINTING_FUNC);
 void nshr_taint_bswap(int dst_reg DBG_END_TAINTING_FUNC);
 
-void nshr_taint_check_ret(DBG_END_TAINTING_FUNC_ALONE);
-void nshr_taint_check_jmp_reg(int reg DBG_END_TAINTING_FUNC);
-void nshr_taint_check_jmp_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC);
-void nshr_taint_check_jmp_immed(uint64_t pc DBG_END_TAINTING_FUNC);
+void nshr_taint_check_ret(uint64_t pc_from DBG_END_TAINTING_FUNC);
+void nshr_taint_check_jmp_reg(uint64_t pc_from, int reg DBG_END_TAINTING_FUNC);
+void nshr_taint_check_jmp_mem(uint64_t pc_from, int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC);
+void nshr_taint_check_jmp_immed(uint64_t pc_from, uint64_t pc DBG_END_TAINTING_FUNC);
 
 // instructions.
 dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr_t *inst, bool for_trace, 
@@ -642,9 +644,5 @@ void get_mem_taint(uint64_t addr, int size, int *ids);
 void set_mem_taint(uint64_t addr, int size, int *ids);
 
 reg_t get_arg(int arg);
-
-
-void log_location();
-extern byte *last_func_call;
 
 #endif

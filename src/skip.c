@@ -305,15 +305,25 @@ static void accept_end(DBG_END_TAINTING_FUNC_ALONE)
 {
   int r = get_ret();
 
-  struct sockaddr_in *addr_in = (struct sockaddr_in *) arg_data.v1;
+  if (arg_data.v1 != NULL)
+  {
+    struct sockaddr_in *addr_in = (struct sockaddr_in *) arg_data.v1;
 
-  char *str = inet_ntoa(addr_in->sin_addr);
+    char *str = inet_ntoa(addr_in->sin_addr);
 
-  LTEST("SKIPPER:\t\tAccepted socket from %s.\n", str);
+    LTEST("SKIPPER:\t\tAccepted socket from %s.\n", str);
+
+    fds_[r].path = strdup(str);
+  }
+  else
+  {
+    LTEST("SKIPPER:\t\tAccepted socket from unknown address.\n");
+
+    fds_[r].path = NULL;
+  }
 
   fds_[r].used   = 1;
   fds_[r].secure = 0;  // FIXME: add checking ips.
-  fds_[r].path = strdup(str);
 }
 
 static void ncmp_begin(DBG_END_TAINTING_FUNC_ALONE)
@@ -736,6 +746,7 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "setsockopt");
      ignore_handlers(mod, "bind");
      ignore_handlers(mod, "listen");
+     ignore_handlers(mod, "inet_ntoa");
      ignore_handlers(mod, "socket");    // We care about connect() and accept()
      ignore_handlers(mod, "__errno_location");
      ignore_handlers(mod, "__ctype_b_loc");
@@ -748,9 +759,6 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "__lxstat");
      ignore_handlers(mod, "_IO_puts");
      
-
-
-
    }
    else if (strncmp(dr_module_preferred_name(mod), "ld-linux-x86-64.so", 18) == 0)
    {

@@ -1805,8 +1805,8 @@ static void opcode_ret(void *drcontext, instr_t *instr, instrlist_t *ilist)
     LDUMP("InsDetail:\tReturning.\n");
   }
 
-  dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_check_ret, false, DBG_TAINT_NUM_PARAMS(0)
-                          DBG_END_DR_CLEANCALL);
+  dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_check_ret, false, DBG_TAINT_NUM_PARAMS(1),
+                         OPND_CREATE_INT64(0) DBG_END_DR_CLEANCALL);
 }
 
 static void opcode_cond_set(void *drcontext, instr_t *instr, instrlist_t *ilist)
@@ -1867,6 +1867,15 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
   opnd_t t = instr_get_target(instr);
 
+  app_pc pc_from = 0;
+
+  int opcode = instr_get_opcode(instr);
+
+  if (opcode == OP_call)
+  {
+    pc_from = instr_get_app_pc(instr) + instr_length(drcontext, instr);
+  }
+
   if (opnd_is_reg(t))
   {
     int reg = opnd_get_reg(t);
@@ -1876,8 +1885,8 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
       LDUMP("InsDetail:\tProcessing jump to register %s.\n", REGNAME(reg));
     }
 
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_check_jmp_reg, false, DBG_TAINT_NUM_PARAMS(1),
-                            OPND_CREATE_INT32(reg) DBG_END_DR_CLEANCALL);
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_check_jmp_reg, false, DBG_TAINT_NUM_PARAMS(2),
+                            OPND_CREATE_INT64(pc_from), OPND_CREATE_INT32(reg) DBG_END_DR_CLEANCALL);
 
     return;
   }
@@ -1899,9 +1908,10 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
                                                   REGNAME(index_reg), disp);
     }
 
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_check_jmp_mem, false, DBG_TAINT_NUM_PARAMS(5),
-                            OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
-                                     OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp) DBG_END_DR_CLEANCALL);
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_check_jmp_mem, false, DBG_TAINT_NUM_PARAMS(6),
+                            OPND_CREATE_INT64(pc_from), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
+                                OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp) 
+                                     DBG_END_DR_CLEANCALL);
 
     return;
   }
@@ -1930,8 +1940,8 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
   LDUMP("InsDetail:\tProcessing jump to immediate 0x%llx.\n", pc);
 
-  dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_check_jmp_immed, false, DBG_TAINT_NUM_PARAMS(1),
-                            OPND_CREATE_INT64(pc) DBG_END_DR_CLEANCALL);
+  dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_check_jmp_immed, false, DBG_TAINT_NUM_PARAMS(2),
+                            OPND_CREATE_INT64(pc_from), OPND_CREATE_INT64(pc) DBG_END_DR_CLEANCALL);
 }
 
 

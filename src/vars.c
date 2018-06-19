@@ -43,6 +43,7 @@ file_t logfile, dumpfile;
 FILE * logfile_stream;
 
 app_pc main_address;
+app_pc return_to;
 
 const char *manual_taint_path  = "<manually tainted>";
 const char *cmd_arg_taint_path = "<command line>";
@@ -624,7 +625,7 @@ void bound2(int *ids1, int *ids2, int type)
       // Nothing.
     }
     else
-    {
+     {
       FAIL()
     }
   }
@@ -900,45 +901,4 @@ int is_path_secure(const char *path)
   }
 
   return 0;
-}
-
-
-byte *last_func_call;
-
-void log_location()
-{
-  module_data_t *data = dr_lookup_module(last_func_call);
-
-  if (data == NULL)
-  {
-     dr_printf("dr_lookup_module failed for %llx.\n", last_func_call);
-
-     dr_free_module_data(data);
-
-     return;
-  }
-
-  const char *modname = dr_module_preferred_name(data);
-
-  drsym_info_t sym;
-
-  char name_buf[1024];
-  char file_buf[1024];
-
-  sym.struct_size = sizeof(sym);
-  sym.name = name_buf;
-  sym.name_size = 1024;
-  sym.file = file_buf;
-  sym.file_size = 1024;
-    
-  drsym_error_t symres = drsym_lookup_address(data -> full_path, last_func_call - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
-
-  if (symres == DRSYM_SUCCESS)
-  {
-    dr_printf("Looked up address at %s[%s] at %s %s:%d.\n", sym.name, modname, data -> full_path, sym.file, sym.line);
-  }
-  else
-  {
-    dr_printf("Looked up address at  [%s] at %s.\n", modname, data -> full_path);
-  }
 }

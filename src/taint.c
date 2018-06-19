@@ -261,7 +261,7 @@ void nshr_taint_mv_constmem2reg(uint64 addr, int dst_reg DBG_END_TAINTING_FUNC)
 
 int process_restrictor_id(int *ids1, int *ids2, int size, int type)
 {
-  FAIL(); 
+  FAIL();
   
   return 0;
 }
@@ -292,16 +292,12 @@ void process_restrictor_imm(int *ids, uint64_t imm2, int size, int type DBG_END_
       for (int i = 0; i < size; i++) ids[i] = -1;
     }
   }
-  else if (type == PROP_OR)
+  else if (type == PROP_OR || type == PROP_XOR)
   {
     // Ignore OR with immediate.
   }
   else
-  {  
-    GET_CONTEXT();
-
-    log_location(mcontext.xip);
-
+  {
     FAIL(); 
   }
 }
@@ -461,7 +457,16 @@ void nshr_taint_bswap(int dst_reg DBG_END_TAINTING_FUNC)
 {
   if (REGTAINTEDANY(dst_reg))
   {
-    FAIL();
+    int ids[8];
+    int ids2[8];
+
+    get_reg_taint(dst_reg, ids);
+
+    for (int i = 0; i < 8; i++) ids2[i] = -1;
+
+    for (int i = 0; i < 4; i++) ids2[3-i] = ids[i];
+
+    set_reg_taint(dst_reg, ids2);
   }
 }
 
@@ -605,7 +610,6 @@ void nshr_taint_shift_membyreg(int seg_reg, int base_reg, int index_reg, int sca
   {
     FAIL();
   }
-
 }
 
 void nshr_taint_mv_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg DBG_END_TAINTING_FUNC)
@@ -1536,10 +1540,8 @@ void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_E
 }
 
 
-static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
+static void process_jump(app_pc pc_from, app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
 {
-  last_func_call = pc;
-
   module_data_t *data = dr_lookup_module(pc);
 
   if (data == NULL)
@@ -1566,7 +1568,7 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
   sym.file = file_buf;
   sym.file_size = 1024;
 
-  if (started_ == MODE_IN_LIBC && (strcmp(modname, LIBC_NAME) != 0 && strcmp(modname, LD_LINUX) != 0))
+  if (started_ == MODE_IN_LIBC && pc == return_to)
   {
     #ifdef DBG_PARSE_JUMPS
     
@@ -1632,6 +1634,11 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
   	return;
   }
 
+  if (pc_from != NULL)
+  {
+    return_to        = pc_from;
+  }
+
   #ifdef DBG_PARSE_JUMPS
 
   drsym_error_t symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
@@ -1648,9 +1655,20 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
 
   #endif
 
+
+  // FIXME: Add more convenient way to ignore some libs.
+  if (strncmp(modname, "libcrypto", 9) == 0)
+  {
+    started_ = MODE_IN_LIBC;
+
+    LDUMP_TAINT(0, true, "Entering pseudo libc.\n");
+
+    return_from_libc = NULL;
+
+  }
+
   if (strcmp(LD_LINUX, modname) == 0 || strcmp(LIBC_NAME, modname) == 0)
   {
-
   	started_ = MODE_IN_LIBC;
 
     handleFunc *handler = hashtable_lookup(&func_hashtable, pc);
@@ -1693,37 +1711,37 @@ static void process_jump(app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
   dr_free_module_data(data);
 }
 
-void nshr_taint_check_ret(DBG_END_TAINTING_FUNC_ALONE)
+void nshr_taint_check_ret(uint64_t pc_from DBG_END_TAINTING_FUNC)
 {
   GET_CONTEXT();
   
-  reg_t pc = *((uint64_t *) reg_get_value(DR_REG_RSP, &mcontext));
+  reg_t pc_to = *((uint64_t *) reg_get_value(DR_REG_RSP, &mcontext));
 
-  process_jump((unsigned char *) pc, 1 DGB_END_CALL_ARG);
+  process_jump((byte *) pc_from, (unsigned char *) pc_to, 1 DGB_END_CALL_ARG);
 }
 
-void nshr_taint_check_jmp_reg(int reg DBG_END_TAINTING_FUNC)
+void nshr_taint_check_jmp_reg(uint64_t pc_from, int reg DBG_END_TAINTING_FUNC)
 {
   GET_CONTEXT();
   
   reg_t pc = reg_get_value(reg, &mcontext);
 
-  process_jump((unsigned char *) pc, 0 DGB_END_CALL_ARG);
+  process_jump((byte *) pc_from, (unsigned char *) pc, 0 DGB_END_CALL_ARG);
 }
 
 
-void nshr_taint_check_jmp_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC)
+void nshr_taint_check_jmp_mem(uint64_t pc_from, int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC)
 {
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp DGB_END_CALL_ARG);
 
   reg_t pc = *((reg_t *) addr);
 
-  process_jump((unsigned char *) pc, 0 DGB_END_CALL_ARG);
+  process_jump((byte *) pc_from, (unsigned char *) pc, 0 DGB_END_CALL_ARG);
 }
 
-void nshr_taint_check_jmp_immed(uint64_t pc DBG_END_TAINTING_FUNC)
+void nshr_taint_check_jmp_immed(uint64_t pc_from, uint64_t pc DBG_END_TAINTING_FUNC)
 {
-  process_jump((unsigned char *) pc, 0 DGB_END_CALL_ARG);
+  process_jump((byte *) pc_from, (unsigned char *) pc, 0 DGB_END_CALL_ARG);
 }
 
 void nshr_taint_div_mem(int dividend1_reg, int dividend2_reg, int divisor_seg_reg, int divisor_base_reg, int divisor_index_reg, int divisor_scale, 
