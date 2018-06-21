@@ -296,6 +296,22 @@ static void recv_end(DBG_END_TAINTING_FUNC_ALONE)
   }
 }
 
+static void connect_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  int r = (long long) get_arg(0);
+
+  struct sockaddr_in *addr_in = (struct sockaddr_in *) get_arg(1);
+
+  char *str = inet_ntoa(addr_in->sin_addr);
+
+  LTEST("SKIPPER:\t\tConnected to %s.\n", str);
+
+  fds_[r].path = strdup(str);
+  fds_[r].used   = 1;
+  fds_[r].secure = 0;  // FIXME: add checking ips.
+
+}
+
 static void accept_begin(DBG_END_TAINTING_FUNC_ALONE)
 {
   arg_data.v1 = (void *) get_arg(1);
@@ -404,6 +420,10 @@ static void memcpy_begin(DBG_END_TAINTING_FUNC_ALONE)
   void *dst = (void *) get_arg(0);
   void *src = (void *) get_arg(1);
   unsigned int size  = (int) get_arg(2);
+
+  int size_reg = get_arg_reg(2, sizeof(size_t));
+
+  check_bounds_reg(size_reg DGB_END_CALL_ARG);
 
   nshr_taint_mv_constmem2constmem((uint64) src, (uint64) dst, size DGB_END_CALL_ARG);
 }
@@ -728,6 +748,7 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      register_handlers(mod, "fclose", fclose_begin, NULL);                 // int fclose(FILE *stream);
      register_handlers(mod, "read", read_begin, read_end);                 // ssize_t read(int fd, void *buf, size_t count);
      register_handlers(mod, "accept", accept_begin, accept_end);           // int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+     register_handlers(mod, "connect", connect_begin, NULL);               // int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
      register_handlers(mod, "recv", recv_begin, recv_end);                 // ssize_t recv(int sockfd, void *buf, size_t len, int flags);
      register_handlers(mod, "strtol", strtol_begin, strtol_end);           // long int strtol(const char *nptr, char **endptr, int base);
      register_handlers(mod, "atoi", atoi_begin, atoi_end);                 // int atoi(const char *nptr);
@@ -760,6 +781,7 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "getuid");
      ignore_handlers(mod, "exit");
      ignore_handlers(mod, "htons");
+     ignore_handlers(mod, "inet_addr");
      ignore_handlers(mod, "htonl");
      ignore_handlers(mod, "setsockopt");
      ignore_handlers(mod, "bind");
@@ -780,5 +802,48 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
    }
    else if (strncmp(dr_module_preferred_name(mod), "ld-linux-x86-64.so", 18) == 0)
    {
+   }
+   else if (strncmp(dr_module_preferred_name(mod), "libcrypto", 9) == 0)
+   {
+      //app_pc addr = (app_pc) dr_get_proc_address(mod -> handle, "RAND_pseudo_bytes");
+      //add_ignore_func(addr);
+      /*app_pc addr = (app_pc) dr_get_proc_address(mod -> handle, "sha1_block_data_order");
+      add_ignore_func(addr);
+             addr = (app_pc) dr_get_proc_address(mod -> handle, "sha512_block_data_order");
+      add_ignore_func(addr);
+             addr = (app_pc) dr_get_proc_address(mod -> handle, "sha256_block_data_order");
+      add_ignore_func(addr);
+             addr = (app_pc) dr_get_proc_address(mod -> handle, "RSA_public_encrypt");
+      add_ignore_func(addr);
+             addr = (app_pc) dr_get_proc_address(mod -> handle, "SHA512_Final");
+      add_ignore_func(addr);
+             addr = (app_pc) dr_get_proc_address(mod -> handle, "SHA512_Update");
+      add_ignore_func(addr);
+             addr = (app_pc) dr_get_proc_address(mod -> handle, "aesni_set_encrypt_key");
+      add_ignore_func(addr);
+             addr = (app_pc) dr_get_proc_address(mod -> handle, "ASN1_item_d2i");
+      add_ignore_func(addr);
+             addr = (app_pc) dr_get_proc_address(mod -> handle, "EVP_Cipher");
+      add_ignore_func(addr);
+             addr = (app_pc) dr_get_proc_address(mod -> handle, "EVP_CipherInit_ex");
+      add_ignore_func(addr);
+             addr = (app_pc) dr_get_proc_address(mod -> handle, "BN_bin2bn");
+      add_ignore_func(addr);
+             addr = (app_pc) dr_get_proc_address(mod -> handle, "BN_free");
+      add_ignore_func(addr);
+      */
+      
+   }
+   else if (strncmp(dr_module_preferred_name(mod), "libssl", 6) == 0)
+   {
+
+      app_pc addr = (app_pc) dr_get_proc_address(mod -> handle, "SSL_connect");
+      dr_printf("Adding ignore for SSL_connect at %llx.\n", addr);
+      add_ignore_func(addr);
+      addr = (app_pc) dr_get_proc_address(mod -> handle, "tls1_enc");
+      dr_printf("Adding ignore for tls1_enc at %llx.\n", addr);
+      add_ignore_func(addr);
+      //app_pc addr = (app_pc) dr_get_proc_address(mod -> handle, "SSL_accept");
+      //add_ignore_func(addr);
    }
 }

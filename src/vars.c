@@ -43,7 +43,31 @@ file_t logfile, dumpfile;
 FILE * logfile_stream;
 
 app_pc main_address;
+
+app_pc tmp_addr;
 app_pc return_to;
+
+app_pc ignore_vector[64];
+int ignore_vector_size                       = 0;
+
+void add_ignore_func(app_pc pc)
+{
+  if (pc == NULL)
+  {
+    FAIL();
+  }
+
+  ignore_vector[ignore_vector_size++] = pc;
+}
+
+int check_ignore_func(app_pc pc)
+{
+  for (int i = 0; i < ignore_vector_size; i++)
+    if (ignore_vector[i] == pc) return 1;
+
+  return 0;
+}
+
 
 const char *manual_taint_path  = "<manually tainted>";
 const char *cmd_arg_taint_path = "<command line>";
@@ -416,7 +440,7 @@ void log_instr(instr_t *instr)
 
   instr_disassemble_to_buffer(drcontext, instr, str, 64);
 
-  dr_fprintf(logfile, "TAINT! %s: ", str);
+  dr_fprintf(logfile, "[%llx] TAINT! %s: ", instr_get_app_pc(instr), str);
 
   return;
 }
@@ -625,8 +649,9 @@ void bound2(int *ids1, int *ids2, int type)
       // Nothing.
     }
     else
-     {
-      FAIL()
+    {
+
+      ///////////////////FAIL()
     }
   }
 }
@@ -738,10 +763,10 @@ int check_bounds_separately(int *ids DBG_END_TAINTING_FUNC)
 
 void vulnerability_detected()
 {
-  dump();
+  //dump();
 
   // Whatever we wanna do if we detect it.
-  exit(0);
+  //exit(0);
 }
 
 int check_bounds_id(int *ids DBG_END_TAINTING_FUNC)
@@ -806,8 +831,15 @@ void check_bounds_reg(int reg DBG_END_TAINTING_FUNC)
     {
       #ifdef DBG_PASS_INSTR
       drsym_info_t *func = get_func(instr_get_app_pc(dbg_instr));
-      LERROR("!!!VULNERABILITY!!! ILP Detected unbounded access at %s  %s:%d\n", 
-                       func -> name, func -> file, func -> line);
+      if (func != NULL)
+      {
+        LERROR("!!!VULNERABILITY!!! ILP Detected unbounded access at %s  %s:%d\n", 
+                         func -> name, func -> file, func -> line);
+      }
+      else
+      {
+        LERROR("!!!VULNERABILITY!!! ILP Detected unbounded access\n");
+      }
       #else
       LERROR("!!!VULNERABILITY!!! ILP Detected unbounded access\n");
       #endif
@@ -901,4 +933,42 @@ int is_path_secure(const char *path)
   }
 
   return 0;
+}
+
+void log_location(app_pc pc)
+{
+  module_data_t *data = dr_lookup_module(pc);
+
+  if (data == NULL)
+  {
+     dr_printf("dr_lookup_module failed for %llx.\n", pc);
+
+     dr_free_module_data(data);
+
+     return;
+  }
+
+  const char *modname = dr_module_preferred_name(data);
+
+  drsym_info_t sym;
+
+  char name_buf[1024];
+  char file_buf[1024];
+
+  sym.struct_size = sizeof(sym);
+  sym.name = name_buf;
+  sym.name_size = 1024;
+  sym.file = file_buf;
+  sym.file_size = 1024;
+    
+  drsym_error_t symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
+
+  if (symres == DRSYM_SUCCESS)
+  {
+    dr_printf("Looked up address at %s[%s] at %s %s:%d.\n", sym.name, modname, data -> full_path, sym.file, sym.line);
+  }
+  else
+  {
+    dr_printf("Looked up address at  [%s] at %s.\n", modname, data -> full_path);
+  }
 }

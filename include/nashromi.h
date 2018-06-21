@@ -13,7 +13,7 @@
 #define DBG_PASS_INSTR
 
 // Parse jump addresses
-#undef DBG_PARSE_JUMPS
+#define DBG_PARSE_JUMPS
 
 // Log paths.
 #define NSHR_LOGFILE_PATH "/home/zhani/Thesis/project/build/nshr.log"
@@ -131,6 +131,7 @@ extern file_t logfile, dumpfile;
 extern FILE * logfile_stream;
 
 extern app_pc main_address;
+extern app_pc tmp_addr;
 
 enum prop_type {
   // MOV's
@@ -192,6 +193,7 @@ enum mode {
   MODE_ACTIVE,
   MODE_IN_LIBC,
   MODE_BEFORE_MAIN,
+  MODE_IN_IGNORELIB
 
 };
 
@@ -442,6 +444,12 @@ extern hashtable_t func_hashtable;
 
 extern app_pc return_to;
 
+extern app_pc ignore_vector[64];
+extern int ignore_vector_size;
+
+void add_ignore_func(app_pc pc);
+int check_ignore_func(app_pc pc);
+
 void hashtable_del_entry(void *p);
 
 
@@ -548,9 +556,13 @@ bool nshr_syscall_filter(void *drcontext, int sysnum);
 void nshr_taint_by_fd(reg_t addr, unsigned int size, int fd);
 void nshr_taint_by_file(reg_t addr, unsigned int size, int file);
 
+void nshr_taint_wrong(instr_t *instr DBG_END_TAINTING_FUNC);
+
 void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_END_TAINTING_FUNC);
 void nshr_taint_mv_reg2reg(int src_reg, int dst_reg DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_reg2regneg(int src_reg, int dst_reg DBG_END_TAINTING_FUNC);
+void nshr_taint_neg_reg(int reg DBG_END_TAINTING_FUNC);
+void nshr_taint_neg_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size DBG_END_TAINTING_FUNC);
+
 
 // Works also if size of source is bigger, just copies necessary part.
 void nshr_taint_mv_reg2regzx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC);
@@ -578,12 +590,13 @@ void nshr_taint_div_mem(int dividend1_reg, int dividend2_reg, int divisor_seg_re
 void nshr_taint_mul_reg2reg(int src1_reg, int src2_reg, int dst1_reg, int dst2_reg DBG_END_TAINTING_FUNC);
 void nshr_taint_mul_imm2reg(int src1_reg, int64 value, int dst1_reg, int dst2_reg DBG_END_TAINTING_FUNC);
 void nshr_taint_mul_immbyconstmem2reg(int64 value, uint64_t addr, int access_size, int dst_reg DBG_END_TAINTING_FUNC);
-void nshr_taint_mul_mem2reg(int src1_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int dst_reg DBG_END_TAINTING_FUNC);
+void nshr_taint_mul_mem2reg(int src1_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int dst1_reg, int dst2_reg DBG_END_TAINTING_FUNC);
 
 void nshr_taint_cond_mv_reg2reg(int src_reg, int dst_reg, instr_t *instr, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_cond_mv_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, instr_t *instr, int type DBG_END_TAINTING_FUNC);
 
 void nshr_taint_cond_set_reg(int dst_reg, int type, instr_t *instr DBG_END_TAINTING_FUNC);
+void nshr_taint_cond_set_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int type, instr_t *instr DBG_END_TAINTING_FUNC);
 
 void nshr_taint_cond_jmp(instr_t *instr, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_ind_jmp_reg(int src_reg DBG_END_TAINTING_FUNC);
@@ -644,5 +657,7 @@ void get_mem_taint(uint64_t addr, int size, int *ids);
 void set_mem_taint(uint64_t addr, int size, int *ids);
 
 reg_t get_arg(int arg);
+
+void log_location(app_pc pc);
 
 #endif
