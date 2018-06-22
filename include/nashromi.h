@@ -13,7 +13,7 @@
 #define DBG_PASS_INSTR
 
 // Parse jump addresses
-#define DBG_PARSE_JUMPS
+#undef DBG_PARSE_JUMPS
 
 // Log paths.
 #define NSHR_LOGFILE_PATH "/home/zhani/Thesis/project/build/nshr.log"
@@ -169,6 +169,23 @@ enum prop_type {
 
 };
 
+enum shift_type {
+  LOGICAL_LEFT,
+  LOGICAL_RIGHT,
+  ARITH_LEFT,
+  ARITH_RIGHT,
+  ROTATE_LEFT,
+  ROTATE_RIGHT
+
+};
+
+static const char *SHIFT_NAMES[] = {
+  "logical left", "logical right", "arithmetic left", "arithmetic right",
+  "rotate left", "rotate right"
+
+};
+
+int get_shift_type(int opcode);
 
 
 static const char *PROP_NAMES[] = {

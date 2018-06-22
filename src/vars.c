@@ -650,8 +650,7 @@ void bound2(int *ids1, int *ids2, int type)
     }
     else
     {
-
-      ///////////////////FAIL()
+      FAIL()
     }
   }
 }
@@ -763,10 +762,10 @@ int check_bounds_separately(int *ids DBG_END_TAINTING_FUNC)
 
 void vulnerability_detected()
 {
-  //dump();
+  dump();
 
   // Whatever we wanna do if we detect it.
-  //exit(0);
+  exit(0);
 }
 
 int check_bounds_id(int *ids DBG_END_TAINTING_FUNC)
@@ -971,4 +970,18 @@ void log_location(app_pc pc)
   {
     dr_printf("Looked up address at  [%s] at %s.\n", modname, data -> full_path);
   }
+}
+
+int get_shift_type(int opcode)
+{
+  switch(opcode)
+  {
+    case OP_shl:    return LOGICAL_LEFT;
+    case OP_shr:    return LOGICAL_RIGHT;
+    case OP_sar:    return ARITH_RIGHT;
+    case OP_rol:    return ROTATE_LEFT;
+    case OP_ror:    return ROTATE_RIGHT;
+    default:        FAIL();
+  }
+
 }

@@ -31,7 +31,7 @@ int main (int argc, char *argv[]) {
 
   n2s(zaza, a);
 
-  memcpy(A, B, a);
+//  memcpy(A, B, a);
 
 
   return 0;

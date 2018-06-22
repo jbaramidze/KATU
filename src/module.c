@@ -121,23 +121,20 @@ static void nshr_handle_taint(long long addr, int size)
 
 static void nshr_handle_dump(long long addr)
 {
-  for (int i = 0; i < 4; i++)
+  int index = mem_taint_find_index(addr, 0);
+
+  int tained = MEMTAINTED(index, addr);
+
+  if (tained == -1)
   {
-    int index = mem_taint_find_index(addr, i);
+    dr_printf("Helper:\t\tChecking taint for 0x%llx: TAINT#-1\n", addr);
 
-    int tained = MEMTAINTED(index, addr + i);
-
-    if (tained == -1)
-    {
-      dr_printf("Helper:\t\tChecking taint for 0x%llx: TAINT#-1\n", addr + i);
-
-      return;
-    }
-
-    int id = MEMTAINTVAL(index, addr + i);
-
-    dr_printf("Helper:\t\tChecking taint for 0x%llx: TAINT#%d, index %d.\n", addr + i, id, index);
+    return;
   }
+
+  int id = MEMTAINTVAL(index, addr);
+
+  dr_printf("Helper:\t\tChecking taint for 0x%llx: TAINT#%d, index %d.\n", addr, id, index);
 }
 
 

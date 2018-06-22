@@ -405,6 +405,9 @@ static void memmove_begin(DBG_END_TAINTING_FUNC_ALONE)
   void *dst = (void *) get_arg(0);
   void *src = (void *) get_arg(1);
   unsigned int size  = (int) get_arg(2);
+  
+  int size_reg = get_arg_reg(2, sizeof(size_t));
+  check_bounds_reg(size_reg DGB_END_CALL_ARG);
 
   // copy to new location first
   int *tmp = (int *) malloc(size);
@@ -787,6 +790,7 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "bind");
      ignore_handlers(mod, "listen");
      ignore_handlers(mod, "inet_ntoa");
+     ignore_handlers(mod, "gethostbyname");
      ignore_handlers(mod, "socket");    // We care about connect() and accept()
      ignore_handlers(mod, "__errno_location");
      ignore_handlers(mod, "__ctype_b_loc");
@@ -805,45 +809,12 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
    }
    else if (strncmp(dr_module_preferred_name(mod), "libcrypto", 9) == 0)
    {
-      //app_pc addr = (app_pc) dr_get_proc_address(mod -> handle, "RAND_pseudo_bytes");
-      //add_ignore_func(addr);
-      /*app_pc addr = (app_pc) dr_get_proc_address(mod -> handle, "sha1_block_data_order");
-      add_ignore_func(addr);
-             addr = (app_pc) dr_get_proc_address(mod -> handle, "sha512_block_data_order");
-      add_ignore_func(addr);
-             addr = (app_pc) dr_get_proc_address(mod -> handle, "sha256_block_data_order");
-      add_ignore_func(addr);
-             addr = (app_pc) dr_get_proc_address(mod -> handle, "RSA_public_encrypt");
-      add_ignore_func(addr);
-             addr = (app_pc) dr_get_proc_address(mod -> handle, "SHA512_Final");
-      add_ignore_func(addr);
-             addr = (app_pc) dr_get_proc_address(mod -> handle, "SHA512_Update");
-      add_ignore_func(addr);
-             addr = (app_pc) dr_get_proc_address(mod -> handle, "aesni_set_encrypt_key");
-      add_ignore_func(addr);
-             addr = (app_pc) dr_get_proc_address(mod -> handle, "ASN1_item_d2i");
-      add_ignore_func(addr);
-             addr = (app_pc) dr_get_proc_address(mod -> handle, "EVP_Cipher");
-      add_ignore_func(addr);
-             addr = (app_pc) dr_get_proc_address(mod -> handle, "EVP_CipherInit_ex");
-      add_ignore_func(addr);
-             addr = (app_pc) dr_get_proc_address(mod -> handle, "BN_bin2bn");
-      add_ignore_func(addr);
-             addr = (app_pc) dr_get_proc_address(mod -> handle, "BN_free");
-      add_ignore_func(addr);
-      */
-      
    }
    else if (strncmp(dr_module_preferred_name(mod), "libssl", 6) == 0)
    {
-
       app_pc addr = (app_pc) dr_get_proc_address(mod -> handle, "SSL_connect");
-      dr_printf("Adding ignore for SSL_connect at %llx.\n", addr);
       add_ignore_func(addr);
       addr = (app_pc) dr_get_proc_address(mod -> handle, "tls1_enc");
-      dr_printf("Adding ignore for tls1_enc at %llx.\n", addr);
       add_ignore_func(addr);
-      //app_pc addr = (app_pc) dr_get_proc_address(mod -> handle, "SSL_accept");
-      //add_ignore_func(addr);
    }
 }
