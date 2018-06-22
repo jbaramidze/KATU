@@ -383,6 +383,9 @@ int solve_ilp_for_id(int id DBG_END_TAINTING_FUNC)
 
 int solve_ilp(int *ids DBG_END_TAINTING_FUNC)
 {
+  // First, flush DR logs so ours get placed at correct location.
+  dr_flush_file(logfile);
+
   int vulnerables = 0;
 
   for (int i = 0; i < 8; i++)
@@ -401,6 +404,9 @@ int solve_ilp(int *ids DBG_END_TAINTING_FUNC)
       vulnerables++;
     }
   }
+
+  // Before we exit, flush our logs.
+  fflush(logfile_stream);
 
   if (vulnerables >= MIN_VULNERABILITIES)
   {
