@@ -1226,7 +1226,7 @@ static void opcode_dblshift(void *drcontext, instr_t *instr, instrlist_t *ilist)
       {
         LDUMP("InsDetail:\tShifting left %s by %d bytes, fed by %s.\n", REGNAME(src_reg), imm, REGNAME(feed_reg));
   
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_regbyimm_feedreg, false, DBG_TAINT_NUM_PARAMS(3),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_regbyimm_feedreg, false, DBG_TAINT_NUM_PARAMS(4),
                                    OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(imm), OPND_CREATE_INT32(feed_reg),
                                        OPND_CREATE_INT32(0) DBG_END_DR_CLEANCALL);
       }
@@ -1234,7 +1234,7 @@ static void opcode_dblshift(void *drcontext, instr_t *instr, instrlist_t *ilist)
       {
         LDUMP("InsDetail:\tShifting right %s by %d bytes, fed by %s.\n", REGNAME(src_reg), imm, REGNAME(feed_reg));
   
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_regbyimm_feedreg, false, DBG_TAINT_NUM_PARAMS(3),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_regbyimm_feedreg, false, DBG_TAINT_NUM_PARAMS(4),
                                    OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(imm), OPND_CREATE_INT32(feed_reg),
                                        OPND_CREATE_INT32(1) DBG_END_DR_CLEANCALL);
       }

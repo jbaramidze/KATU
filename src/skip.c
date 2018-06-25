@@ -814,6 +814,8 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
    {
       app_pc addr = (app_pc) dr_get_proc_address(mod -> handle, "SSL_connect");
       add_ignore_func(addr);
+      addr = (app_pc) dr_get_proc_address(mod -> handle, "SSL_accept");
+      add_ignore_func(addr);
       addr = (app_pc) dr_get_proc_address(mod -> handle, "tls1_enc");
       add_ignore_func(addr);
    }
