@@ -169,6 +169,11 @@ void nshr_id_add_op(int id, enum prop_type operation, int modify_by)
   // FIXME: Problem with those is we should take prop_type into consideration.
   //        e.g. what if it was added, and now we are subtracting?
   //        many cases to consider, will make things way faster.
+
+  if (modify_by == -1)
+  {
+    return;
+  }
   
   // First make sure id is not already in operations list;
   for (int i = 0; i < ID2OPSIZE(id); i++)
@@ -611,46 +616,59 @@ void bound2(int *ids1, int *ids2, int type)
 {
   for (int i = 0; i < 8; i++)
   {
-    if (ids1[i] != -1 && ids2[i] != -1)
+    if (ids1[i] != -1 || ids2[i] != -1)
     {
-      // ids1 < ids2 is same as ids1 - ids2 is tainted from above.
+      int id;
+      Group_restriction *gr = (Group_restriction *) malloc(sizeof(Group_restriction));
+
       if (type == COND_LESS || type == COND_LESS_UNSIGNED)
       {
-        int newid = nshr_tid_copy_id(ids1[i]);
-        nshr_id_add_op(newid, PROP_SUB, ids2[i]);
+        // ids1 < ids2 is same as ids1 - ids2 is bound from above.
+        if (ids1[i] > 0)
+        {
+          id = nshr_tid_copy_id(ids1[i]);
 
-        Group_restriction *gr = (Group_restriction *) malloc(sizeof(Group_restriction));
-        gr -> id = newid;
-        gr -> bound_type = TAINT_BOUND_HIGH;
-        gr -> next = uids_[ID2UID(newid)].gr;
+          nshr_id_add_op(id, PROP_SUB, ids2[i]);
 
-        uids_[ID2UID(newid)].gr = gr;
+          gr -> bound_type = TAINT_BOUND_HIGH;
+        }
+        // imm < ids2 is same as ids2 is bound from below
+        else
+        {
+          id = ids2[i];
+
+          gr -> bound_type = TAINT_BOUND_LOW;
+        }
       }
       // ids1 == ids2 can be interpreted as ids1 - ids2 is fixed.
       else if (type == COND_EQ)
       {
-        int newid = nshr_tid_copy_id(ids1[i]);
-        nshr_id_add_op(newid, PROP_SUB, ids2[i]);
-
-        Group_restriction *gr = (Group_restriction *) malloc(sizeof(Group_restriction));
-        gr -> id = newid;
         gr -> bound_type = TAINT_BOUND_FIX;
-        gr -> next = uids_[ID2UID(newid)].gr;
 
-        uids_[ID2UID(newid)].gr = gr;
+        if (ids1[i] > 0)
+        {
+          id = nshr_tid_copy_id(ids1[i]);
+
+          nshr_id_add_op(id, PROP_SUB, ids2[i]);
+        }
+        else
+        {
+          id = ids2[i];
+        }
       }
       else
       {
         FAIL();
       }
-    }
-    else if (ids1[i] == -1 && ids2[i] == -1)
-    {
-      // Nothing.
+
+      gr -> id = id;
+      gr -> next = uids_[ID2UID(id)].gr;
+
+      uids_[ID2UID(id)].gr = gr;
     }
     else
     {
-      FAIL()
+      // Nothing.
     }
   }
 }

@@ -137,8 +137,9 @@ void nshr_taint_mv_mem2mem(int src_seg_reg, int src_base_reg, int src_index_reg,
   STOP_IF_NOT_ACTIVE();
 
   reg_t src_addr = decode_addr(src_seg_reg, src_base_reg, src_index_reg, src_scale, src_disp DGB_END_CALL_ARG);
+  reg_t dst_addr = decode_addr(dst_seg_reg, dst_base_reg, dst_index_reg, dst_scale, dst_disp DGB_END_CALL_ARG);
 
-  nshr_taint_mv_constmem2mem(src_addr, dst_seg_reg, dst_base_reg, dst_index_reg, dst_scale, dst_disp, access_size DGB_END_CALL_ARG);
+  nshr_taint_mv_constmem2constmem(src_addr, dst_addr, access_size DGB_END_CALL_ARG);
 }
 
 void nshr_taint_mv_constmem2mem(uint64 src_addr, int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size DBG_END_TAINTING_FUNC)
@@ -229,29 +230,7 @@ void nshr_taint_mv_constmem2regsx(uint64 addr, int dst_reg, int extended_from_si
 {
   STOP_IF_NOT_ACTIVE();
 
-  LDEBUG_TAINT(false, "MEM %p->\t REG %s size %d sign extended to %d.\n", 
-             addr, REGNAME(dst_reg), extended_from_size, REGSIZE(dst_reg));
-
-
-  for (int i = 0; i < extended_from_size; i++)
-  {
-    int index = mem_taint_find_index(addr, i);
-
-    LDUMP_TAINT(i, (REGTAINTED(dst_reg, i) || MEMTAINTED(index, addr + i)),
-                      "\tMEM %p TAINT#%d->\t REG %s byte %d TAINT#%d INDEX %d TOTAL %d.\n", 
-                          ADDR(addr + i), MEMTAINTVAL(index, addr + i), REGNAME(dst_reg), 
-                              i, REGTAINTVAL(dst_reg, i), index, extended_from_size);
-
-    MEMTAINT2REGTAINT(index, addr + i, dst_reg, i);
-  }
-
-  for (unsigned int i = extended_from_size; i < REGSIZE(dst_reg); i++)
-  {
-    int index = mem_taint_find_index(addr, i);
-
-    REGTAINTRM(dst_reg, i);
-  	//MEMTAINT2REGTAINT(index, addr + extended_from_size - 1, dst_reg, i);
-  }
+  nshr_taint_mv_constmem2regzx(addr, dst_reg, extended_from_size DGB_END_CALL_ARG);
 }
 
 void nshr_taint_mv_constmem2reg(uint64 addr, int dst_reg DBG_END_TAINTING_FUNC)
@@ -645,7 +624,7 @@ void nshr_taint_shift_regbyimm(int dst_reg, int64 value, int type DBG_END_TAINTI
     sprintf(tmp, "%d %d %d %d %d %d %d %d ", ids[0], ids[1], ids[2], ids[3],
                                              ids[4], ids[5], ids[6], ids[7]);
 
-    LDUMP_TAINT(0, 0, "Moved by %d bytes, Taints before '%s' shift: %s\n", SHIFT_NAMES[type], amount, tmp);
+    LDUMP_TAINT(0, 0, "Moved by %d bytes, Taints before '%s' shift: %s\n", amount, SHIFT_NAMES[type], tmp);
 
     sprintf(tmp, "%d %d %d %d %d %d %d %d ", ids2[0], ids2[1], ids2[2], ids2[3], 
                                              ids2[4], ids2[5], ids2[6], ids2[7]);
@@ -1281,7 +1260,7 @@ void nshr_taint_mv_reg2reg(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
                  REGNAME(dst_reg), REGSIZE(dst_reg));
 
 
-  FAILIF(REGSIZE(src_reg) > REGSIZE(dst_reg));
+  FAILIF(REGSIZE(src_reg) != REGSIZE(dst_reg));
 
   for (unsigned int i = 0; i < REGSIZE(src_reg); i++)
   {
@@ -1292,26 +1271,6 @@ void nshr_taint_mv_reg2reg(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
                                    REGTAINTVAL(dst_reg, i), REGSIZE(dst_reg));
 
     REGTAINT2REGTAINT(src_reg, i, dst_reg, i);
-  }
-
-  if (REGSIZE(dst_reg) > REGSIZE(src_reg))
-  {
-    FAIL(); // how does it come here?
-
-    /*
-  	FAILIF(REGSIZE(dst_reg) != 2*REGSIZE(src_reg));
-
-    for (unsigned int i = REGSIZE(src_reg); i < REGSIZE(dst_reg); i++)
-    {
-      LDUMP_TAINT(i, (REGTAINTED(dst_reg, i) || REGTAINTED(src_reg, i)), 
-      	               "  REG %s byte %d TAINT#%d -> REG %s byte %d TAINT#%d TOTAL %d.\n", 
-                             REGNAME(src_reg), i - REGSIZE(src_reg), REGTAINTVAL(src_reg, i),
-                                 REGNAME(dst_reg), i,
-                                     REGTAINTVAL(dst_reg, i), REGSIZE(dst_reg));
-
-      REGTAINT2REGTAINT(src_reg, i - REGSIZE(src_reg), dst_reg, i);
-    }
-    */
   }
 }
 
@@ -1364,7 +1323,6 @@ void nshr_taint_mv_regbyte2regsx(int src_reg, int src_index, int dst_reg DBG_END
 
 
      REGTAINTRM(dst_reg, i);
-    //REGTAINT2REGTAINT(src_reg, src_index, dst_reg, i);
   }
 }
 
@@ -1390,8 +1348,6 @@ void nshr_taint_mv_reg2regsx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
   for (unsigned int i = REGSIZE(src_reg); i < REGSIZE(dst_reg); i++)
   {
      REGTAINTRM(dst_reg, i);
-
-    //REGTAINT2REGTAINT(src_reg, REGSIZE(src_reg) - 1, dst_reg, i);
   }
 }
 
