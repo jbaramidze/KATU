@@ -13,8 +13,8 @@ instrFunc       instrFunctions[MAX_OPCODE];
 enum mode       started_                     = MODE_BEFORE_MAIN; //MODE_BEFORE_MAIN MODE_ACTIVE MODE_IGNORING
 Eflags          eflags_;
 
-UID_entity      uids_[MAX_UID];
-ID_entity       ids_[MAX_ID];
+UID_entity      uid_[MAX_UID];
+ID_entity       tid_[MAX_ID];
 
 hashtable_t FILEs_;
 int         fds_[MAX_FD];
@@ -78,7 +78,7 @@ const char *cmd_arg_taint_path = "<command line>";
 
 void add_bound(int uid, int mask)
 {
-  uids_[uid].bounded |= mask;
+  uid_[uid].bounded |= mask;
 }
 
 int prop_is_binary(enum prop_type type )
@@ -103,9 +103,9 @@ int prop_is_cond_mov(enum prop_type type )
 
 int nshr_tid_new_id(int uid)
 {
-  ids_[nextID].uid      = uid;
-  ids_[nextID].ops_size = 0;
-  ids_[nextID].negated  = 0;
+  tid_[nextID].uid      = uid;
+  tid_[nextID].ops_size = 0;
+  tid_[nextID].negated  = 0;
 
   if (nextID >= MAX_ID)
   {
@@ -127,7 +127,7 @@ int nshr_tid_new_uid_get()
 
 int nshr_tid_copy_id(int id)
 {
-  int newid = nshr_tid_new_id(ids_[id].uid);
+  int newid = nshr_tid_new_id(tid_[id].uid);
 
   LDEBUG("Utils:\t\tCopied id %d to %d.\n", id, newid);
 
@@ -135,16 +135,16 @@ int nshr_tid_copy_id(int id)
   First copy everything from old id.
   */
 
-  ids_[newid].ops_size = ids_[id].ops_size;
-  ids_[newid].negated  = ids_[id].negated;
-  ids_[newid].size     = ids_[id].size;
+  tid_[newid].ops_size = tid_[id].ops_size;
+  tid_[newid].negated  = tid_[id].negated;
+  tid_[newid].size     = tid_[id].size;
 
   int i;
 
-  for (i = 0; i < ids_[id].ops_size; i++)
+  for (i = 0; i < tid_[id].ops_size; i++)
   {
-    ids_[newid].ops[i].type  = ids_[id].ops[i].type;
-    ids_[newid].ops[i].value = ids_[id].ops[i].value;
+    tid_[newid].ops[i].type  = tid_[id].ops[i].type;
+    tid_[newid].ops[i].value = tid_[id].ops[i].value;
   }
 
   return newid;
@@ -182,7 +182,7 @@ void nshr_id_add_op(int id, enum prop_type operation, int modify_by)
 
 static int lower_bound(int uid)
 {
-  if ((uids_[uid].bounded & (TAINT_BOUND_LOW | TAINT_BOUND_FIX)) == 0)
+  if ((uid_[uid].bounded & (TAINT_BOUND_LOW | TAINT_BOUND_FIX)) == 0)
   {
     return 0;
   }
@@ -192,7 +192,7 @@ static int lower_bound(int uid)
 
 static int higher_bound(int uid)
 {
-  if ((uids_[uid].bounded & (TAINT_BOUND_HIGH | TAINT_BOUND_FIX)) == 0)
+  if ((uid_[uid].bounded & (TAINT_BOUND_HIGH | TAINT_BOUND_FIX)) == 0)
   {
     return 0;
   }
@@ -258,14 +258,14 @@ int nshr_tid_modify_id_by_symbol(int dst_taint, enum prop_type operation, int sr
 
 int nshr_tid_new_uid_by_file(int file)
 {
-  uids_[nextUID].descriptor.file = file;
-  uids_[nextUID].descr_type      = 1;
-  uids_[nextUID].bounded         = 0;
-  uids_[nextUID].gr              = NULL;
+  uid_[nextUID].descriptor.file = file;
+  uid_[nextUID].descr_type      = 1;
+  uid_[nextUID].bounded         = 0;
+  uid_[nextUID].gr              = NULL;
 
   int newid  = nshr_tid_new_id(nextUID);
 
-  ids_[newid].size         = 1;
+  tid_[newid].size         = 1;
 
   nextUID++;
 
@@ -279,14 +279,14 @@ int nshr_tid_new_uid_by_file(int file)
 
 int nshr_tid_new_uid_by_fd(int fd)
 {
-  uids_[nextUID].descriptor.fd = fd;
-  uids_[nextUID].descr_type    = 0;
-  uids_[nextUID].bounded       = 0;
-  uids_[nextUID].gr            = NULL;
+  uid_[nextUID].descriptor.fd = fd;
+  uid_[nextUID].descr_type    = 0;
+  uid_[nextUID].bounded       = 0;
+  uid_[nextUID].gr            = NULL;
 
   int newid  = nshr_tid_new_id(nextUID);
 
-  ids_[newid].size         = 1;
+  tid_[newid].size         = 1;
 
   nextUID++;
 
@@ -646,9 +646,9 @@ void bound2(int *ids1, int *ids2, int type)
       }
 
       gr -> id = id;
-      gr -> next = uids_[ID2UID(id)].gr;
+      gr -> next = uid_[ID2UID(id)].gr;
 
-      uids_[ID2UID(id)].gr = gr;
+      uid_[ID2UID(id)].gr = gr;
     }
     else
     {
@@ -671,9 +671,9 @@ void bound(int *ids, int mask)
         Group_restriction *gr = (Group_restriction *) malloc(sizeof(Group_restriction));
         gr -> id = id;
         gr -> bound_type = mask;
-        gr -> next = uids_[uid].gr;
+        gr -> next = uid_[uid].gr;
 
-        uids_[uid].gr = gr;
+        uid_[uid].gr = gr;
 
         if (i == 0)
         {
@@ -742,7 +742,7 @@ int check_bounds_separately(int *ids DBG_END_TAINTING_FUNC)
     }
 
     // only one uid participating, it's not bounded and there are no related group restrictions....
-    if (ID2OPSIZE(id) == 0 && vuln1 == 1 && uids_[ID2UID(id)].gr == NULL)
+    if (ID2OPSIZE(id) == 0 && vuln1 == 1 && uid_[ID2UID(id)].gr == NULL)
     {
       vulnerables++;
     }

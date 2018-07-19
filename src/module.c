@@ -13,20 +13,20 @@ void dump()
 
   for (int i = 1; i < nshr_tid_new_id_get(); i++)
   {
-    dr_fprintf(dumpfile, "ID #%d\t\t -> uid %d size %d ops_size: %d\n", i, ids_[i].uid, ids_[i].size, ids_[i].ops_size);
+    dr_fprintf(dumpfile, "ID #%d\t\t -> uid %d size %d ops_size: %d\n", i, tid_[i].uid, tid_[i].size, tid_[i].ops_size);
 
-    if (ids_[i].ops_size > 0)
+    if (tid_[i].ops_size > 0)
     {
       dr_fprintf(dumpfile, "\tOperations:\n");
-      if (ids_[i].ops_size > DEFAULT_OPERATIONS)
+      if (tid_[i].ops_size > DEFAULT_OPERATIONS)
       {
         FAIL();
       }
 
-      for (int j = 0; j < ids_[i].ops_size; j++)
+      for (int j = 0; j < tid_[i].ops_size; j++)
       {
-        dr_fprintf(dumpfile, "\tOperation #%d: '%s' by %lld\n", j, PROP_NAMES[ids_[i].ops[j].type],
-          ids_[i].ops[j].value);
+        dr_fprintf(dumpfile, "\tOperation #%d: '%s' by %lld\n", j, PROP_NAMES[tid_[i].ops[j].type],
+          tid_[i].ops[j].value);
       }
     }
   }
@@ -38,18 +38,18 @@ void dump()
   {
     const char *path;
 
-    if (uids_[i].descr_type == 0)
+    if (uid_[i].descr_type == 0)
     {
-      path = fds_history_[uids_[i].descriptor.fd].path;
+      path = fds_history_[uid_[i].descriptor.fd].path;
     }
     else
     {
-      path = files_history_[uids_[i].descriptor.file].path;
+      path = files_history_[uid_[i].descriptor.file].path;
     }
 
-    dr_fprintf(dumpfile, "UID #%d\t\t -> path %s bounded %d\n", i, path, uids_[i].bounded);
+    dr_fprintf(dumpfile, "UID #%d\t\t -> path %s bounded %d\n", i, path, uid_[i].bounded);
 
-    Group_restriction *gr = uids_[i].gr;
+    Group_restriction *gr = uid_[i].gr;
 
     while(gr != NULL)
     {
@@ -88,7 +88,7 @@ event_exit(void)
 
     for (int i = 1; i < nshr_tid_new_uid_get(); i++)
     {
-      Group_restriction *gr = uids_[i].gr;
+      Group_restriction *gr = uid_[i].gr;
 
       while(gr != NULL)
       {

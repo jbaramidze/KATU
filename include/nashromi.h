@@ -388,10 +388,10 @@ static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 #define REGTAINTID(mask, offset)            (taintReg_[(mask & 0xFF0000) >> 16][((mask & 0xFF00) >> 8) + offset])
 #define MEMTAINTID(index, address)          (taint_[index][(address) % TAINTMAP_SIZE][1])
 
-#define ID2UID(id)                          (ids_[id].uid)
-#define ID2SIZE(id)                         (ids_[id].size)
-#define ID2OPSIZE(id)                       (ids_[id].ops_size)
-#define ID2OP(id, index)                    (ids_[id].ops[index])
+#define ID2UID(id)                          (tid_[id].uid)
+#define ID2SIZE(id)                         (tid_[id].size)
+#define ID2OPSIZE(id)                       (tid_[id].ops_size)
+#define ID2OP(id, index)                    (tid_[id].ops[index])
 //
 // Logging definitions.
 //
@@ -447,8 +447,8 @@ extern uint64_t fds_history_index_;
 extern int   fds_[MAX_FD];
 extern hashtable_t FILEs_;
 
-extern UID_entity uids_[MAX_UID];
-extern ID_entity  ids_[MAX_ID];
+extern UID_entity uid_[MAX_UID];
+extern ID_entity  tid_[MAX_ID];
 
 extern instrFunc instrFunctions[MAX_OPCODE];
 
