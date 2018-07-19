@@ -560,7 +560,7 @@ static void atoi_end(DBG_END_TAINTING_FUNC_ALONE)
     for (unsigned int i = 0; i < REGSIZE(DR_REG_EAX); i++)
     {
       int newid = nshr_tid_new_id(arg_data.i1);
-      SETREGTAINTVAL(DR_REG_EAX, i, nshr_tid_new_iid(newid, 0));
+      SETREGTAINTVAL(DR_REG_EAX, i, newid);
     }
   }
 }
@@ -605,7 +605,7 @@ static void strtol_end(DBG_END_TAINTING_FUNC_ALONE)
     for (unsigned int i = 0; i < REGSIZE(DR_REG_EAX); i++)
     {
       int newid = nshr_tid_new_id(arg_data.i1);
-      SETREGTAINTVAL(DR_REG_EAX, i, nshr_tid_new_iid(newid, 0));
+      SETREGTAINTVAL(DR_REG_EAX, i, newid);
     }
   }
 }

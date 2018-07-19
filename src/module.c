@@ -218,6 +218,16 @@ void init(void)
 DR_EXPORT void
 dr_init(client_id_t client_id)
 {
+  char *bound = getenv("LD_BIND_NOW");
+
+  if (bound == NULL || *bound != '1')
+  {
+    dr_printf("ERROR: Please set LD_BIND_NOW variable before launching the tool.\n");
+
+    exit(-1);
+  }
+
+
   if (!drmgr_init())
   {
     DIE("ERROR:! Failed starting drmgr.\n");

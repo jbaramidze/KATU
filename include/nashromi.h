@@ -385,13 +385,9 @@ static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 #define REGTAINTEDANY(reg)                  reg_taint_any(reg)
 #define MEMTAINTEDANY(mem, size)            mem_taint_any(mem, size)
 
-#define REGTAINTID(mask, offset)            (iids_[(taintReg_[(mask & 0xFF0000) >> 16][((mask & 0xFF00) >> 8) + offset])].id)
-#define MEMTAINTID(index, address)          (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].id)
-#define MEMTAINTINDEX(index, address)       (iids_[(taint_[index][(address) % TAINTMAP_SIZE][1])].index)
+#define REGTAINTID(mask, offset)            (taintReg_[(mask & 0xFF0000) >> 16][((mask & 0xFF00) >> 8) + offset])
+#define MEMTAINTID(index, address)          (taint_[index][(address) % TAINTMAP_SIZE][1])
 
-
-#define IID2INDEX(iid)                      (iids_[iid].index)
-#define IID2ID(iid)                         (iids_[iid].id)
 #define ID2UID(id)                          (ids_[id].uid)
 #define ID2SIZE(id)                         (ids_[id].size)
 #define ID2OPSIZE(id)                       (ids_[id].ops_size)
@@ -453,7 +449,6 @@ extern hashtable_t FILEs_;
 
 extern UID_entity uids_[MAX_UID];
 extern ID_entity  ids_[MAX_ID];
-extern IID_entity iids_[MAX_IID];
 
 extern instrFunc instrFunctions[MAX_OPCODE];
 

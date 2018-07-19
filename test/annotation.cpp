@@ -49,7 +49,7 @@ int main () {
 
   read(a, buf+2, 2);
 
-
+  scanf("%s", buf+4);
 
   return 0;
 }

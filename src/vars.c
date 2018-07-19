@@ -15,7 +15,6 @@ Eflags          eflags_;
 
 UID_entity      uids_[MAX_UID];
 ID_entity       ids_[MAX_ID];
-IID_entity      iids_[MAX_IID];
 
 hashtable_t FILEs_;
 int         fds_[MAX_FD];
@@ -116,27 +115,9 @@ int nshr_tid_new_id(int uid)
   return nextID++;
 }
 
-int nshr_tid_new_iid(int id, int index)
-{
-  iids_[nextIID].id    = id;
-  iids_[nextIID].index = index;
-
-  if (nextIID >= MAX_IID)
-  {
-    FAIL();
-  }
-
-  return nextIID++;
-}
-
 int nshr_tid_new_id_get()
 {
   return nextID;
-}
-
-int nshr_tid_new_iid_get()
-{
-  return nextIID;
 }
 
 int nshr_tid_new_uid_get()
@@ -261,7 +242,7 @@ int nshr_make_id_by_merging_all_ids(int *ids1, int *ids2)
     }
   }
 
-  return nshr_tid_new_iid(newid, 0);
+  return newid;
 }
 
 int nshr_tid_modify_id_by_symbol(int dst_taint, enum prop_type operation, int src_taint)
@@ -272,7 +253,7 @@ int nshr_tid_modify_id_by_symbol(int dst_taint, enum prop_type operation, int sr
 
   LDEBUG("Utils:\t\tAppended operation '%s' to id %d by ID#%d.\n", PROP_NAMES[operation], newid, src_taint);
 
-  return nshr_tid_new_iid(newid, 0);
+  return newid;
 }
 
 int nshr_tid_new_uid_by_file(int file)
@@ -283,7 +264,6 @@ int nshr_tid_new_uid_by_file(int file)
   uids_[nextUID].gr              = NULL;
 
   int newid  = nshr_tid_new_id(nextUID);
-  int newiid = nshr_tid_new_iid(newid, 0);
 
   ids_[newid].size         = 1;
 
@@ -294,7 +274,7 @@ int nshr_tid_new_uid_by_file(int file)
     FAIL();
   }
 
-  return newiid;
+  return newid;
 }
 
 int nshr_tid_new_uid_by_fd(int fd)
@@ -305,7 +285,6 @@ int nshr_tid_new_uid_by_fd(int fd)
   uids_[nextUID].gr            = NULL;
 
   int newid  = nshr_tid_new_id(nextUID);
-  int newiid = nshr_tid_new_iid(newid, 0);
 
   ids_[newid].size         = 1;
 
@@ -316,7 +295,7 @@ int nshr_tid_new_uid_by_fd(int fd)
     FAIL();
   }
 
-  return newiid;
+  return newid;
 }
 
 int mem_taint_is_empty(int index, uint64_t addr)
