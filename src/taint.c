@@ -1574,9 +1574,9 @@ void nshr_taint_by_file(reg_t addr, unsigned int size, int file)
 
 void nshr_taint_by_fd(reg_t addr, unsigned int size, int fd)
 {
-  if (fds_[fd].secure)
+  if (fds_history_[fds_[fd]].secure)
   {
-    LDEBUG("NOT Tainting %d bytes from %s.\n", size, fds_[fd].path);
+    LDEBUG("NOT Tainting %d bytes from %s.\n", size, fds_history_[fds_[fd]].path);
 
     return;
   }

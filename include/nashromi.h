@@ -219,7 +219,6 @@ enum mode {
 //
 
 typedef struct {
-  bool used;
   int secure;
   const char *path;
 
@@ -442,11 +441,14 @@ extern enum mode started_;
 
 extern Eflags eflags_;
 
-extern Fd_entity   fds_[MAX_FD];
 
-extern Fd_entity   files_history_[MAX_FILE_HISTORY];
+extern Fd_entity files_history_[MAX_FILE_HISTORY];
+extern Fd_entity fds_history_[MAX_FILE_HISTORY];
 extern uint64_t files_history_index_;
+extern uint64_t fds_history_index_;
 
+
+extern int   fds_[MAX_FD];
 extern hashtable_t FILEs_;
 
 extern UID_entity uids_[MAX_UID];

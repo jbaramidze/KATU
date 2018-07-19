@@ -11,27 +11,44 @@
 #include <sys/types.h>          /* See NOTES */
 #include <arpa/inet.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+
 
 #include "dr_annotations_zhani.h"
 
-#define n2s(c,s)        ((s=(((unsigned int)(c[0]))<< 8)| \
-                            (((unsigned int)(c[1]))    )),c+=2)
+const char *path1 = "/home/zhani/Thesis/test/zaza";
+const char *path2 = "/home/zhani/Thesis/test/zaza1";
 
-const char *zaza = "aabc";
+int main () {
+  
+  int a;
 
-char A[1024*100];
-char B[1024*100];
+  asm volatile (
+      "mov %1, %%rdi \n\t"
+      "mov %2, %%esi \n\t"
+      "syscall"
+        : "=a" (a)
+        : "r" (path1), "r" (O_RDONLY), "a" (2) // SYS_open = 2
+        : "memory"
+    ); 
 
+  char buf[32];
+  read(a, buf, 2);
+  close(a);
 
-int main (int argc, char *argv[]) {
+  asm volatile (
+      "mov %1, %%rdi \n\t"
+      "mov %2, %%esi \n\t"
+      "syscall"
+        : "=a" (a)
+        : "r" (path2), "r" (O_RDONLY), "a" (2) // SYS_open = 2
+        : "memory"
+    ); 
 
-  nshrtaint((long long int) zaza, 4);
+  read(a, buf+2, 2);
 
-  int a = 0;
-
-  n2s(zaza, a);
-
-//  memcpy(A, B, a);
 
 
   return 0;

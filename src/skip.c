@@ -74,6 +74,7 @@ reg_t get_arg(int arg)
   return 0;
 }
 
+// Used to taint env vars.
 static void taint_str(const char *str)
 {
   int size = strlen(str);
@@ -292,7 +293,7 @@ static void recv_end(DBG_END_TAINTING_FUNC_ALONE)
 
   if (r > 0)
   {
-    nshr_taint_by_fd((reg_t) arg_data.s1, r, arg_data.i1);
+    nshr_taint_by_fd((reg_t) arg_data.s1, r, fds_[arg_data.i1]);
   }
 }
 
@@ -306,9 +307,8 @@ static void connect_begin(DBG_END_TAINTING_FUNC_ALONE)
 
   LTEST("SKIPPER:\t\tConnected to %s.\n", str);
 
-  fds_[r].path = strdup(str);
-  fds_[r].used   = 1;
-  fds_[r].secure = 0;  // FIXME: add checking ips.
+  fds_history_[fds_[r]].path = strdup(str);
+  fds_history_[fds_[r]].secure = 0;  // FIXME: add checking ips.
 
 }
 
@@ -321,6 +321,8 @@ static void accept_end(DBG_END_TAINTING_FUNC_ALONE)
 {
   int r = get_ret();
 
+  fds_[r] = fds_history_index_++;
+
   if (arg_data.v1 != NULL)
   {
     struct sockaddr_in *addr_in = (struct sockaddr_in *) arg_data.v1;
@@ -329,17 +331,16 @@ static void accept_end(DBG_END_TAINTING_FUNC_ALONE)
 
     LTEST("SKIPPER:\t\tAccepted socket from %s.\n", str);
 
-    fds_[r].path = strdup(str);
+    fds_history_[fds_[r]].path = strdup(str);
   }
   else
   {
     LTEST("SKIPPER:\t\tAccepted socket from unknown address.\n");
 
-    fds_[r].path = NULL;
+    fds_history_[fds_[r]].path = NULL;
   }
 
-  fds_[r].used   = 1;
-  fds_[r].secure = 0;  // FIXME: add checking ips.
+  fds_history_[fds_[r]].secure = 0;  // FIXME: add checking ips.
 }
 
 static void ncmp_begin(DBG_END_TAINTING_FUNC_ALONE)
@@ -470,7 +471,7 @@ static void read_end(DBG_END_TAINTING_FUNC_ALONE)
 
   if (r > 0)
   {
-    nshr_taint_by_fd((reg_t) arg_data.s1, r, arg_data.i1);
+    nshr_taint_by_fd((reg_t) arg_data.s1, r, fds_[arg_data.i1]);
   }
 }
 
@@ -621,7 +622,6 @@ static void fopen_end(DBG_END_TAINTING_FUNC_ALONE)
   LTEST("SKIPPER:\t\tFOpened %s at %p.\n", arg_data.s1, r);
 
   files_history_[files_history_index_].path = strdup(arg_data.s1);
-  files_history_[files_history_index_].used   = 1;
   files_history_[files_history_index_].secure = is_path_secure(arg_data.s1);
 
   int *e = (int *) malloc(sizeof(int));
@@ -645,9 +645,10 @@ static void open_end(DBG_END_TAINTING_FUNC_ALONE)
 
   LTEST("SKIPPER:\t\tOpened %s at FD#%d.\n", arg_data.s1, r);
 
-  fds_[r].used   = 1;
-  fds_[r].secure = is_path_secure(arg_data.s1);
-  fds_[r].path = strdup(arg_data.s1);
+  fds_[r] = fds_history_index_++;
+
+  fds_history_[fds_[r]].secure = is_path_secure(arg_data.s1);
+  fds_history_[fds_[r]].path = strdup(arg_data.s1);
 }
 
 static void check_arg0_8(DBG_END_TAINTING_FUNC_ALONE)

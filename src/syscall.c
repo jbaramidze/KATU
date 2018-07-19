@@ -41,9 +41,10 @@ static void post_open(void *drcontext)
   {
     LTEST("Syscall:\tOpened %s as FD#%d.\n", open_path, result);
 
-    fds_[result].used   = 1;
-    fds_[result].secure = is_path_secure(open_path);
-    fds_[result].path = open_path;
+    fds_[result] = fds_history_index_++;
+
+    fds_history_[fds_[result]].secure = is_path_secure(open_path);
+    fds_history_[fds_[result]].path = open_path;
   }
 }
 
@@ -69,7 +70,7 @@ static void post_read(void *drcontext)
   {
     LTEST("Syscall:\tRead %d bytes from FD#%d to %p\n", result, read_fd, read_addr);
 
-    nshr_taint_by_fd((reg_t) read_addr, result, read_fd);
+    nshr_taint_by_fd((reg_t) read_addr, result, fds_[read_fd]);
   }
 }
 

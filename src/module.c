@@ -9,14 +9,6 @@
 
 void dump()
 {
-  /*dr_fprintf(dumpfile, "\n\nStarting dump of IID:\n");
-
-  for (int i = 1; i < nshr_tid_new_iid_get(); i++)
-  {
-    dr_fprintf(dumpfile, "IID #%d\t\t -> id %d index %d\n", i, iids_[i].id, iids_[i].index);
-  }
-  */
-
   dr_fprintf(dumpfile, "\n\nStarting dump of ID:\n");
 
   for (int i = 1; i < nshr_tid_new_id_get(); i++)
@@ -48,7 +40,7 @@ void dump()
 
     if (uids_[i].descr_type == 0)
     {
-      path = fds_[uids_[i].descriptor.fd].path;
+      path = fds_history_[uids_[i].descriptor.fd].path;
     }
     else
     {
@@ -158,12 +150,6 @@ static void nshr_handle_annotation(int index)
 
 void init(void)
 {
-
-  for (int i = 0; i < MAX_FD; i++)
-  {
-    fds_[i].used = false;
-  }
-
   for (int i = 0; i < TAINTMAP_NUM; i++)
   {
     for (int j = 0; j < TAINTMAP_SIZE; j++)
@@ -196,9 +182,6 @@ void init(void)
   hashtable_init_ex(&func_hashtable, HASH_BITS, HASH_INTPTR, false, true, hashtable_del_entry, NULL, NULL);
   hashtable_init_ex(&FILEs_,         4,         HASH_INTPTR, false, true, hashtable_del_entry, NULL, NULL);
 
-  fds_[FD_MANUAL_TAINT].path = cmd_arg_taint_path;
-  fds_[FD_CMD_ARG].path      = cmd_arg_taint_path;
-
   module_data_t *main_module = dr_get_main_module();
 
   main_address = (app_pc) dr_get_proc_address(main_module -> handle, "main");
@@ -211,6 +194,25 @@ void init(void)
   }
 
   dr_free_module_data(main_module);
+
+  // Initialize stdin/stdout/stderr
+  fds_[0] = fds_history_index_++;
+  fds_[1] = fds_history_index_++;
+  fds_[2] = fds_history_index_++;
+
+  fds_history_[fds_[0]].path = "<stdin>";
+  fds_history_[fds_[1]].path = "<stdout>";
+  fds_history_[fds_[2]].path = "<stderr>";
+
+  fds_history_[fds_[0]].secure = 0;
+  fds_history_[fds_[1]].secure = 0;
+  fds_history_[fds_[2]].secure = 0;
+
+  fds_history_[FD_MANUAL_TAINT].path   = cmd_arg_taint_path;
+  fds_history_[FD_MANUAL_TAINT].secure = 0;
+  fds_history_[FD_CMD_ARG].path        = cmd_arg_taint_path;
+  fds_history_[FD_CMD_ARG].secure      = 0;
+
 }
 
 DR_EXPORT void

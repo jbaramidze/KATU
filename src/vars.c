@@ -10,7 +10,6 @@
 TaintMemStruct  taint_mem_;
 TaintRegStruct  taint_reg_;
 instrFunc       instrFunctions[MAX_OPCODE];
-Fd_entity       fds_[MAX_FD];
 enum mode       started_                     = MODE_BEFORE_MAIN; //MODE_BEFORE_MAIN MODE_ACTIVE MODE_IGNORING
 Eflags          eflags_;
 
@@ -18,11 +17,17 @@ UID_entity      uids_[MAX_UID];
 ID_entity       ids_[MAX_ID];
 IID_entity      iids_[MAX_IID];
 
-hashtable_t func_hashtable;
 hashtable_t FILEs_;
+int         fds_[MAX_FD];
 
-Fd_entity   files_history_[1024];
-uint64_t files_history_index_                = 1;
+Fd_entity   files_history_[MAX_FILE_HISTORY];
+Fd_entity fds_history_[MAX_FILE_HISTORY];
+uint64_t files_history_index_                = 1;  // Why 1? try 0.
+uint64_t fds_history_index_                  = 0;
+
+
+hashtable_t func_hashtable;
+
 
 // Used to describe true taint sources (e.g. read())
 int             nextUID                      = 1;
