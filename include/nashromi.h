@@ -515,7 +515,7 @@ void     reg_taint_set_value(int reg, int offset, uint64_t value);
 void log_instr(instr_t *instr);
 instr_t *instr_dupl(instr_t *instr);
 
-reg_t decode_addr(int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC);
+reg_t decode_addr(int seg_reg, int base_reg, int index_reg, int scale, int disp, int check_bounds DBG_END_TAINTING_FUNC);
 void update_eflags(int opcode, int index, int taint1, int taint2);
 void invalidate_eflags();
 void clear_eflags();

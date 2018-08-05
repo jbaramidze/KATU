@@ -499,10 +499,13 @@ void *get_tls_at_offset(int off)
 }
 
 
-reg_t decode_addr(int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC)
+reg_t decode_addr(int seg_reg, int base_reg, int index_reg, int scale, int disp, int check_bounds DBG_END_TAINTING_FUNC)
 {
-  check_bounds_reg(base_reg  DGB_END_CALL_ARG);
-  check_bounds_reg(index_reg DGB_END_CALL_ARG);
+  if (check_bounds == 1)
+  {
+    check_bounds_reg(base_reg  DGB_END_CALL_ARG);
+    check_bounds_reg(index_reg DGB_END_CALL_ARG);
+  }
 
   GET_CONTEXT();
 
@@ -807,6 +810,7 @@ void check_bounds_mem(uint64_t addr, int size DBG_END_TAINTING_FUNC)
       LERROR("Participating ids: ");
       for (int i = 0; i < 8; i++) LERROR("%d, ", ids[i]);
       LERROR("\n");
+
 
       vulnerability_detected();
     }
