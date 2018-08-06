@@ -737,7 +737,9 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      register_handlers(mod, "realloc", check_arg1_8, NULL);                // void *realloc(void *ptr, size_t size);
      register_handlers(mod, "getenv", NULL, taint_retstr);                 // char *getenv(const char *name);
      register_handlers(mod, "strcmp", strcmp_begin, strcmp_end);           // int strcmp(const char *s1, const char *s2);
+     register_handlers(mod, "strcasecmp", strcmp_begin, strcmp_end);       // int strcasecmp(const char *s1, const char *s2);
      register_handlers(mod, "strncmp", ncmp_begin, ncmp_end);              // int strncmp(const char *s1, const char *s2, size_t n);
+     register_handlers(mod, "strncasecmp", ncmp_begin, ncmp_end);          // int strncasecmp(const char *s1, const char *s2, size_t n);
      register_handlers(mod, "memcmp", ncmp_begin, ncmp_begin);             // int memcmp(const void *s1, const void *s2, size_t n);
      register_handlers(mod, "strcpy", strcpy_begin, NULL);                 // char *strcpy(char *dest, const char *src);
      register_handlers(mod, "strncpy", strncpy_begin, NULL);               // char *strncpy(char *dest, const char *src, size_t n);

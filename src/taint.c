@@ -294,24 +294,16 @@ void process_restrictor_imm(int *ids, uint64_t imm2, int size, int type DBG_END_
 {
   if (type == PROP_AND)
   {
-    int tainted_bytes = 0;
+    unsigned char *imm_char = (unsigned char *) &imm2;
 
-    for (int i = 0; i < size; i++) if (ids[i] > 0) tainted_bytes++;
-
-    // # of leading zeros is: # of leading zeros in uint64_t - (part of uint64_t that we don't care about) -
-    // (part of uint64_t that we care about but is not tainted).
-    int leading_zeros = __builtin_clzll(imm2) - (sizeof(imm2) - size)*8 - (size - tainted_bytes)*8;
-
-    float ratio = leading_zeros;
-
-    ratio /= tainted_bytes;
-
-    LDEBUG_TAINT(false, "Restricting with leading zeros ratio %f.\n", ratio);
-
-    // Untaint.
-    if (ratio > 0.5)
+    for (int i = 0; i < 8; i++)
     {
-      for (int i = 0; i < size; i++) ids[i] = -1;
+      int leading_zeros = __builtin_clz(imm_char[i]) - 24;
+
+      if (leading_zeros > 2)
+      {
+        ids[i] = -1;
+      }
     }
   }
   else if (type == PROP_OR || type == PROP_XOR)
