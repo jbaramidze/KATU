@@ -1,5 +1,5 @@
 #define LOGWARNING
-#define LOGTEST
+#define LOGNORMAL
 #define LOGDEBUG
 #undef LOGDUMP
 

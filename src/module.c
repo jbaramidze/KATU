@@ -1,5 +1,6 @@
 #include "dr_api.h"
 #include "drwrap.h"
+#include "drvector.h"
 #include "drmgr.h"
 #include "core/unix/include/syscall.h"
 #include "nashromi.h"
@@ -13,20 +14,15 @@ void dump()
 
   for (int i = 1; i < nshr_tid_new_id_get(); i++)
   {
-    dr_fprintf(dumpfile, "ID #%d\t\t -> uid %d size %d ops_size: %d\n", i, tid_[i].uid, tid_[i].size, tid_[i].ops_size);
+    dr_fprintf(dumpfile, "ID #%d\t\t -> uid %d size %d ops_size: %d\n", i, tid_[i].uid, tid_[i].size, ID2OPSIZE(i));
 
-    if (tid_[i].ops_size > 0)
+    if (ID2OPSIZE(i) > 0)
     {
       dr_fprintf(dumpfile, "\tOperations:\n");
-      if (tid_[i].ops_size > DEFAULT_OPERATIONS)
-      {
-        FAIL();
-      }
 
-      for (int j = 0; j < tid_[i].ops_size; j++)
+      for (unsigned int j = 0; j < ID2OPSIZE(i); j++)
       {
-        dr_fprintf(dumpfile, "\tOperation #%d: '%s' by %lld\n", j, PROP_NAMES[tid_[i].ops[j].type],
-          tid_[i].ops[j].value);
+        dr_fprintf(dumpfile, "\tOperation #%d: '%s' by %lld\n", j, PROP_NAMES[ID2OPTYPE(i, j)], ID2OPVAL(i, j));
       }
     }
   }
@@ -167,17 +163,19 @@ void init(void)
     }
   }
 
+  uid_ = (UID_entity *) malloc(MAX_UID * sizeof(UID_entity));
+  tid_ = (ID_entity *) malloc(MAX_ID * sizeof(ID_entity));
+
+  if (uid_ == NULL || tid_ == NULL)
+  {
+    FAIL();
+  }
+
   nshr_init_opcodes();
 
   eflags_.valid = -1;
 
-  lp = make_lp(0, ILP_MAX_CONSTR);
-  set_outputstream(lp, logfile_stream);
-
-  if (lp == NULL)
-  {
-    DIE("ERROR! Failed making LP\n");
-  }
+  init_ilp();
 
   hashtable_init_ex(&func_hashtable, HASH_BITS, HASH_INTPTR, false, true, hashtable_del_entry, NULL, NULL);
   hashtable_init_ex(&FILEs_,         4,         HASH_INTPTR, false, true, hashtable_del_entry, NULL, NULL);
@@ -186,11 +184,19 @@ void init(void)
 
   main_address = (app_pc) dr_get_proc_address(main_module -> handle, "main");
 
+  // Try another mechanism before failing
   if (main_address == NULL)
   {
-    dr_printf("ERROR! Failed getting address for main!!!!.\n");
+    size_t modoffs;
 
-    FAIL();
+    if (drsym_lookup_symbol(main_module -> full_path, "main", &modoffs, DRSYM_DEFAULT_FLAGS) != DRSYM_SUCCESS)
+    {
+      dr_printf("ERROR! Failed getting address for main!!!!.\n");
+
+      FAIL();
+    }
+
+    main_address = main_module -> start + modoffs;
   }
 
   dr_free_module_data(main_module);
@@ -277,4 +283,5 @@ dr_init(client_id_t client_id)
   init();
 
   dr_printf("Info:\t\tStarted!\n");
+
 }

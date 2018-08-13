@@ -1,40 +1,42 @@
 #define LOGWARNING
-#define LOGTEST
+#define LOGNORMAL
 #define LOGDEBUG
-#undef LOGDUMP
+#define LOGDUMP
 
 #include "dr_api.h"
 #include "nashromi.h"
 
 static REAL KS[2048];
 
+#define MAX_CONSTRAINTS 1000
+
 // Used by recursively_get_uids, for objective function.
 
-static int uid_objective_map[MAX_UID];
-static int uid_objective_vector[MAX_UID][2];
+static int *uid_objective_map;
+static int uid_objective_vector[MAX_CONSTRAINTS][2];
 static int uid_objective_vector_size;
 
 // Used by recursively_get_uids, for constraints.
 
-static int uid_constr_map[MAX_UID];
-static int uid_constr_vector[MAX_UID][2];
+static int *uid_constr_map;
+static int uid_constr_vector[MAX_CONSTRAINTS][2];
 static int uid_constr_vector_size;
 
 // Used by to keep info about all the uids that matter.
 
-static int uid_total_map[MAX_UID];
-static int uid_total_vector[MAX_UID];
+static int *uid_total_map;
+static int uid_total_vector[MAX_CONSTRAINTS];
 static int uid_total_vector_size;
 
 // Temporary one used to pass to ilp_*
 
-static int uids_t[MAX_UID];
+static int uids_t[MAX_CONSTRAINTS];
 
 // We need it to map uid's to integers.
 // Will use uid_total_map.
 
 static int uid_counter;
-static int uid_total[MAX_UID];
+static int uid_total[MAX_CONSTRAINTS];
 
 void reset_KS()
 {
@@ -49,7 +51,7 @@ void reset_KS()
   return;
 }
 
-void ilp_bound(int *input, int size, int type)
+void add_constr(int *input, int size, int type)
 {
   if (size > 1024) 
   {
@@ -70,7 +72,7 @@ void ilp_bound(int *input, int size, int type)
   }
 }
 
-void ilp_objective(int *input, int size)
+void add_objective(int *input, int size)
 {
   if (size > 1024) 
   {
@@ -91,14 +93,19 @@ void ilp_objective(int *input, int size)
   }
 }
 
+//
+// For given TID, constructs a uid_objective_vector by 
+// recursively iterating over TID's operations.
+//
 
-static void recursively_get_uid_objective(int id, int type)
+static void recursively_get_uid_objective(int tid, int type)
 {
   int id_began_at = uid_objective_vector_size;
 
-  if (uid_objective_map[ID2UID(id)] == -1)
+  // Add TID's base UID.
+  if (uid_objective_map[ID2UID(tid)] == -1)
   {
-    uid_objective_vector[uid_objective_vector_size][0] = ID2UID(id);
+    uid_objective_vector[uid_objective_vector_size][0] = ID2UID(tid);
 
     if (type == PROP_ADD)
     {
@@ -111,14 +118,25 @@ static void recursively_get_uid_objective(int id, int type)
 
     uid_objective_vector_size++;
 
-    uid_objective_map[ID2UID(id)] = uid_counter;
+    if (uid_objective_vector_size >= MAX_CONSTRAINTS)
+    {
+      FAIL();
+    }
 
-    uid_total[uid_counter++] = ID2UID(id);
+    uid_objective_map[ID2UID(tid)] = uid_counter;
+
+    uid_total[uid_counter++] = ID2UID(tid);
+
+    if (uid_counter > MAX_CONSTRAINTS)
+    {
+      FAIL();
+    }
   }
 
-  for (int i = 0; i < ID2OPSIZE(id); i++)
+  // Iterate over TID's operations.
+  for (unsigned int i = 0; i < ID2OPSIZE(tid); i++)
   {
-    if (ID2OP(id, i).type == PROP_NEG)
+    if (ID2OPTYPE(tid, i) == PROP_NEG)
     {
       for (int i = 2*id_began_at; i < 2*uid_objective_vector_size; i++)
       {
@@ -127,7 +145,7 @@ static void recursively_get_uid_objective(int id, int type)
     }
     else
     {
-      recursively_get_uid_objective(ID2OP(id, i).value, ID2OP(id, i).type);
+      recursively_get_uid_objective(ID2OPVAL(tid, i), ID2OPTYPE(tid, i));
     }
   }
 }
@@ -155,6 +173,11 @@ static void recursively_get_uid_constr(int id, int type)
 
     uid_constr_vector_size++;
 
+    if (uid_constr_vector_size >= MAX_CONSTRAINTS)
+    {
+      FAIL();
+    }
+
     uid_constr_map[ID2UID(id)] = 1;
   }
 
@@ -164,12 +187,22 @@ static void recursively_get_uid_constr(int id, int type)
     uid_total_vector[uid_total_vector_size++] = ID2UID(id);
     uid_total_map[ID2UID(id)] = uid_counter;
 
+    if (uid_total_vector_size >= MAX_CONSTRAINTS)
+    {
+      FAIL();
+    }
+
     uid_total[uid_counter++] = ID2UID(id);
+
+    if (uid_counter > MAX_CONSTRAINTS)
+    {
+      FAIL();
+    }
   }
 
-  for (int i = 0; i < ID2OPSIZE(id); i++)
+  for (unsigned int i = 0; i < ID2OPSIZE(id); i++)
   {
-    if (ID2OP(id, i).type == PROP_NEG)
+    if (ID2OPTYPE(id, i) == PROP_NEG)
     {
       for (int i = 2*id_began_at; i < 2*uid_constr_vector_size; i++)
       {
@@ -178,34 +211,37 @@ static void recursively_get_uid_constr(int id, int type)
     }
     else
     {
-      recursively_get_uid_constr(ID2OP(id, i).value, ID2OP(id, i).type);
+      recursively_get_uid_constr(ID2OPVAL(id, i), ID2OPTYPE(id, i));
     }
   }
 }
 
 int solve_ilp_for_id(int id DBG_END_TAINTING_FUNC)
 {
-  LDEBUG("ILP:\tStarting ILP for ID#%d.\n", id);
+  LDEBUG("ILP:\tStarting ILP for ID#%d OPS %d.\n", id, ID2OPSIZE(id));
 
   uid_counter = 1;
 
   reset_KS();
 
-  /*
-  Get uids paticipating in this id.
-  */
-
+  // Construct the objectve function.
   for(int i = 0; i < MAX_UID; i++) 
            uid_objective_map[i] = -1;
   uid_objective_vector_size = 0;
 
   recursively_get_uid_objective(id, PROP_ADD);
 
+  // Copy the uid's to TOTAL vector.
+
   uid_total_vector_size = uid_objective_vector_size;
 
   for (int i = 0; i < MAX_UID; i++)
   {
     uid_total_map[i]    = uid_objective_map[i];
+  }
+
+  for (int i = 0; i < MAX_CONSTRAINTS; i++)
+  {
     uid_total_vector[i] = uid_objective_vector[i][0];
   }
 
@@ -221,24 +257,24 @@ int solve_ilp_for_id(int id DBG_END_TAINTING_FUNC)
 
   for (int i = 0; i < uid_objective_vector_size; i++) 
   {
-      uids_t[i] = uid_total_map[uid_objective_vector[i][0]];
+    uids_t[i] = uid_total_map[uid_objective_vector[i][0]];
 
-      if (uid_objective_vector[i][1] == -1)
-      {
-        KS[2*i]*= -1;
-        KS[2*i + 1]*= -1;
-      }
+    if (uid_objective_vector[i][1] == -1)
+    {
+      KS[2*i]*= -1;
+      KS[2*i + 1]*= -1;
+    }
   }
 
   set_add_rowmode(lp, FALSE);
 
-  ilp_objective(uids_t, uid_objective_vector_size);
+  add_objective(uids_t, uid_objective_vector_size);
 
   reset_KS();
 
   /*
-  For each uid, get constraint lists,
-  while adding new uids as we proceed
+  For each UID from TOTAL vector, which we got while constructing objective, get constraint lists,
+  while adding new UIDs as we proceed
   */
 
   while (uid_total_vector_size > 0)
@@ -248,17 +284,17 @@ int solve_ilp_for_id(int id DBG_END_TAINTING_FUNC)
     // Before moving on to group restrictions, add direct ones.
     if (uid_[curr_uid].bounded & TAINT_BOUND_LOW)
     {
-      ilp_bound(&uid_total_map[curr_uid], 1, LE);
+      add_constr(&uid_total_map[curr_uid], 1, LE);
     }
 
     if (uid_[curr_uid].bounded & TAINT_BOUND_HIGH)
     {
-      ilp_bound(&uid_total_map[curr_uid], 1, GE);
+      add_constr(&uid_total_map[curr_uid], 1, GE);
     }
 
     if (uid_[curr_uid].bounded & TAINT_BOUND_FIX)
     {
-      ilp_bound(&uid_total_map[curr_uid], 1, EQ);
+      add_constr(&uid_total_map[curr_uid], 1, EQ);
     }   
 
     Group_restriction *gr = uid_[curr_uid].gr;
@@ -299,16 +335,16 @@ int solve_ilp_for_id(int id DBG_END_TAINTING_FUNC)
 
       if (gr -> bound_type & TAINT_BOUND_LOW)
       {
-        ilp_bound(uids_t, uid_constr_vector_size, LE);
+        add_constr(uids_t, uid_constr_vector_size, LE);
       }
       if (gr -> bound_type & TAINT_BOUND_HIGH)
       {
-        ilp_bound(uids_t, uid_constr_vector_size, GE);
+        add_constr(uids_t, uid_constr_vector_size, GE);
       }
       if (gr -> bound_type & TAINT_BOUND_FIX)
       {
-        ilp_bound(uids_t, uid_constr_vector_size, LE);
-        ilp_bound(uids_t, uid_constr_vector_size, GE);
+        add_constr(uids_t, uid_constr_vector_size, LE);
+        add_constr(uids_t, uid_constr_vector_size, GE);
       }
 
       reset_KS();
@@ -378,6 +414,27 @@ int solve_ilp_for_id(int id DBG_END_TAINTING_FUNC)
   else
   {
     return 0;
+  }
+}
+
+void init_ilp()
+{
+  lp = make_lp(0, ILP_MAX_CONSTR);
+  
+  set_outputstream(lp, logfile_stream);
+
+  if (lp == NULL)
+  {
+    DIE("ERROR! Failed making LP\n");
+  }
+
+  uid_objective_map = (int *) malloc(MAX_UID * sizeof (int));
+  uid_constr_map = (int *) malloc(MAX_UID * sizeof (int));
+  uid_total_map = (int *) malloc(MAX_UID * sizeof (int));
+
+  if (uid_objective_map == NULL || uid_constr_map == NULL || uid_total_map == NULL)
+  {
+    FAIL();
   }
 }
 

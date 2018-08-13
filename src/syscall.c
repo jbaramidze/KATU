@@ -1,4 +1,4 @@
-#define LOGTEST
+#define LOGNORMAL
 #define LOGDEBUG
 #define LOGDUMP
 

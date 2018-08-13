@@ -1,5 +1,5 @@
 #define LOGWARNING
-#define LOGTEST
+#define LOGNORMAL
 #define LOGDEBUG
 #undef LOGDUMP
 
@@ -376,6 +376,24 @@ static void strcmp_end(DBG_END_TAINTING_FUNC_ALONE)
   }
 }
 
+
+// TODO: test those
+static void strdup_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  arg_data.s1 = (const char *) get_arg(0);
+}
+
+static void strdup_end(DBG_END_TAINTING_FUNC_ALONE)
+{  
+  const char *dst = (const char *) get_ret();
+
+  if (dst != NULL)
+  {
+    nshr_taint_mv_constmem2constmem((uint64) arg_data.s1, (uint64) dst, strlen(dst) DGB_END_CALL_ARG);
+  }
+}
+
+
 static void toupper_begin(DBG_END_TAINTING_FUNC_ALONE)
 {
   int reg = get_arg_reg(0, sizeof(int));
@@ -651,6 +669,15 @@ static void open_end(DBG_END_TAINTING_FUNC_ALONE)
   fds_history_[fds_[r]].path = strdup(arg_data.s1);
 }
 
+static void check_arg01_8(DBG_END_TAINTING_FUNC_ALONE)
+{
+  int reg0 = get_arg_reg(0, sizeof(size_t));
+  int reg1 = get_arg_reg(1, sizeof(size_t));
+
+  check_bounds_reg(reg0 DGB_END_CALL_ARG);
+  check_bounds_reg(reg1 DGB_END_CALL_ARG);
+}
+
 static void check_arg0_8(DBG_END_TAINTING_FUNC_ALONE)
 {
   int reg = get_arg_reg(0, sizeof(size_t));
@@ -673,6 +700,22 @@ static void taint_retstr(DBG_END_TAINTING_FUNC_ALONE)
   {
     taint_str(str);
   }
+}
+
+// TODO: test those
+static void mmap_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  arg_data.i1 = (int ) get_arg(1); // length
+  arg_data.i2 = (int ) get_arg(4); // fd
+}
+
+static void mmap_end(DBG_END_TAINTING_FUNC_ALONE)
+{
+  const char *ret = (const char *) get_ret();
+
+  LTEST("SKIPPER:\t\tTainting string at %p, %d bytes.\n", ret, arg_data.i1);
+
+  nshr_taint_by_fd((reg_t) ret, arg_data.i1, arg_data.i2);
 }
 
 static void ignore_handlers(const module_data_t *mod, const char *function)
@@ -734,6 +777,7 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
    {
      register_handlers(mod, "scanf", pre_scanf, post_scanf);
      register_handlers(mod, "malloc", check_arg0_8, NULL);                 // void *malloc(size_t size);
+     register_handlers(mod, "calloc", check_arg01_8, NULL);                // void *calloc(size_t nmemb, size_t size);
      register_handlers(mod, "realloc", check_arg1_8, NULL);                // void *realloc(void *ptr, size_t size);
      register_handlers(mod, "getenv", NULL, taint_retstr);                 // char *getenv(const char *name);
      register_handlers(mod, "strcmp", strcmp_begin, strcmp_end);           // int strcmp(const char *s1, const char *s2);
@@ -760,7 +804,10 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      register_handlers(mod, "atoi", atoi_begin, atoi_end);                 // int atoi(const char *nptr);
      register_handlers(mod, "toupper", toupper_begin, toupper_end);        // int toupper(int c);
      register_handlers(mod, "tolower", toupper_begin, toupper_end);        // int tolower(int c);
+     register_handlers(mod, "strdup", strdup_begin, strdup_end);           // char *strdup(const char *s);
      register_handlers(mod, "qsort", check_arg1_8, NULL);                  // void qsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *));
+     register_handlers(mod, "mmap", mmap_begin, mmap_end);                 // void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
+
 
 
 
@@ -771,6 +818,7 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "fwrite");
      ignore_handlers(mod, "fflush");
      ignore_handlers(mod, "fseek");
+     ignore_handlers(mod, "fcntl");
      ignore_handlers(mod, "ftell");
      ignore_handlers(mod, "write");
      ignore_handlers(mod, "send");
@@ -784,6 +832,12 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "fprintf");
      ignore_handlers(mod, "bsd_signal");
      ignore_handlers(mod, "getpid");
+     ignore_handlers(mod, "setlocale");
+     ignore_handlers(mod, "strchr");
+     ignore_handlers(mod, "strstr");
+     ignore_handlers(mod, "strrchr");
+     ignore_handlers(mod, "getopt");
+     ignore_handlers(mod, "getopt_long");
      ignore_handlers(mod, "getuid");
      ignore_handlers(mod, "exit");
      ignore_handlers(mod, "htons");
@@ -805,6 +859,21 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "__printf_chk");
      ignore_handlers(mod, "__lxstat");
      ignore_handlers(mod, "_IO_puts");
+     ignore_handlers(mod, "wcwidth");
+     ignore_handlers(mod, "newlocale");
+     ignore_handlers(mod, "uselocale");
+     ignore_handlers(mod, "freelocale");
+     ignore_handlers(mod, "regcomp");
+     ignore_handlers(mod, "regexec");
+     ignore_handlers(mod, "regfree");
+
+
+     // Ignoring some precision here, TODO for future:
+     // think if we can improve it.
+     ignore_handlers(mod, "asprintf");
+     ignore_handlers(mod, "sprintf");
+     ignore_handlers(mod, "vasprintf");
+     ignore_handlers(mod, "mbrtowc");
      
    }
    else if (strncmp(dr_module_preferred_name(mod), "ld-linux-x86-64.so", 18) == 0)

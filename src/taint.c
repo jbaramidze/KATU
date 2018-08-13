@@ -1,4 +1,4 @@
-#define LOGTEST
+#define LOGNORMAL
 #define LOGDEBUG
 #undef  LOGDUMP
 
@@ -268,11 +268,7 @@ int process_restrictor_id(int *ids1, int *ids2, int size, int type DBG_END_TAINT
       {
         ids1[i] = ids2[i];
       }
-      else if (ids1[i] == -1 && ids2[i] == -1)
-      {
-        // Nothing to do.
-      }
-      else if (ids1[i] != -1 && ids2[i] == -1)
+      else if (ids2[i] == -1)
       {
         // Nothing to do.
       }

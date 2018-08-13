@@ -1,5 +1,5 @@
 #define LOGWARNING
-#define LOGTEST
+#define LOGNORMAL
 #define LOGDEBUG
 #undef LOGDUMP
 
@@ -13,8 +13,8 @@ instrFunc       instrFunctions[MAX_OPCODE];
 enum mode       started_                     = MODE_BEFORE_MAIN; //MODE_BEFORE_MAIN MODE_ACTIVE MODE_IGNORING
 Eflags          eflags_;
 
-UID_entity      uid_[MAX_UID];
-ID_entity       tid_[MAX_ID];
+UID_entity      *uid_;
+ID_entity       *tid_;
 
 hashtable_t FILEs_;
 int         fds_[MAX_FD];
@@ -103,9 +103,9 @@ int prop_is_cond_mov(enum prop_type type )
 
 int nshr_tid_new_id(int uid)
 {
-  tid_[nextID].uid      = uid;
-  tid_[nextID].ops_size = 0;
-  tid_[nextID].negated  = 0;
+  tid_[nextID].uid        = uid;
+  tid_[nextID].ops_vector = NULL;
+  tid_[nextID].negated    = 0;
 
   if (nextID >= MAX_ID)
   {
@@ -135,16 +135,31 @@ int nshr_tid_copy_id(int id)
   First copy everything from old id.
   */
 
-  tid_[newid].ops_size = tid_[id].ops_size;
+  int old_size = 0;
+
+  if (tid_[id].ops_vector == NULL)
+  {
+    tid_[newid].ops_vector = NULL;
+  }
+  else
+  {
+    ID2OPS(newid) = (drvector_t *) malloc(sizeof(drvector_t));
+
+    old_size = ID2OPS(id) -> entries;
+
+    drvector_init(ID2OPS(newid), old_size, false, NULL);
+  }
+
   tid_[newid].negated  = tid_[id].negated;
   tid_[newid].size     = tid_[id].size;
 
   int i;
 
-  for (i = 0; i < tid_[id].ops_size; i++)
+  for (i = 0; i < old_size; i++)
   {
-    tid_[newid].ops[i].type  = tid_[id].ops[i].type;
-    tid_[newid].ops[i].value = tid_[id].ops[i].value;
+    tid_[newid].ops_vector -> array[i] = malloc(sizeof(Operations));
+    ID2OPTYPE(newid, i) = ID2OPTYPE(id, i);
+    ID2OPVAL(newid, i)  = ID2OPVAL(id, i);
   }
 
   return newid;
@@ -162,22 +177,24 @@ void nshr_id_add_op(int id, enum prop_type operation, int modify_by)
   }
   
   // First make sure id is not already in operations list;
-  for (int i = 0; i < ID2OPSIZE(id); i++)
+  for (unsigned int i = 0; i < ID2OPSIZE(id); i++)
   {
-    if (ID2OP(id, i).value == modify_by &&
-        ID2OP(id, i).type  == PROP_ADD &&
+    if (ID2OPVAL(id, i) == modify_by &&
+        ID2OPTYPE(id, i)  == PROP_ADD &&
         operation == PROP_ADD) return;
   }
 
-  ID2OP(id, ID2OPSIZE(id)).type  = operation;
-  ID2OP(id, ID2OPSIZE(id)).value = modify_by;
+  Operations *newop = (Operations *) malloc(sizeof(Operations));
+  newop -> type = operation;
+  newop -> value = modify_by;
 
-  ID2OPSIZE(id)++;
-
-  if (ID2OPSIZE(id) >= DEFAULT_OPERATIONS)
+  if (ID2OPS(id) == NULL)
   {
-    FAIL();
+    ID2OPS(id) = (drvector_t *) malloc(sizeof(drvector_t));
+    drvector_init(ID2OPS(id), INITIAL_OPERATIONS, false, NULL);
   }
+
+  drvector_append(ID2OPS(id), newop);
 }
 
 static int lower_bound(int uid)
@@ -726,9 +743,9 @@ int check_bounds_separately(int *ids DBG_END_TAINTING_FUNC)
       vuln1 = 1;
     }
 
-    for (int i = 0; i < ID2OPSIZE(id); i++)
+    for (unsigned int i = 0; i < ID2OPSIZE(id); i++)
     {
-      int tuid = ID2OP(id, i).value;
+      int tuid = ID2OPVAL(id, i);
 
       if (!lower_bound(uid) || !higher_bound(uid))
       {
@@ -755,7 +772,7 @@ int check_bounds_separately(int *ids DBG_END_TAINTING_FUNC)
   {
     return -1;
   }
-  else if (tainted_ids == well_bounds)
+  else if (tainted_ids == well_bounds || tainted_ids <= 1)
   {
     return 1;
   }

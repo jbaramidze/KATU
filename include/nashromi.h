@@ -5,6 +5,7 @@
 #include "drsyms.h"
 #include "lp_lib.h"
 #include "hashtable.h"
+#include "drvector.h"
 
 // Do additional checks, while testing
 #define CHECKS
@@ -36,7 +37,7 @@
   
   #if defined LOGDEBUG
   #define LDEBUG_TAINT(A, ...) { log_instr(dbg_instr); dr_fprintf(logfile, __VA_ARGS__); }
-  #elif defined LOGTEST
+  #elif defined LOGNORMAL
   #define LDEBUG_TAINT(A, ...) if (A) { log_instr(dbg_instr); dr_fprintf(logfile, __VA_ARGS__); }
   #else
   #define LDEBUG_TAINT(A, ...)
@@ -44,7 +45,7 @@
   
   #if defined LOGDUMP
   #define LDUMP_TAINT(i, A, ...) { log_instr(dbg_instr); dr_fprintf(logfile, __VA_ARGS__); }
-  #elif defined LOGTEST
+  #elif defined LOGNORMAL
   #define LDUMP_TAINT(i, A, ...) if ((A) && i == 0) { log_instr(dbg_instr); dr_fprintf(logfile, __VA_ARGS__); }
   #else
   #define LDUMP_TAINT(i, A, ...)
@@ -66,7 +67,7 @@
   
   #if defined LOGDEBUG
   #define LDEBUG_TAINT(A, ...) dr_fprintf(logfile, __VA_ARGS__)
-  #elif defined LOGTEST
+  #elif defined LOGNORMAL
   #define LDEBUG_TAINT(A, ...) if (A) dr_fprintf(logfile, __VA_ARGS__)
   #else
   #define LDEBUG_TAINT(A, ...)
@@ -74,7 +75,7 @@
   
   #if defined LOGDUMP
   #define LDUMP_TAINT(i, A, ...) dr_fprintf(logfile, __VA_ARGS__)
-  #elif defined LOGTEST
+  #elif defined LOGNORMAL
   #define LDUMP_TAINT(i, A, ...) if ((A) && i == 0) dr_fprintf(logfile, __VA_ARGS__)        
   #else
   #define LDUMP_TAINT(i, A, ...)
@@ -91,13 +92,12 @@
 //
 
 #define MAX_FD                255
-#define MAX_UID               100000
+#define MAX_UID               1000000
 #define MAX_ID                1000000
-#define MAX_IID               1000000
 #define MAX_OPCODE            2048
 #define MAX_FILE_HISTORY      1024
-#define DEFAULT_OPERATIONS    64
-#define TAINTMAP_NUM          10
+#define INITIAL_OPERATIONS    4
+#define TAINTMAP_NUM          20
 #define TAINTMAP_SIZE         65536
 #define ILP_MAX_CONSTR        1000
 #define HASH_BITS             13
@@ -258,8 +258,7 @@ typedef struct {
 
 typedef struct {
   int uid;
-  Operations ops[DEFAULT_OPERATIONS];
-  int ops_size;
+  drvector_t *ops_vector;
 
   int negated;
 
@@ -390,8 +389,11 @@ static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 
 #define ID2UID(id)                          (tid_[id].uid)
 #define ID2SIZE(id)                         (tid_[id].size)
-#define ID2OPSIZE(id)                       (tid_[id].ops_size)
-#define ID2OP(id, index)                    (tid_[id].ops[index])
+#define ID2OPSIZE(id)                       ((tid_[id].ops_vector == NULL) ? 0 : tid_[id].ops_vector -> entries)
+#define ID2OPTYPE(id, index)                (((Operations *) tid_[id].ops_vector -> array[index]) -> type)
+#define ID2OPVAL(id, index)                 (((Operations *) tid_[id].ops_vector -> array[index]) -> value)
+#define ID2OPS(id)                          (tid_[id].ops_vector)
+
 //
 // Logging definitions.
 //
@@ -403,7 +405,7 @@ static const int sizes_to_indexes[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3 };
 #endif
 
 
-#ifdef LOGTEST
+#ifdef LOGNORMAL
 #define LTEST(...) dr_fprintf(logfile, __VA_ARGS__)
 #else
 #define LTEST(...) 
@@ -447,8 +449,8 @@ extern uint64_t fds_history_index_;
 extern int   fds_[MAX_FD];
 extern hashtable_t FILEs_;
 
-extern UID_entity uid_[MAX_UID];
-extern ID_entity  tid_[MAX_ID];
+extern UID_entity *uid_;
+extern ID_entity  *tid_;
 
 extern instrFunc instrFunctions[MAX_OPCODE];
 
@@ -657,6 +659,7 @@ void nshr_taint_check_jmp_immed(uint64_t pc_from, uint64_t pc DBG_END_TAINTING_F
 dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr_t *inst, bool for_trace, 
                                 bool translating, void *user_data);
 void nshr_init_opcodes(void);
+void init_ilp(void);
 
 void module_load_event(void *drcontext, const module_data_t *mod, bool loaded);
 int is_path_secure(const char *path);
