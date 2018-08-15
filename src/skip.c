@@ -776,7 +776,6 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
    if (strncmp(dr_module_preferred_name(mod), "libc.so", 7) == 0)
    {
      register_handlers(mod, "scanf", pre_scanf, post_scanf);
-     register_handlers(mod, "malloc", check_arg0_8, NULL);                 // void *malloc(size_t size);
      register_handlers(mod, "calloc", check_arg01_8, NULL);                // void *calloc(size_t nmemb, size_t size);
      register_handlers(mod, "realloc", check_arg1_8, NULL);                // void *realloc(void *ptr, size_t size);
      register_handlers(mod, "getenv", NULL, taint_retstr);                 // char *getenv(const char *name);
@@ -797,6 +796,7 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      register_handlers(mod, "fgets", fgets_begin, fgets_end);              // char *fgets(char *s, int size, FILE *stream);
      register_handlers(mod, "fclose", fclose_begin, NULL);                 // int fclose(FILE *stream);
      register_handlers(mod, "read", read_begin, read_end);                 // ssize_t read(int fd, void *buf, size_t count);
+     register_handlers(mod, "pread", read_begin, read_end);                // ssize_t pread(int fd, void *buf, size_t count, off_t offset);
      register_handlers(mod, "accept", accept_begin, accept_end);           // int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
      register_handlers(mod, "connect", connect_begin, NULL);               // int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
      register_handlers(mod, "recv", recv_begin, recv_end);                 // ssize_t recv(int sockfd, void *buf, size_t len, int flags);
@@ -818,6 +818,7 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "fwrite");
      ignore_handlers(mod, "fflush");
      ignore_handlers(mod, "fseek");
+     ignore_handlers(mod, "lseek");
      ignore_handlers(mod, "fcntl");
      ignore_handlers(mod, "ftell");
      ignore_handlers(mod, "write");
@@ -866,6 +867,8 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "regcomp");
      ignore_handlers(mod, "regexec");
      ignore_handlers(mod, "regfree");
+     ignore_handlers(mod, "malloc");
+     ignore_handlers(mod, "iswprint");
 
 
      // Ignoring some precision here, TODO for future:

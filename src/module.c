@@ -99,6 +99,11 @@ event_exit(void)
   dr_close_file(logfile);
   dr_close_file(dumpfile);
 
+  finish_ilp();
+
+  free(uid_);
+  free(tid_);
+
   dr_printf("Info:\t\tExitting.\n");
 }
 

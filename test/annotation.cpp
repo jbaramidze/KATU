@@ -22,14 +22,15 @@ const char *path1 = "/home/zhani/Thesis/test/zaza";
 const char *path2 = "/home/zhani/Thesis/test/zaza1";
 
 int main () {
-  int a = 100;
-  nshrtaint((long long int) &a, 4);
-  a = a & 0x00FF0000;
 
-  char *q = (char *) &a;
-  nshr_dump_taint((long long int) &q[0]);
-  nshr_dump_taint((long long int) &q[1]);
-  nshr_dump_taint((long long int) &q[2]);
-  nshr_dump_taint((long long int) &q[3]);
+long long a = 10;
+
+asm volatile (
+      "mov $32141000000000, %%rax \n \t"
+      "mov $2, %%eax"
+       : "=a" (a) ::
+);
+
+  printf("%lld\n", a);
   return 0;
 }

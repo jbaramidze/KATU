@@ -92,12 +92,12 @@
 //
 
 #define MAX_FD                255
-#define MAX_UID               1000000
-#define MAX_ID                1000000
+#define MAX_UID               10000000
+#define MAX_ID                10000000
 #define MAX_OPCODE            2048
 #define MAX_FILE_HISTORY      1024
 #define INITIAL_OPERATIONS    4
-#define TAINTMAP_NUM          20
+#define TAINTMAP_NUM          50
 #define TAINTMAP_SIZE         65536
 #define ILP_MAX_CONSTR        1000
 #define HASH_BITS             13
@@ -534,6 +534,7 @@ int check_bounds_id(int *ids DBG_END_TAINTING_FUNC);
 int solve_ilp(int *ids DBG_END_TAINTING_FUNC);
 
 drsym_info_t *get_func(app_pc pc);
+void fix_dest_reg(int dst_reg);
 
 
 /****************************************************
@@ -660,6 +661,7 @@ dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr
                                 bool translating, void *user_data);
 void nshr_init_opcodes(void);
 void init_ilp(void);
+void finish_ilp(void);
 
 void module_load_event(void *drcontext, const module_data_t *mod, bool loaded);
 int is_path_secure(const char *path);

@@ -224,6 +224,8 @@ void nshr_taint_mv_constmem2regzx(uint64 addr, int dst_reg, int extended_from_si
   {
     REGTAINTRM(dst_reg, i);
   }
+
+  fix_dest_reg(dst_reg);
 }
 
 void nshr_taint_mv_constmem2regsx(uint64 addr, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC)
@@ -251,6 +253,8 @@ void nshr_taint_mv_constmem2reg(uint64 addr, int dst_reg DBG_END_TAINTING_FUNC)
 
     MEMTAINT2REGTAINT(index, addr + i, dst_reg, i);
   }
+
+  fix_dest_reg(dst_reg);
 }
 
 
@@ -906,6 +910,8 @@ void nshr_taint_cond_set_reg(int dst_reg, int type, instr_t *instr DBG_END_TAINT
   {
     REGTAINTRM(dst_reg, i);
   }
+
+  fix_dest_reg(dst_reg);
 }
 
 void nshr_taint_cond_jmp(instr_t *instr, int type DBG_END_TAINTING_FUNC)
@@ -1260,6 +1266,8 @@ void nshr_taint_mv_reg2reg(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
 
     REGTAINT2REGTAINT(src_reg, i, dst_reg, i);
   }
+
+  fix_dest_reg(dst_reg);
 }
 
 void nshr_taint_mv_reg2regzx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
@@ -1291,6 +1299,8 @@ void nshr_taint_mv_reg2regzx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
 
     REGTAINTRM(dst_reg, i);
   }
+
+  fix_dest_reg(dst_reg);
 }
 
 
@@ -1312,6 +1322,8 @@ void nshr_taint_mv_regbyte2regsx(int src_reg, int src_index, int dst_reg DBG_END
 
      REGTAINTRM(dst_reg, i);
   }
+
+  fix_dest_reg(dst_reg);
 }
 
 void nshr_taint_mv_reg2regsx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
@@ -1337,6 +1349,8 @@ void nshr_taint_mv_reg2regsx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC)
   {
      REGTAINTRM(dst_reg, i);
   }
+
+  fix_dest_reg(dst_reg);
 }
 
 // dst_reg = dst_reg+src (or 1, ^, &, depending on type)
@@ -1380,6 +1394,8 @@ void nshr_taint_mix_constmem2reg(uint64 addr, int dst_reg, int type DBG_END_TAIN
       // nothing to do: dst_taint stays whatever it was.
     }
   }
+
+  fix_dest_reg(dst_reg);
 }
 
 // dst = dst+src_reg (or 1, ^, &, depending on type)
@@ -1468,6 +1484,8 @@ void nshr_taint_mix_mem2reg(int seg_reg, int base_reg, int index_reg, int scale,
       // Nothing to do.
     }
   }
+
+  fix_dest_reg(dst_reg);
 }
 
 // dst_reg = src_reg+dst_reg (or 1, ^, &, depending on type)
@@ -1506,22 +1524,25 @@ void nshr_taint_mix_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING_
       REGTAINT2REGTAINT(src_reg, i, dst_reg, i);
     }
   }
+
+  fix_dest_reg(dst_reg);
 }
 
-void nshr_taint_mv_reg_rm(int mask DBG_END_TAINTING_FUNC)
+void nshr_taint_mv_reg_rm(int dst_reg DBG_END_TAINTING_FUNC)
 {
   STOP_IF_NOT_ACTIVE();
 
-  LDEBUG_TAINT(false, "REMOVE REG %s size %d\n", REGNAME(mask), REGSIZE(mask));
+  LDEBUG_TAINT(false, "REMOVE REG %s size %d\n", REGNAME(dst_reg), REGSIZE(dst_reg));
 
-  for (unsigned int i = 0; i < REGSIZE(mask); i++)
+  for (unsigned int i = 0; i < REGSIZE(dst_reg); i++)
   {
-    LDUMP_TAINT(i, (REGTAINTED(mask, i)), "  REMOVE REG %s byte %d TAINT#%d TOTAL %d.\n", 
-                       REGNAME(mask), i, REGTAINTVAL(mask, i), REGSIZE(mask));
+    LDUMP_TAINT(i, (REGTAINTED(dst_reg, i)), "  REMOVE REG %s byte %d TAINT#%d TOTAL %d.\n", 
+                       REGNAME(dst_reg), i, REGTAINTVAL(dst_reg, i), REGSIZE(dst_reg));
 
-    REGTAINTRM(mask, i);
-
+    REGTAINTRM(dst_reg, i);
   }
+
+  fix_dest_reg(dst_reg);
 }
 
 
@@ -1664,6 +1685,8 @@ void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_E
 
     REGTAINTRM(dst_reg, i);
   }
+
+  fix_dest_reg(dst_reg);
 }
 
 static void process_jump(app_pc pc_from, app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
@@ -1719,6 +1742,20 @@ static void process_jump(app_pc pc_from, app_pc pc, int is_ret DBG_END_TAINTING_
     started_ = MODE_ACTIVE;
 
     dr_free_module_data(data);
+
+    // Not preserved through funciton call.
+
+    REGTAINTRMALL(DR_REG_RAX);
+    REGTAINTRMALL(DR_REG_RCX);
+    REGTAINTRMALL(DR_REG_RDX);
+
+    REGTAINTRMALL(DR_REG_RSI);
+    REGTAINTRMALL(DR_REG_RDI);
+
+    REGTAINTRMALL(DR_REG_R8);
+    REGTAINTRMALL(DR_REG_R9);
+    REGTAINTRMALL(DR_REG_R10);
+    REGTAINTRMALL(DR_REG_R11);
 
     if (return_from_libc != NULL)
     {
@@ -1873,6 +1910,8 @@ void nshr_taint_check_jmp_immed(uint64_t pc_from, uint64_t pc DBG_END_TAINTING_F
   process_jump((byte *) pc_from, (unsigned char *) pc, 0 DGB_END_CALL_ARG);
 }
 
+
+//dividend / divisor = quotient
 void nshr_taint_div_mem(int dividend1_reg, int dividend2_reg, int divisor_seg_reg, int divisor_base_reg, int divisor_index_reg, int divisor_scale, 
                                                  int divisor_disp, int access_size, int quotinent_reg, int remainder_reg DBG_END_TAINTING_FUNC)
 {
@@ -1884,30 +1923,13 @@ void nshr_taint_div_mem(int dividend1_reg, int dividend2_reg, int divisor_seg_re
   int divident2_tainted = REGTAINTEDANY(dividend2_reg);
   int divisor_tainted   = MEMTAINTEDANY(addr, access_size);
 
-  // Don't know what to do....
-  if (divident1_tainted)
-  {
-    FAIL();
-  }
+  FAILIF(divident1_tainted);
 
-  // Just copy taint to quotinent, remove from remainder (it's tainted but bounded, so ignore)
-  if (divisor_tainted == 0)
-  {
-    FAILIF(REGSIZE(dividend2_reg) != REGSIZE(quotinent_reg));
+  FAILIF(REGSIZE(dividend2_reg) != REGSIZE(quotinent_reg));
 
-    nshr_taint_mv_reg2reg(dividend2_reg, quotinent_reg DGB_END_CALL_ARG);
+  nshr_taint_mv_reg2reg(dividend2_reg, quotinent_reg DGB_END_CALL_ARG);
 
-    nshr_taint_mv_reg_rm(remainder_reg DGB_END_CALL_ARG);
-  }
-  else
-  {
-    // Hard to tell what is the right decision, for now let's opt for 'safest'. Do the same.
-    FAILIF(REGSIZE(dividend2_reg) != REGSIZE(quotinent_reg));
-
-    nshr_taint_mv_reg2reg(dividend2_reg, quotinent_reg DGB_END_CALL_ARG);
-
-    nshr_taint_mv_reg_rm(remainder_reg DGB_END_CALL_ARG);
-  }
+  nshr_taint_mv_reg_rm(remainder_reg DGB_END_CALL_ARG);
 }
 
 
@@ -1919,30 +1941,13 @@ void nshr_taint_div_reg(int dividend1_reg, int dividend2_reg, int divisor_reg, i
   int divident2_tainted = REGTAINTEDANY(dividend2_reg);
   int divisor_tainted   = REGTAINTEDANY(divisor_reg);
 
-  // Don't know what to do....
-  if (divident1_tainted)
-  {
-    FAIL();
-  }
+  FAILIF(divident1_tainted);
 
-  // Just copy taint to quotinent, remove from remainder (it's tainted but bounded, so ignore)
-  if (divisor_tainted == 0)
-  {
-    FAILIF(REGSIZE(dividend2_reg) != REGSIZE(quotinent_reg));
+  FAILIF(REGSIZE(dividend2_reg) != REGSIZE(quotinent_reg));
 
-    nshr_taint_mv_reg2reg(dividend2_reg, quotinent_reg DGB_END_CALL_ARG);
+  nshr_taint_mv_reg2reg(dividend2_reg, quotinent_reg DGB_END_CALL_ARG);
 
-    nshr_taint_mv_reg_rm(remainder_reg DGB_END_CALL_ARG);
-  }
-  else
-  {
-    // Hard to tell what is the right decision, for now let's opt for 'safest'. Do the same.
-    FAILIF(REGSIZE(dividend2_reg) != REGSIZE(quotinent_reg));
-
-    nshr_taint_mv_reg2reg(dividend2_reg, quotinent_reg DGB_END_CALL_ARG);
-
-    nshr_taint_mv_reg_rm(remainder_reg DGB_END_CALL_ARG);
-  }
+  nshr_taint_mv_reg_rm(remainder_reg DGB_END_CALL_ARG);
 }
 
 void nshr_taint_mul_mem2reg(int src1_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int dst1_reg, int dst2_reg DBG_END_TAINTING_FUNC)
@@ -1956,7 +1961,14 @@ void nshr_taint_mul_mem2reg(int src1_reg, int seg_reg, int base_reg, int index_r
 
   if (!src1_tainted && !src2_tainted)
   {
-    return;
+    REGTAINTRMALL(dst1_reg);
+
+    if (dst2_reg != DR_REG_NULL)
+    {
+      REGTAINTRMALL(dst2_reg);
+    }
+
+    return;  
   }
 
   if (src1_tainted && src2_tainted)
@@ -2009,6 +2021,13 @@ void nshr_taint_mul_mem2reg(int src1_reg, int seg_reg, int base_reg, int index_r
       }
     }
   }
+
+  fix_dest_reg(dst1_reg);
+
+  if (dst2_reg != DR_REG_NULL)
+  {
+    fix_dest_reg(dst2_reg);
+  }
 }
 
 
@@ -2020,6 +2039,8 @@ void nshr_taint_mul_immbyconstmem2reg(int64 value, uint64_t addr, int access_siz
 
   if (!src1_tainted)
   {
+    REGTAINTRMALL(dst_reg);
+
     return;
   }
 
@@ -2041,6 +2062,8 @@ void nshr_taint_mul_immbyconstmem2reg(int64 value, uint64_t addr, int access_siz
   {
     SETREGTAINTVAL(dst_reg, i, newid);
   }
+
+  fix_dest_reg(dst_reg);
 }
 
 void nshr_taint_mul_reg2reg(int src1_reg, int src2_reg, int dst1_reg, int dst2_reg DBG_END_TAINTING_FUNC)
@@ -2052,6 +2075,13 @@ void nshr_taint_mul_reg2reg(int src1_reg, int src2_reg, int dst1_reg, int dst2_r
 
   if (!src1_tainted && !src2_tainted)
   {
+    REGTAINTRMALL(dst1_reg);
+
+    if (dst2_reg != DR_REG_NULL)
+    {
+      REGTAINTRMALL(dst2_reg);
+    }
+
     return;
   }
 
@@ -2096,6 +2126,13 @@ void nshr_taint_mul_reg2reg(int src1_reg, int src2_reg, int dst1_reg, int dst2_r
       nshr_taint_mul_imm2reg(src2_reg, bytes, dst1_reg, dst2_reg DGB_END_CALL_ARG);
     }
   }
+
+  fix_dest_reg(dst1_reg);
+
+  if (dst2_reg != DR_REG_NULL)
+  {
+    fix_dest_reg(dst2_reg);
+  }
 }
 
 // Maybe we can do something more accurate later....
@@ -2107,6 +2144,13 @@ void nshr_taint_mul_imm2reg(int src1_reg, int64 value, int dst1_reg, int dst2_re
 
   if (!src1_tainted)
   {
+    REGTAINTRMALL(dst1_reg);
+
+    if (dst2_reg != DR_REG_NULL)
+    {
+      REGTAINTRMALL(dst2_reg);
+    }
+
     return;
   }
 
@@ -2134,6 +2178,13 @@ void nshr_taint_mul_imm2reg(int src1_reg, int64 value, int dst1_reg, int dst2_re
     {
       SETREGTAINTVAL(dst2_reg, i, newid);
     }
+  }
+
+  fix_dest_reg(dst1_reg);
+
+  if (dst2_reg != DR_REG_NULL)
+  {
+    fix_dest_reg(dst2_reg);
   }
 }
 

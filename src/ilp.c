@@ -417,6 +417,16 @@ int solve_ilp_for_id(int id DBG_END_TAINTING_FUNC)
   }
 }
 
+void finish_ilp()
+{
+  free(uid_objective_map);
+  free(uid_constr_map);
+  free(uid_total_map);
+
+  delete_lp(lp);
+}
+
+
 void init_ilp()
 {
   lp = make_lp(0, ILP_MAX_CONSTR);

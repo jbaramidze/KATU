@@ -821,7 +821,7 @@ void check_bounds_mem(uint64_t addr, int size DBG_END_TAINTING_FUNC)
       LERROR("!!!VULNERABILITY!!! ILP Detected unbounded access at %s  %s:%d\n", 
                        func -> name, func -> file, func -> line);
       #else
-      LERROR("!!!VULNERABILITY!!! ILP Detected unbounded access\n");
+      LERROR("!!!VULNERABILITY!!! ILP Detected unbounded access [1]\n");
       #endif
 
       LERROR("Participating ids: ");
@@ -860,10 +860,10 @@ void check_bounds_reg(int reg DBG_END_TAINTING_FUNC)
       }
       else
       {
-        LERROR("!!!VULNERABILITY!!! ILP Detected unbounded access\n");
+        LERROR("!!!VULNERABILITY!!! ILP Detected unbounded access at %p\n", instr_get_app_pc(dbg_instr));
       }
       #else
-      LERROR("!!!VULNERABILITY!!! ILP Detected unbounded access\n");
+      LERROR("!!!VULNERABILITY!!! ILP Detected unbounded access [3]\n");
       #endif
 
       LERROR("Participating ids: ");
@@ -904,7 +904,9 @@ void set_reg_taint(int reg, int *ids)
   for (unsigned int i = 0; i < REGSIZE(reg); i++)
   {
     SETREGTAINTVAL(reg, i, ids[i]);
-  }
+  }  
+
+  fix_dest_reg(reg);
 }
 
 void get_mem_taint(uint64_t addr, int size, int *ids)
@@ -950,6 +952,13 @@ int is_path_secure(const char *path)
   // but will never be used to access mem. Thus, let's assume they are secure.
   if (strcmp(path, "/dev/urandom") == 0 ||
       strcmp(path, "/dev/random") == 0)
+  {
+    return 1;
+  }
+
+  //magic file for *file* is safe.
+  if (strlen(path) >= strlen("magic.mgc") && 
+           strcmp(path + strlen(path) - strlen("magic.mgc"), "magic.mgc") == 0)
   {
     return 1;
   }
@@ -1006,5 +1015,16 @@ int get_shift_type(int opcode)
     case OP_ror:    return ROTATE_RIGHT;
     default:        FAIL();
   }
+}
 
+void fix_dest_reg(int dst_reg)
+{
+  // https://stackoverflow.com/questions/11177137/why-do-x86-64-instructions-on-32-bit-registers-zero-the-upper-part-of-the-full-6
+  if (REGSIZE(dst_reg) == 4)
+  {
+    for (int i = 4; i < 8; i++)
+    {
+      REGTAINTRM(dst_reg, i);
+    }
+  }
 }
