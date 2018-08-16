@@ -1,6 +1,6 @@
-#undef LOGWARNING
-#undef LOGNORMAL
-#undef LOGDEBUG
+#define LOGWARNING
+#define LOGNORMAL
+#define LOGDEBUG
 #undef LOGDUMP
 
 #undef LOG_LINES

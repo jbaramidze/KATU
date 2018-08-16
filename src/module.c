@@ -102,6 +102,16 @@ event_exit(void)
   finish_ilp();
 
   free(uid_);
+
+  // Foreach tid, remove operations.
+  for (int i = 1; i < nshr_tid_new_id_get(); i++)
+  {
+    if (ID2OPS(i) != NULL)
+    {
+      drvector_delete(ID2OPS(i));
+    }
+  }
+
   free(tid_);
 
   dr_printf("Info:\t\tExitting.\n");

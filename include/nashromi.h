@@ -543,6 +543,7 @@ int solve_ilp(int *ids DBG_END_TAINTING_FUNC);
 
 drsym_info_t *get_func(app_pc pc);
 void fix_dest_reg(int dst_reg);
+void tid_destruct_hook(void *);
 
 
 /****************************************************

@@ -1,7 +1,7 @@
-#undef LOGWARNING
-#undef LOGNORMAL
-#undef LOGDEBUG
-#undef LOGDUMP
+#define LOGWARNING
+#define LOGNORMAL
+#define LOGDEBUG
+#define LOGDUMP
 
 #include "dr_api.h"
 #include "core/unix/include/syscall.h"
@@ -147,7 +147,7 @@ int nshr_tid_copy_id(int id)
 
     old_size = ID2OPS(id) -> entries;
 
-    drvector_init(ID2OPS(newid), old_size, false, NULL);
+    drvector_init(ID2OPS(newid), old_size, false, tid_destruct_hook);
   }
 
   tid_[newid].negated  = tid_[id].negated;
@@ -191,7 +191,7 @@ void nshr_id_add_op(int id, enum prop_type operation, int modify_by)
   if (ID2OPS(id) == NULL)
   {
     ID2OPS(id) = (drvector_t *) malloc(sizeof(drvector_t));
-    drvector_init(ID2OPS(id), INITIAL_OPERATIONS, false, NULL);
+    drvector_init(ID2OPS(id), INITIAL_OPERATIONS, false, tid_destruct_hook);
   }
 
   drvector_append(ID2OPS(id), newop);
@@ -1027,4 +1027,10 @@ void fix_dest_reg(int dst_reg)
       REGTAINTRM(dst_reg, i);
     }
   }
+}
+
+
+void tid_destruct_hook(void *param)
+{
+  free(param);
 }

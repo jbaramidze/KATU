@@ -1,5 +1,5 @@
-#undef LOGNORMAL
-#undef LOGDEBUG
+#define LOGNORMAL
+#define LOGDEBUG
 #undef  LOGDUMP
 
 #include "dr_api.h"
@@ -654,8 +654,68 @@ void nshr_taint_shift_membyimm(int seg_reg, int base_reg, int index_reg, int sca
   LDEBUG_TAINT(false, "Shifting MEM 0x%llx by %d bytes.\n", addr, value);
 
   if (MEMTAINTEDANY(addr, access_size))
-  {    
-     FAIL();
+  {
+    int amount = (value + 4) / 8;
+
+    int ids[8];
+    int ids2[8];
+
+    get_mem_taint(addr, access_size, ids);
+
+    // shift left.
+    if (type == LOGICAL_LEFT || type == ARITH_LEFT)
+    {
+      // ids2[i] = ids1[i - amount]
+      for (int i = 0; i < 8; i++)
+      {
+        if (i - amount >= 0)
+        {
+          ids2[i] = ids[i - amount];
+        }
+        else
+        {
+          ids2[i] = -1;
+        }
+      }
+    
+      set_mem_taint(addr, access_size, ids2);
+    }
+    else if (type == LOGICAL_RIGHT || type == ARITH_RIGHT)
+    {
+      // ids2[i] = ids1[i + amount]
+      for (int i = 0; i < 8; i++)
+      {
+        if (i + amount < 8)
+        {
+          ids2[i] = ids[i + amount];
+        }
+        else
+        {
+          ids2[i] = -1;
+        }
+      }
+
+      set_mem_taint(addr, access_size, ids2);
+    }
+    else
+    {
+      FAIL();
+    }
+
+    #ifdef LOGDUMP
+
+    char tmp[1024];
+    sprintf(tmp, "%d %d %d %d %d %d %d %d ", ids[0], ids[1], ids[2], ids[3],
+                                             ids[4], ids[5], ids[6], ids[7]);
+
+    LDUMP_TAINT(0, 0, "Moved by %d bytes, Taints before '%s' shift: %s\n", amount, SHIFT_NAMES[type], tmp);
+
+    sprintf(tmp, "%d %d %d %d %d %d %d %d ", ids2[0], ids2[1], ids2[2], ids2[3], 
+                                             ids2[4], ids2[5], ids2[6], ids2[7]);
+
+    LDUMP_TAINT(0, 0, "Taints after shift: %s\n", tmp);
+
+    #endif
   }
 }
 
