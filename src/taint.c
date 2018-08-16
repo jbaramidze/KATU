@@ -1,5 +1,5 @@
-#define LOGNORMAL
-#define LOGDEBUG
+#undef LOGNORMAL
+#undef LOGDEBUG
 #undef  LOGDUMP
 
 #include "dr_api.h"

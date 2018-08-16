@@ -1,6 +1,6 @@
-#define LOGWARNING
-#define LOGNORMAL
-#define LOGDEBUG
+#undef LOGWARNING
+#undef LOGNORMAL
+#undef LOGDEBUG
 #undef LOGDUMP
 
 #include "dr_api.h"

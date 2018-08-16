@@ -309,9 +309,17 @@ typedef void (*handleFunc)(DBG_END_TAINTING_FUNC_ALONE);
                  dump(); \
                  exit(-1); }
 
-#define FAILIF(statement) { if (statement) { dr_printf("FAIL! at %s:%d.\n", __FILE__, __LINE__); \
-                                             dump(); \
-                                             exit(-1); } }
+#ifdef CHECKS
+
+  #define FAILIF(statement) { if (statement) { dr_printf("FAIL! at %s:%d.\n", __FILE__, __LINE__); \
+                                               dump(); \
+                                               exit(-1); } }
+
+#else
+
+  #define FAILIF(statement) 
+
+#endif
 
 #define DIE(text) { dr_printf(text); dr_flush_file(logfile); dr_flush_file(dumpfile); exit(-1); }
 

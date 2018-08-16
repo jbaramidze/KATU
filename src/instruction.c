@@ -1,6 +1,6 @@
-#define LOGWARNING
-#define LOGNORMAL
-#define LOGDEBUG
+#undef LOGWARNING
+#undef LOGNORMAL
+#undef LOGDEBUG
 #undef LOGDUMP
 
 #undef LOG_LINES
@@ -1402,8 +1402,8 @@ static void opcode_imul(void *drcontext, instr_t *instr, instrlist_t *ilist)
       int dst1_reg   = opnd_get_reg(dst1);
 
       LDUMP("InsDetail:\tMultiplying %s and %lld -> %s.\n", REGNAME(src1_reg), src2_val, REGNAME(dst1_reg));
-
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mul_imm2reg, false, DBG_TAINT_NUM_PARAMS(3),
+      
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mul_imm2reg, false, DBG_TAINT_NUM_PARAMS(4),
                             OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT64(src2_val), 
                                   OPND_CREATE_INT32(dst1_reg), OPND_CREATE_INT32(DR_REG_NULL) 
                                        DBG_END_DR_CLEANCALL);

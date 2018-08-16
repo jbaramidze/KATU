@@ -1,6 +1,6 @@
-#define LOGNORMAL
-#define LOGDEBUG
-#define LOGDUMP
+#undef LOGNORMAL
+#undef LOGDEBUG
+#undef LOGDUMP
 
 #include "dr_api.h"
 #include "core/unix/include/syscall.h"
