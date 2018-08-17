@@ -1,7 +1,7 @@
 /* fread example: read an entire file */
 #include <stdio.h>
 #include <stdlib.h>
-#include "dr_annotations_zhani.h"
+//#include "dr_annotations_zhani.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -15,22 +15,13 @@
 #include <fcntl.h>
 
 
-
-#include "dr_annotations_zhani.h"
-
 const char *path1 = "/home/zhani/Thesis/test/zaza";
 const char *path2 = "/home/zhani/Thesis/test/zaza1";
 
 int main () {
 
-long long a = 10;
+void *q = (void *) malloc(105);
 
-asm volatile (
-      "mov $32141000000000, %%rax \n \t"
-      "mov $2, %%eax"
-       : "=a" (a) ::
-);
-
-  printf("%lld\n", a);
+memset(q, 0, 105);
   return 0;
 }

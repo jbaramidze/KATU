@@ -14,7 +14,7 @@
 #define DBG_PASS_INSTR
 
 // Parse jump addresses
-#undef DBG_PARSE_JUMPS
+#define DBG_PARSE_JUMPS
 
 // Log paths.
 #define NSHR_LOGFILE_PATH "/home/zhani/Thesis/project/build/nshr.log"
@@ -470,6 +470,9 @@ extern app_pc return_to;
 
 extern app_pc ignore_vector[64];
 extern int ignore_vector_size;
+
+
+extern hashtable_t jump_addr_hashtable;
 
 void add_ignore_func(app_pc pc);
 int check_ignore_func(app_pc pc);

@@ -1,6 +1,6 @@
 #define LOGNORMAL
 #define LOGDEBUG
-#undef  LOGDUMP
+#define  LOGDUMP
 
 #include "dr_api.h"
 #include "core/unix/include/syscall.h"
@@ -94,10 +94,10 @@ void memset_reg2mem(int reg, uint64_t addr, int size DBG_END_TAINTING_FUNC)
 
       LDUMP_TAINT(i, (REGTAINTED(reg, j) || MEMTAINTED(index, addr + i*size + j)), 
                        "  REG %s byte %d TAINT#%d -> MEM %p TAINT#%d INDEX %d TOTAL %d.\n", 
-                           REGNAME(reg), j, REGTAINTVAL(reg, j), ADDR(addr + i*size + j), 
-                                MEMTAINTVAL(index, addr + i*size + j), index, REGSIZE(reg)*size);
+                           REGNAME(reg), j, REGTAINTVAL(reg, j), ADDR(addr + i*REGSIZE(reg) + j), 
+                                MEMTAINTVAL(index, addr + i*REGSIZE(reg) + j), index, REGSIZE(reg)*size);
 
-      REGTAINT2MEMTAINT(reg, j, index, addr + i*size + j);
+      REGTAINT2MEMTAINT(reg, j, index, addr + i*REGSIZE(reg) + j);
     }
   }
 }
@@ -551,77 +551,80 @@ void nshr_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC)
   }
 }
 
+void process_shift(int value, int type, int *ids, int *ids2 DBG_END_TAINTING_FUNC)
+{
+  int amount = (value + 4) / 8;
+
+  // shift left.
+  if (type == LOGICAL_LEFT || type == ARITH_LEFT)
+  {
+    // ids2[i] = ids1[i - amount]
+    for (int i = 0; i < 8; i++)
+    {
+      if (i - amount >= 0)
+      {
+        ids2[i] = ids[i - amount];
+      }
+      else
+      {
+        ids2[i] = -1;
+      }
+    }  
+  }
+  else if (type == LOGICAL_RIGHT || type == ARITH_RIGHT)
+  {
+    // ids2[i] = ids1[i + amount]
+    for (int i = 0; i < 8; i++)
+    {
+      if (i + amount < 8)
+      {
+        ids2[i] = ids[i + amount];
+      }
+      else
+      {
+        ids2[i] = -1;
+      }
+    }
+  }
+  else
+  {
+    FAIL();
+  }
+
+  #ifdef LOGDUMP
+
+  char tmp[1024];
+  sprintf(tmp, "%d %d %d %d %d %d %d %d ", ids[0], ids[1], ids[2], ids[3],
+                                           ids[4], ids[5], ids[6], ids[7]);
+
+  LDUMP_TAINT(0, 0, "Moved by %d bytes, Taints before '%s' shift: %s\n", amount, SHIFT_NAMES[type], tmp);
+
+  sprintf(tmp, "%d %d %d %d %d %d %d %d ", ids2[0], ids2[1], ids2[2], ids2[3], 
+                                           ids2[4], ids2[5], ids2[6], ids2[7]);
+
+  LDUMP_TAINT(0, 0, "Taints after shift: %s\n", tmp);
+
+  #endif
+}
+
 // Problematic due gcc optimizing divisions by constants to multiplication & shifts.
 // This one looks more or less safe, generally very hard to decide when to untaint.
 void nshr_taint_shift_regbyimm(int dst_reg, int64 value, int type DBG_END_TAINTING_FUNC)
 {
   STOP_IF_NOT_ACTIVE();
 
-  LDEBUG_TAINT(false, "Shifting %s by %d bytes, type %d.\n", REGNAME(dst_reg), value, type);
+  LDEBUG_TAINT(false, "Shifting %s by %d bytes, type %d [1].\n", REGNAME(dst_reg), value, type);
 
   if (REGTAINTEDANY(dst_reg))
   {
-    int amount = (value + 4) / 8;
-
     int ids[8];
     int ids2[8];
 
     get_reg_taint(dst_reg, ids);
 
-    // shift left.
-    if (type == LOGICAL_LEFT || type == ARITH_LEFT)
-    {
-      // ids2[i] = ids1[i - amount]
-      for (int i = 0; i < 8; i++)
-      {
-        if (i - amount >= 0)
-        {
-          ids2[i] = ids[i - amount];
-        }
-        else
-        {
-          ids2[i] = -1;
-        }
-      }
+    process_shift(value, type, ids, ids2 DGB_END_CALL_ARG);
 
-      set_reg_taint(dst_reg, ids2);
-    }
-    else if (type == LOGICAL_RIGHT || type == ARITH_RIGHT)
-    {
-      // ids2[i] = ids1[i + amount]
-      for (int i = 0; i < 8; i++)
-      {
-        if (i + amount < 8)
-        {
-          ids2[i] = ids[i + amount];
-        }
-        else
-        {
-          ids2[i] = -1;
-        }
-      }
-
-      set_reg_taint(dst_reg, ids2);
-    }
-    else
-    {
-      FAIL();
-    }
-
-    #ifdef LOGDUMP
-
-    char tmp[1024];
-    sprintf(tmp, "%d %d %d %d %d %d %d %d ", ids[0], ids[1], ids[2], ids[3],
-                                             ids[4], ids[5], ids[6], ids[7]);
-
-    LDUMP_TAINT(0, 0, "Moved by %d bytes, Taints before '%s' shift: %s\n", amount, SHIFT_NAMES[type], tmp);
-
-    sprintf(tmp, "%d %d %d %d %d %d %d %d ", ids2[0], ids2[1], ids2[2], ids2[3], 
-                                             ids2[4], ids2[5], ids2[6], ids2[7]);
-
-    LDUMP_TAINT(0, 0, "Taints after shift: %s\n", tmp);
-
-    #endif
+    set_reg_taint(dst_reg, ids2);
   }
 }
 
@@ -629,9 +632,28 @@ void nshr_taint_shift_regbyreg(int dst_reg, int src_reg, int type DBG_END_TAINTI
 {
   STOP_IF_NOT_ACTIVE();
 
-  if (REGTAINTEDANY(dst_reg) || REGTAINTEDANY(src_reg))
+  // Not sure how to shift by tainted amount.
+  if (REGTAINTEDANY(src_reg))
   {
     FAIL();
+  }
+
+  GET_CONTEXT();
+
+  int value = reg_get_value(src_reg, &mcontext);
+
+  LDEBUG_TAINT(false, "Shifting %s by %d bytes, type %d [2].\n", REGNAME(dst_reg), value, type);
+
+  if (REGTAINTEDANY(dst_reg))
+  {    
+    int ids[8];
+    int ids2[8];
+
+    get_reg_taint(dst_reg, ids);
+
+    process_shift(value, type, ids, ids2 DGB_END_CALL_ARG);
+
+    set_reg_taint(dst_reg, ids2);
   }
 }
 
@@ -655,67 +677,14 @@ void nshr_taint_shift_membyimm(int seg_reg, int base_reg, int index_reg, int sca
 
   if (MEMTAINTEDANY(addr, access_size))
   {
-    int amount = (value + 4) / 8;
-
     int ids[8];
     int ids2[8];
 
     get_mem_taint(addr, access_size, ids);
 
-    // shift left.
-    if (type == LOGICAL_LEFT || type == ARITH_LEFT)
-    {
-      // ids2[i] = ids1[i - amount]
-      for (int i = 0; i < 8; i++)
-      {
-        if (i - amount >= 0)
-        {
-          ids2[i] = ids[i - amount];
-        }
-        else
-        {
-          ids2[i] = -1;
-        }
-      }
-    
-      set_mem_taint(addr, access_size, ids2);
-    }
-    else if (type == LOGICAL_RIGHT || type == ARITH_RIGHT)
-    {
-      // ids2[i] = ids1[i + amount]
-      for (int i = 0; i < 8; i++)
-      {
-        if (i + amount < 8)
-        {
-          ids2[i] = ids[i + amount];
-        }
-        else
-        {
-          ids2[i] = -1;
-        }
-      }
+    process_shift(value, type, ids, ids2 DGB_END_CALL_ARG);
 
-      set_mem_taint(addr, access_size, ids2);
-    }
-    else
-    {
-      FAIL();
-    }
-
-    #ifdef LOGDUMP
-
-    char tmp[1024];
-    sprintf(tmp, "%d %d %d %d %d %d %d %d ", ids[0], ids[1], ids[2], ids[3],
-                                             ids[4], ids[5], ids[6], ids[7]);
-
-    LDUMP_TAINT(0, 0, "Moved by %d bytes, Taints before '%s' shift: %s\n", amount, SHIFT_NAMES[type], tmp);
-
-    sprintf(tmp, "%d %d %d %d %d %d %d %d ", ids2[0], ids2[1], ids2[2], ids2[3], 
-                                             ids2[4], ids2[5], ids2[6], ids2[7]);
-
-    LDUMP_TAINT(0, 0, "Taints after shift: %s\n", tmp);
-
-    #endif
+    set_mem_taint(addr, access_size, ids2);
   }
 }
 
@@ -1749,49 +1718,69 @@ void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_E
   fix_dest_reg(dst_reg);
 }
 
+void print_parse_jump(app_pc pc, char *buffer)
+{
+  void *handler = hashtable_lookup(&jump_addr_hashtable, pc);
+
+  if (handler == NULL) 
+  {
+    if (!hashtable_add(&jump_addr_hashtable, pc, (void *)1))
+    {
+      FAIL();
+    }
+
+    module_data_t *data = dr_lookup_module(pc);
+
+    if (data == NULL)
+    {
+      FAIL();
+    }
+
+    const char *modname = dr_module_preferred_name(data);
+
+    drsym_info_t sym;
+
+    char name_buf[1024];
+    char file_buf[1024];
+
+    sym.struct_size = sizeof(sym);
+    sym.name = name_buf;
+    sym.name_size = 1024;
+    sym.file = file_buf;
+    sym.file_size = 1024;
+    
+    drsym_error_t symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
+
+    if (symres == DRSYM_SUCCESS)
+    {
+      sprintf(buffer, "in %s[%s] at %s %s:%lu (%p).\n", sym.name, modname, data -> full_path, sym.file, sym.line, pc);
+    }
+    else
+    {
+      sprintf(buffer, "in [%s] at %s (%p).\n", modname, data -> full_path, pc);
+    }
+      
+    dr_free_module_data(data);
+  }
+  else
+  {
+    sprintf(buffer, "in (%p).\n", pc);
+  }
+}
+
 static void process_jump(app_pc pc_from, app_pc pc, int is_ret DBG_END_TAINTING_FUNC)
 {
-  module_data_t *data = dr_lookup_module(pc);
-
-  if (data == NULL)
-  {
-     LDUMP_TAINT(0, true, "Ignoring jump to %llx.\n", pc);
-
-     dr_free_module_data(data);
-
-     return;
-  }
-
   static handleFunc return_from_libc = NULL;
-
-  const char *modname = dr_module_preferred_name(data);
-
-  drsym_info_t sym;
-
-  char name_buf[1024];
-  char file_buf[1024];
-
-  sym.struct_size = sizeof(sym);
-  sym.name = name_buf;
-  sym.name_size = 1024;
-  sym.file = file_buf;
-  sym.file_size = 1024;
 
   if ((started_ == MODE_IN_LIBC || started_ == MODE_IN_IGNORELIB) && pc == return_to)
   {
     #ifdef DBG_PARSE_JUMPS
-    
-    drsym_error_t symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
 
-  	if (symres == DRSYM_SUCCESS)
-    {
-  	  LDUMP_TAINT(0, true, "Returning to Active mode in %s[%s] at %s %s:%d.\n", 
-                       sym.name, modname, data -> full_path, sym.file, sym.line);
-    }
-    else
-    {
-  	  LDUMP_TAINT(0, true, "Returning to Active mode in [%s] at %s.\n", modname, data -> full_path);
-    }
+    char str[1024];
+
+    print_parse_jump(pc, str);
+
+    LDUMP_TAINT(0, true, "Returning to Active mode %s", str);
 
     #else
 
@@ -1800,8 +1789,6 @@ static void process_jump(app_pc pc_from, app_pc pc, int is_ret DBG_END_TAINTING_
     #endif
 
     started_ = MODE_ACTIVE;
-
-    dr_free_module_data(data);
 
     // Not preserved through funciton call.
 
@@ -1840,11 +1827,8 @@ static void process_jump(app_pc pc_from, app_pc pc, int is_ret DBG_END_TAINTING_
 
         nshr_taint_by_fd((uint64_t) addr, strlen(addr), FD_CMD_ARG);
       }
-
       
       started_ = MODE_ACTIVE;
-
-      dr_free_module_data(data);
 
       return;
     }
@@ -1852,8 +1836,6 @@ static void process_jump(app_pc pc_from, app_pc pc, int is_ret DBG_END_TAINTING_
 
   if (started_ != MODE_ACTIVE)
   {
-    dr_free_module_data(data);
-
   	return;
   }
 
@@ -1864,17 +1846,11 @@ static void process_jump(app_pc pc_from, app_pc pc, int is_ret DBG_END_TAINTING_
 
   #ifdef DBG_PARSE_JUMPS
 
-  drsym_error_t symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
+  char str[1024];
 
-  if (symres == DRSYM_SUCCESS)
-  {
-  	LDUMP_TAINT(0, true, "Detected call to %s[%s] at %s  %s:%d.\n", sym.name, modname, data -> full_path, 
-                                          sym.file, sym.line);
-  }
-  else
-  {
-  	LDUMP_TAINT(0, true, "Missing symbols for call to [%s] at %s.\n", modname, data -> full_path);
-  }
+  print_parse_jump(pc, str);
+
+  LDUMP_TAINT(0, true, "Detected call %s", str);
 
   #endif
 
@@ -1885,26 +1861,51 @@ static void process_jump(app_pc pc_from, app_pc pc, int is_ret DBG_END_TAINTING_
     started_ = MODE_IN_IGNORELIB;
 
     return_from_libc = NULL;
+
+    return;
   }
-  else if (strcmp(LD_LINUX, modname) == 0 || strcmp(LIBC_NAME, modname) == 0)
+
+  handleFunc *handler = hashtable_lookup(&func_hashtable, pc);
+
+  if (handler != NULL) 
   {
-    handleFunc *handler = hashtable_lookup(&func_hashtable, pc);
+    LDUMP_TAINT(0, true, "Goind into MODE_IN_LIBC mode to <%s>.\n", handler[2]);
 
-    if (handler != NULL) 
+    // Call pre-funciton.
+    if (handler[0] != NULL)
     {
-      LDUMP_TAINT(0, true, "Goind into MODE_IN_LIBC mode to <%s>.\n", handler[2]);
-
-      // Call pre-funciton.
-      if (handler[0] != NULL)
-      {
-        handler[0](DGB_END_CALL_ARG_ALONE);
-      }
-
-      // Register post-function.
-      return_from_libc = handler[1];
+      handler[0](DGB_END_CALL_ARG_ALONE);
     }
-    else
+
+    // Register post-function.
+    return_from_libc = handler[1];
+
+    started_ = MODE_IN_LIBC;
+  }
+  else
+  {
+    module_data_t *data = dr_lookup_module(pc);
+
+    if (data == NULL)
     {
+      FAIL();
+    }
+
+    const char *modname = dr_module_preferred_name(data);
+
+    if (strcmp(LD_LINUX, modname) == 0 || strcmp(LIBC_NAME, modname) == 0)
+    {
+      drsym_info_t sym;
+
+      char name_buf[1024];
+      char file_buf[1024];
+
+      sym.struct_size = sizeof(sym);
+      sym.name = name_buf;
+      sym.name_size = 1024;
+      sym.file = file_buf;
+      sym.file_size = 1024;
+    
       // Check if it's known failure.
       drsym_error_t symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
 
@@ -1915,18 +1916,16 @@ static void process_jump(app_pc pc_from, app_pc pc, int is_ret DBG_END_TAINTING_
           strcmp(sym.name, "msort_with_tmp.part.0") != 0)
       {
         LERROR("ERROR! Failed jumping to %s[%s] at %s  %s:%d.\n", sym.name, modname, data -> full_path, 
-                                          sym.file, sym.line);
-
+                                            sym.file, sym.line);
 
         return_from_libc = NULL;
       }
+
+      started_ = MODE_IN_LIBC;
     }
 
-    started_ = MODE_IN_LIBC;
+    dr_free_module_data(data);
   }
-
-  // DON'T FORGET IT!
-  dr_free_module_data(data);
 }
 
 void nshr_taint_check_ret(uint64_t pc_from DBG_END_TAINTING_FUNC)

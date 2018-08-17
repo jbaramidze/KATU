@@ -8,7 +8,7 @@ include_directories("/home/zhani/Thesis/installer/dynamorio/core/lib")
 #set(CMAKE_C_FLAGS "-O0 -g -Wall -nostartfiles -nodefaultlibs -Wl,--dynamic-linker=/custobuilds/lib/ld-2.27.so -Wno-unused-variable" )
 #set(CMAKE_CXX_FLAGS "-O0 -g -Wall -nostartfiles -nodefaultlibs -Wl,--dynamic-linker=/custobuilds/lib/ld-2.27.so -Wno-unused-variable" )
 
-set(CMAKE_C_FLAGS "-O0 -g -Wall" )
+set(CMAKE_C_FLAGS "-O0 -g -Wall " )
 set(CMAKE_CXX_FLAGS "-O0 -g -Wall" )
 
 #set(CMAKE_EXE_LINKER_FLAGS "/custobuilds/lib/crt1.o /custobuilds/lib/crti.o ")

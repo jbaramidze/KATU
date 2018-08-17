@@ -869,14 +869,24 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "regfree");
      ignore_handlers(mod, "malloc");
      ignore_handlers(mod, "iswprint");
+     ignore_handlers(mod, "iconv");
+     ignore_handlers(mod, "iconv_open");
+     ignore_handlers(mod, "iconv_close");
+     ignore_handlers(mod, "getcwd");
+     ignore_handlers(mod, "fputs");
+     ignore_handlers(mod, "fputc");
 
 
      // Ignoring some precision here, TODO for future:
      // think if we can improve it.
      ignore_handlers(mod, "asprintf");
      ignore_handlers(mod, "sprintf");
+     ignore_handlers(mod, "vsnprintf");
      ignore_handlers(mod, "vasprintf");
      ignore_handlers(mod, "mbrtowc");
+     ignore_handlers(mod, "unlink");
+     ignore_handlers(mod, "glob");
+     ignore_handlers(mod, "globfree");
      
    }
    else if (strncmp(dr_module_preferred_name(mod), "ld-linux-x86-64.so", 18) == 0)

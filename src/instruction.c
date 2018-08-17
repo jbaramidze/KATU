@@ -1,7 +1,7 @@
 #define LOGWARNING
 #define LOGNORMAL
 #define LOGDEBUG
-#undef LOGDUMP
+#define LOGDUMP
 
 #undef LOG_LINES
 
@@ -339,7 +339,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
         uint64_t value = opnd_get_immed_int(src);
 
-        value = low_trim(value, 8*opnd_size_in_bytes(opnd_get_size(src)));
+        value = low_trim(value, 8*opnd_size_in_bytes(opnd_get_size(dst)));
 
         LDUMP("InsDetail:\tRestricting by '%s' taint at %s by 0x%x\n", PROP_NAMES[type], REGNAME(dst_reg), value);
 
@@ -359,7 +359,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       int scale          = opnd_get_scale(dst);
       int disp           = opnd_get_disp(dst);
 
-      int access_size = opnd_size_in_bytes(opnd_get_size(src));
+      int access_size = opnd_size_in_bytes(opnd_get_size(dst));
 
       if (prop_is_mov(type))
       {
@@ -379,7 +379,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
         uint64_t value = opnd_get_immed_int(src);
 
-        value = low_trim(value, 8*opnd_size_in_bytes(opnd_get_size(src)));
+        value = low_trim(value, 8*access_size);
 
         LDUMP("InsDetail:\tRestricting by '%s' taint at [%s:%s + %d*%s + %d], by 0x%x, %d bytes\n", 
                   PROP_NAMES[type], REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp,
@@ -404,7 +404,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
       instr_get_rel_addr_target(instr, &addr);
 
-      int access_size = opnd_size_in_bytes(opnd_get_size(src));
+      int access_size = opnd_size_in_bytes(opnd_get_size(dst));
 
       if (prop_is_mov(type))
       {
@@ -421,7 +421,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
         uint64_t value = opnd_get_immed_int(src);
 
-        value = low_trim(value, 8*opnd_size_in_bytes(opnd_get_size(src)));
+        value = low_trim(value, 8*access_size);
 
         LDUMP("InsDetail:\tRestricting by '%s' taint at pc-relative %llx, by 0x%x, %d bytes\n", 
                   PROP_NAMES[type], addr, value, access_size);
@@ -619,8 +619,9 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
     instr_get_rel_addr_target(instr, &addr);
 
-    int extend_from = opnd_size_in_bytes(opnd_get_size(src));
+    int extend_from = opnd_size_in_bytes(opnd_get_size(dst));
 
+    // NOTE: If you add handling some other case, take care of size_in_bytes(opnd_get_size(dst));
     if (opnd_is_reg(dst))
     {
       /*
@@ -933,9 +934,9 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
     }
     else if (opnd_is_immed(second))
     {
-      LDUMP("InsDetail:\tUpdating eflags by comparing [%s:%s + %d*%s + %d] and immediate via '%s'.\n", 
+      LDUMP("InsDetail:\tUpdating eflags by comparing [%s:%s + %d*%s + %d] and immediate via '%s', %d bytes.\n", 
                            REGNAME(seg_reg), REGNAME(base_reg), scale, 
-                                  REGNAME(index_reg), disp, PROP_NAMES[type]);
+                                  REGNAME(index_reg), disp, PROP_NAMES[type], size);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_mem2imm, false, DBG_TAINT_NUM_PARAMS(7),
                                  OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
@@ -967,7 +968,7 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
     }
     else if (opnd_is_immed(second))
     {      
-      LDUMP("InsDetail:\tUpdating eflags by comparing [%llx] and immediate via '%s'.\n", addr, PROP_NAMES[type]);
+      LDUMP("InsDetail:\tUpdating eflags by comparing [%llx] and immediate via '%s', %d bytes.\n", addr, PROP_NAMES[type], size);
 
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_constmem2imm, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(size), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
@@ -1402,7 +1403,7 @@ static void opcode_imul(void *drcontext, instr_t *instr, instrlist_t *ilist)
       int dst1_reg   = opnd_get_reg(dst1);
 
       LDUMP("InsDetail:\tMultiplying %s and %lld -> %s.\n", REGNAME(src1_reg), src2_val, REGNAME(dst1_reg));
-      
+
       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mul_imm2reg, false, DBG_TAINT_NUM_PARAMS(4),
                             OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT64(src2_val), 
                                   OPND_CREATE_INT32(dst1_reg), OPND_CREATE_INT32(DR_REG_NULL) 
