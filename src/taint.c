@@ -151,7 +151,7 @@ void nshr_taint_mv_constmem2mem(uint64 src_addr, int seg_reg, int base_reg, int 
   nshr_taint_mv_constmem2constmem(src_addr, dst_addr, access_size DGB_END_CALL_ARG);
 }
 
-void nshr_taint_mv_constmem2constmem(uint64 src_addr, uint64 dst_addr, unsigned int size DBG_END_TAINTING_FUNC)
+void nshr_taint_mv_constmem2constmem(uint64 src_addr, uint64 dst_addr, uint64_t size DBG_END_TAINTING_FUNC)
 {
   STOP_IF_NOT_ACTIVE();
 

@@ -82,6 +82,7 @@ event_exit(void)
     hashtable_delete(&func_hashtable);
     hashtable_delete(&FILEs_);
     hashtable_delete(&jump_addr_hashtable);
+    hashtable_delete(&malloc_hashtable);
 
     for (int i = 1; i < nshr_tid_new_uid_get(); i++)
     {
@@ -196,6 +197,7 @@ void init(void)
   hashtable_init_ex(&func_hashtable,      HASH_BITS, HASH_INTPTR, false, true, hashtable_del_entry, NULL, NULL);
   hashtable_init_ex(&FILEs_,              4,         HASH_INTPTR, false, true, hashtable_del_entry, NULL, NULL);
   hashtable_init_ex(&jump_addr_hashtable, 13,        HASH_INTPTR, false, true, hashtable_del_entry, NULL, NULL);
+  hashtable_init_ex(&malloc_hashtable,    6,         HASH_INTPTR, false, true, hashtable_del_entry, NULL, NULL);
 
 
   module_data_t *main_module = dr_get_main_module();

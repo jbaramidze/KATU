@@ -1,7 +1,7 @@
 #define LOGWARNING
 #define LOGNORMAL
 #define LOGDEBUG
-#undef LOGDUMP
+#define LOGDUMP
 
 #include "dr_api.h"
 #include "drwrap.h"
@@ -323,6 +323,11 @@ static void accept_end(DBG_END_TAINTING_FUNC_ALONE)
 
   fds_[r] = fds_history_index_++;
 
+  if (fds_history_index_ >= MAX_FILE_HISTORY)
+  {
+    FAIL();
+  }
+
   if (arg_data.v1 != NULL)
   {
     struct sockaddr_in *addr_in = (struct sockaddr_in *) arg_data.v1;
@@ -385,7 +390,12 @@ static void strdup_begin(DBG_END_TAINTING_FUNC_ALONE)
 
 static void strdup_end(DBG_END_TAINTING_FUNC_ALONE)
 {  
-  const char *dst = (const char *) get_ret();
+  char *dst = (char *) get_ret();
+
+  if (!hashtable_add(&malloc_hashtable, dst, (void *) strlen(dst) + 1))
+  {
+    FAIL();
+  }
 
   if (dst != NULL)
   {
@@ -547,6 +557,17 @@ static void fread_end(DBG_END_TAINTING_FUNC_ALONE)
   }
 }
 
+static void taint_ret_by_stdin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  int newid = nshr_tid_new_uid_by_fd(0);
+
+  int ids[1];
+
+  ids[0] = newid;
+
+  set_reg_taint(DR_REG_AL, ids);
+}
+
 static void atoi_begin(DBG_END_TAINTING_FUNC_ALONE)
 {
   const char *s = (const char *) get_arg(0);
@@ -665,17 +686,13 @@ static void open_end(DBG_END_TAINTING_FUNC_ALONE)
 
   fds_[r] = fds_history_index_++;
 
+  if (fds_history_index_ >= MAX_FILE_HISTORY)
+  {
+    FAIL();
+  }
+
   fds_history_[fds_[r]].secure = is_path_secure(arg_data.s1);
   fds_history_[fds_[r]].path = strdup(arg_data.s1);
-}
-
-static void check_arg01_8(DBG_END_TAINTING_FUNC_ALONE)
-{
-  int reg0 = get_arg_reg(0, sizeof(size_t));
-  int reg1 = get_arg_reg(1, sizeof(size_t));
-
-  check_bounds_reg(reg0 DGB_END_CALL_ARG);
-  check_bounds_reg(reg1 DGB_END_CALL_ARG);
 }
 
 static void check_arg0_8(DBG_END_TAINTING_FUNC_ALONE)
@@ -716,6 +733,168 @@ static void mmap_end(DBG_END_TAINTING_FUNC_ALONE)
   LTEST("SKIPPER:\t\tTainting string at %p, %d bytes.\n", ret, arg_data.i1);
 
   nshr_taint_by_fd((reg_t) ret, arg_data.i1, arg_data.i2);
+}
+
+static void realloc_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  arg_data.v1 = (void * ) get_arg(0);
+  arg_data.i1 = (int ) get_arg(1);
+
+  // Implementation-defined behaviour
+  if (arg_data.v1 == NULL &&  arg_data.i1 == 0)
+  {
+    FAIL();
+  }
+}
+
+static void realloc_end(DBG_END_TAINTING_FUNC_ALONE)
+{
+  char *ret = (char *) get_ret();
+
+  // like free().
+  if (arg_data.i1 == 0)
+  {
+    LDEBUG("SKIPPER:\t\tRealloc freed at %p.\n", arg_data.v1);
+
+    if (!hashtable_remove(&malloc_hashtable, arg_data.v1))
+    {
+      FAIL();
+    }
+
+    return;
+  }
+
+  // like malloc().
+  if (arg_data.v1 == NULL)
+  {
+    char *ret = (char *) get_ret();
+
+    if (!hashtable_add(&malloc_hashtable, ret, (void *)arg_data.i1))
+    {
+      FAIL();
+    }
+
+    LDEBUG("SKIPPER:\t\tRealloc allocated %d bytes at %p.\n", arg_data.i1, ret);
+
+    return;
+  }
+
+  if (ret == arg_data.v1)
+  {
+    LDEBUG("SKIPPER:\t\tRealloc extended at %p, by %d bytes.\n", arg_data.v1, arg_data.i1);
+
+    // Just change the value in hashtable.
+    if (hashtable_add_replace(&malloc_hashtable, arg_data.v1, (void *) arg_data.i1) == NULL) FAIL();
+  }
+  else
+  {
+    // The data was moved!
+    uint64_t old_size = (uint64_t) hashtable_lookup(&malloc_hashtable, arg_data.v1);
+
+    LDEBUG("SKIPPER:\t\tRealloc moved from from %p, %d bytes to %p, %d bytes.\n", arg_data.v1, old_size, ret, arg_data.i1);
+
+    // Lookup failure.
+    if (old_size == 0) FAIL();
+
+    nshr_taint_mv_constmem2constmem((uint64) arg_data.v1, (uint64) ret, old_size DGB_END_CALL_ARG);
+
+    if (!hashtable_remove(&malloc_hashtable, arg_data.v1))
+    {
+      FAIL();
+    }
+
+    if (!hashtable_add(&malloc_hashtable, ret, (void *)arg_data.i1))
+    {
+      FAIL();
+    }
+  }
+
+
+  #ifdef LOGDUMP
+  for (int i = 0; i <  arg_data.i1; i++)
+  {
+    LDEBUG("SKIPPER:\t\tRealloc'd %p.\n", ret + i);
+  }
+  #endif
+}
+
+
+static void malloc_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  arg_data.i1 = (int ) get_arg(0);
+}
+
+static void malloc_end(DBG_END_TAINTING_FUNC_ALONE)
+{
+  char *ret = (char *) get_ret();
+
+  LDEBUG("SKIPPER:\t\tMalloc allocated at %p, %d bytes.\n", ret, arg_data.i1);
+
+  if (!hashtable_add(&malloc_hashtable, ret, (void *)arg_data.i1))
+  {
+    FAIL();
+  }
+
+  #ifdef LOGDUMP
+  for (int i = 0; i <  arg_data.i1; i++)
+  {
+    LDEBUG("SKIPPER:\t\tMalloc'd %p.\n", ret + i);
+  }
+  #endif
+}
+
+static void calloc_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  int reg0 = (int ) get_arg(0);
+  int reg1 = (int ) get_arg(1);
+
+  arg_data.i1 = reg0 * reg1;
+}
+static void calloc_end(DBG_END_TAINTING_FUNC_ALONE)
+{
+  char *ret = (char *) get_ret();
+
+  if (!hashtable_add(&malloc_hashtable, ret, (void *)arg_data.i1))
+  {
+    FAIL();
+  }
+
+  mem_taint_rm_all((uint64_t) ret, arg_data.i1);
+
+  LDEBUG("SKIPPER:\t\tCalloc allocated at %p, %d bytes.\n", ret, arg_data.i1);
+
+  #ifdef LOGDUMP
+  for (int i = 0; i <  arg_data.i1; i++)
+  {
+    LDEBUG("SKIPPER:\t\tCalloc'd %p.\n", ret + i);
+  }
+  #endif
+}
+
+static void free_call(DBG_END_TAINTING_FUNC_ALONE)
+{
+  void *v = (void*) get_arg(0);
+
+  // Nothing happens on free(NULL)
+  if (v == NULL)
+  {
+    return;
+  }
+
+  LDEBUG("SKIPPER:\t\tFree called for %p.\n", v);
+
+  if (!hashtable_remove(&malloc_hashtable, v))
+  {
+    FAIL();
+  }
+}
+
+
+static void restricted_func(DBG_END_TAINTING_FUNC_ALONE)
+{
+  LERROR("No support for this instruction, exitting....\n");
+
+  FAIL();
 }
 
 static void ignore_handlers(const module_data_t *mod, const char *function)
@@ -776,8 +955,10 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
    if (strncmp(dr_module_preferred_name(mod), "libc.so", 7) == 0)
    {
      register_handlers(mod, "scanf", pre_scanf, post_scanf);
-     register_handlers(mod, "calloc", check_arg01_8, NULL);                // void *calloc(size_t nmemb, size_t size);
-     register_handlers(mod, "realloc", check_arg1_8, NULL);                // void *realloc(void *ptr, size_t size);
+     register_handlers(mod, "malloc", malloc_begin, malloc_end);           // void *malloc(size_t size);
+     register_handlers(mod, "realloc", realloc_begin, realloc_end);        // void *realloc(void *ptr, size_t size);
+     register_handlers(mod, "calloc", calloc_begin, calloc_end);           // void *calloc(size_t nmemb, size_t size);
+     register_handlers(mod, "free", free_call, NULL);                      // void free(void *ptr);
      register_handlers(mod, "getenv", NULL, taint_retstr);                 // char *getenv(const char *name);
      register_handlers(mod, "strcmp", strcmp_begin, strcmp_end);           // int strcmp(const char *s1, const char *s2);
      register_handlers(mod, "strcasecmp", strcmp_begin, strcmp_end);       // int strcasecmp(const char *s1, const char *s2);
@@ -807,8 +988,9 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      register_handlers(mod, "strdup", strdup_begin, strdup_end);           // char *strdup(const char *s);
      register_handlers(mod, "qsort", check_arg1_8, NULL);                  // void qsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *));
      register_handlers(mod, "mmap", mmap_begin, mmap_end);                 // void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
+     register_handlers(mod, "getchar", NULL, taint_ret_by_stdin);          // int getchar(void);
 
-
+     register_handlers(mod, "vfork", restricted_func, NULL);
 
 
      ignore_handlers(mod, "rand_r");
@@ -827,7 +1009,6 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "rewind");
      ignore_handlers(mod, "poll");
      ignore_handlers(mod, "sleep");
-     ignore_handlers(mod, "free");
      ignore_handlers(mod, "shutdown");
      ignore_handlers(mod, "printf");
      ignore_handlers(mod, "fprintf");
@@ -867,7 +1048,6 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "regcomp");
      ignore_handlers(mod, "regexec");
      ignore_handlers(mod, "regfree");
-     ignore_handlers(mod, "malloc");
      ignore_handlers(mod, "iswprint");
      ignore_handlers(mod, "iconv");
      ignore_handlers(mod, "iconv_open");
@@ -875,6 +1055,13 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "getcwd");
      ignore_handlers(mod, "fputs");
      ignore_handlers(mod, "fputc");
+     ignore_handlers(mod, "memchr");
+     ignore_handlers(mod, "strspn");
+     ignore_handlers(mod, "strcspn");
+     ignore_handlers(mod, "getpagesize");
+     ignore_handlers(mod, "feof");
+     ignore_handlers(mod, "strpbrk");
+
 
 
      // Ignoring some precision here, TODO for future:

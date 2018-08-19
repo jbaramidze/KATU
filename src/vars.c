@@ -27,6 +27,7 @@ uint64_t fds_history_index_                  = 0;
 
 hashtable_t func_hashtable;
 hashtable_t jump_addr_hashtable;
+hashtable_t malloc_hashtable;
 
 
 // Used to describe true taint sources (e.g. read())

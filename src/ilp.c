@@ -185,12 +185,13 @@ static void recursively_get_uid_constr(int id, int type)
   if (uid_total_map[ID2UID(id)] == -1)
   {
     uid_total_vector[uid_total_vector_size++] = ID2UID(id);
-    uid_total_map[ID2UID(id)] = uid_counter;
 
     if (uid_total_vector_size >= MAX_CONSTRAINTS)
     {
       FAIL();
     }
+    
+    uid_total_map[ID2UID(id)] = uid_counter;
 
     uid_total[uid_counter++] = ID2UID(id);
 

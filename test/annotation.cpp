@@ -1,7 +1,6 @@
-/* fread example: read an entire file */
 #include <stdio.h>
 #include <stdlib.h>
-//#include "dr_annotations_zhani.h"
+#include "dr_annotations_zhani.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -14,14 +13,15 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-
 const char *path1 = "/home/zhani/Thesis/test/zaza";
 const char *path2 = "/home/zhani/Thesis/test/zaza1";
 
+ 
 int main () {
 
-void *q = (void *) malloc(105);
+  int b = 10;
 
-memset(q, 0, 105);
+  asm volatile ( "mov (%%rax), %%rax" ::"a"(&b): );
+
   return 0;
 }

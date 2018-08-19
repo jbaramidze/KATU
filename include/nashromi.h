@@ -473,6 +473,7 @@ extern int ignore_vector_size;
 
 
 extern hashtable_t jump_addr_hashtable;
+extern hashtable_t malloc_hashtable;
 
 void add_ignore_func(app_pc pc);
 int check_ignore_func(app_pc pc);
@@ -605,7 +606,7 @@ void nshr_taint_mv_constmem2reg(uint64 src_addr, int dst_reg DBG_END_TAINTING_FU
 void nshr_taint_mv_constmem2regzx(uint64 src_addr, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC); 
 void nshr_taint_mv_constmem2regsx(uint64 src_addr, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC);
 void nshr_taint_mv_constmem2mem(uint64 src_addr, int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_constmem2constmem(uint64 src_addr, uint64 dst_addr, unsigned int size DBG_END_TAINTING_FUNC);
+void nshr_taint_mv_constmem2constmem(uint64 src_addr, uint64 dst_addr, uint64_t size DBG_END_TAINTING_FUNC);
 void nshr_taint_mv_mem2mem(int src_seg_reg, int src_base_reg, int src_index_reg, int src_scale, int src_disp, 
                                   int dst_seg_reg, int dst_base_reg, int dst_index_reg, int dst_scale, int dst_disp, int access_size DBG_END_TAINTING_FUNC);
 void nshr_taint_mv_reg2constmem(int src_reg, uint64 addr DBG_END_TAINTING_FUNC);

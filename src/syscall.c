@@ -43,6 +43,11 @@ static void post_open(void *drcontext)
 
     fds_[result] = fds_history_index_++;
 
+    if (fds_history_index_ >= MAX_FILE_HISTORY)
+    {
+      FAIL();
+    }
+
     fds_history_[fds_[result]].secure = is_path_secure(open_path);
     fds_history_[fds_[result]].path = open_path;
   }
