@@ -95,7 +95,7 @@
 #define MAX_UID               10000000
 #define MAX_ID                10000000
 #define MAX_OPCODE            2048
-#define MAX_FILE_HISTORY      1024
+#define MAX_FILE_HISTORY      4096
 #define INITIAL_OPERATIONS    4
 #define TAINTMAP_NUM          50
 #define TAINTMAP_SIZE         65536

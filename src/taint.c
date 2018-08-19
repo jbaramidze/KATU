@@ -1,6 +1,7 @@
+#define LOGWARNING
 #define LOGNORMAL
 #define LOGDEBUG
-#define  LOGDUMP
+#define LOGDUMP
 
 #include "dr_api.h"
 #include "core/unix/include/syscall.h"
@@ -90,9 +91,9 @@ void memset_reg2mem(int reg, uint64_t addr, int size DBG_END_TAINTING_FUNC)
   {
     for (unsigned int j = 0; j < REGSIZE(reg); j++)
     {
-      int index = mem_taint_find_index(addr, i*size + j);
+      int index = mem_taint_find_index(addr, i*REGSIZE(reg) + j);
 
-      LDUMP_TAINT(i, (REGTAINTED(reg, j) || MEMTAINTED(index, addr + i*size + j)), 
+      LDUMP_TAINT(i, (REGTAINTED(reg, j) || MEMTAINTED(index, addr + i*REGSIZE(reg) + j)), 
                        "  REG %s byte %d TAINT#%d -> MEM %p TAINT#%d INDEX %d TOTAL %d.\n", 
                            REGNAME(reg), j, REGTAINTVAL(reg, j), ADDR(addr + i*REGSIZE(reg) + j), 
                                 MEMTAINTVAL(index, addr + i*REGSIZE(reg) + j), index, REGSIZE(reg)*size);
