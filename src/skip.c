@@ -1,7 +1,7 @@
-#define LOGWARNING
-#define LOGNORMAL
-#define LOGDEBUG
-#define LOGDUMP
+#undef LOGWARNING
+#undef LOGNORMAL
+#undef LOGDEBUG
+#undef LOGDUMP
 
 #include "dr_api.h"
 #include "drwrap.h"
@@ -28,6 +28,19 @@ typedef struct {
 } arg_data_struct;
 
 arg_data_struct arg_data;
+
+int get_strlen_or_n(const char *str, int n)
+{
+  for (int i = 0; i < n; i++)
+  {
+    if (str[i] == 0)
+    {
+      return i + 1;
+    }
+  }
+
+  return n;
+}
 
 static reg_t get_stack_arg(dr_mcontext_t *ctx, uint arg)
 {
@@ -365,6 +378,19 @@ static void ncmp_end(DBG_END_TAINTING_FUNC_ALONE)
   }
 }
 
+static void strncmp_end(DBG_END_TAINTING_FUNC_ALONE)
+{
+  int t = get_ret();
+
+  if (t == 0)
+  {
+    // Either they are short or their first n chars were equal.
+    int size = get_strlen_or_n(arg_data.s1, arg_data.i1);
+
+    update_bounds_strings_equal((uint64_t) arg_data.s1, (uint64_t) arg_data.s2, size DGB_END_CALL_ARG);
+  }
+}
+
 static void strcmp_begin(DBG_END_TAINTING_FUNC_ALONE)
 {
   arg_data.s1 = (const char *) get_arg(0);
@@ -377,12 +403,10 @@ static void strcmp_end(DBG_END_TAINTING_FUNC_ALONE)
 
   if (t == 0)
   {
-    update_bounds_strings_equal((uint64_t) arg_data.s1, (uint64_t) arg_data.s2, strlen(arg_data.s1) DGB_END_CALL_ARG);
+    update_bounds_strings_equal((uint64_t) arg_data.s1, (uint64_t) arg_data.s2, strlen(arg_data.s1) + 1 DGB_END_CALL_ARG);
   }
 }
 
-
-// TODO: test those
 static void strdup_begin(DBG_END_TAINTING_FUNC_ALONE)
 {
   arg_data.s1 = (const char *) get_arg(0);
@@ -399,7 +423,7 @@ static void strdup_end(DBG_END_TAINTING_FUNC_ALONE)
 
   if (dst != NULL)
   {
-    nshr_taint_mv_constmem2constmem((uint64) arg_data.s1, (uint64) dst, strlen(dst) DGB_END_CALL_ARG);
+    nshr_taint_mv_constmem2constmem((uint64) arg_data.s1, (uint64) dst, strlen(dst) + 1 DGB_END_CALL_ARG);
   }
 }
 
@@ -465,9 +489,9 @@ static void strcpy_begin(DBG_END_TAINTING_FUNC_ALONE)
   void *dst = (void *) get_arg(0);
   void *src = (void *) get_arg(1);
 
-  unsigned int size = strlen(src);
+  unsigned int len = strlen(src) + 1;
 
-  nshr_taint_mv_constmem2constmem((uint64) src, (uint64) dst, size DGB_END_CALL_ARG);
+  nshr_taint_mv_constmem2constmem((uint64) src, (uint64) dst, len DGB_END_CALL_ARG);
 }
 
 static void strncpy_begin(DBG_END_TAINTING_FUNC_ALONE)
@@ -476,15 +500,32 @@ static void strncpy_begin(DBG_END_TAINTING_FUNC_ALONE)
   void *src = (void *) get_arg(1);
   unsigned int size  = (int) get_arg(2);
 
-  unsigned int len = strlen(src);
+  unsigned int len = get_strlen_or_n(src, size);
 
-  // choose smallest in size.
-  if (size > len)
-  {
-    size = len;
-  }
+  nshr_taint_mv_constmem2constmem((uint64) src, (uint64) dst, len DGB_END_CALL_ARG);
+}
 
-  nshr_taint_mv_constmem2constmem((uint64) src, (uint64) dst, size DGB_END_CALL_ARG);
+static void strcat_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  void *dst = (void *) get_arg(0);
+  void *src = (void *) get_arg(1);
+
+  unsigned int dst_size = strlen(dst);
+  unsigned int src_size = strlen(src) + 1;
+
+  nshr_taint_mv_constmem2constmem((uint64) src, (uint64) dst + dst_size, src_size DGB_END_CALL_ARG);
+}
+
+static void strncat_begin(DBG_END_TAINTING_FUNC_ALONE)
+{
+  void *dst = (void *) get_arg(0);
+  void *src = (void *) get_arg(1);
+  unsigned int size  = (int) get_arg(2);
+
+  unsigned int dst_size = strlen(dst);
+  unsigned int src_size = get_strlen_or_n(src, size);
+
+  nshr_taint_mv_constmem2constmem((uint64) src, (uint64) dst + dst_size, src_size DGB_END_CALL_ARG);
 }
 
 static void read_begin(DBG_END_TAINTING_FUNC_ALONE)
@@ -962,9 +1003,9 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      register_handlers(mod, "getenv", NULL, taint_retstr);                 // char *getenv(const char *name);
      register_handlers(mod, "strcmp", strcmp_begin, strcmp_end);           // int strcmp(const char *s1, const char *s2);
      register_handlers(mod, "strcasecmp", strcmp_begin, strcmp_end);       // int strcasecmp(const char *s1, const char *s2);
-     register_handlers(mod, "strncmp", ncmp_begin, ncmp_end);              // int strncmp(const char *s1, const char *s2, size_t n);
-     register_handlers(mod, "strncasecmp", ncmp_begin, ncmp_end);          // int strncasecmp(const char *s1, const char *s2, size_t n);
-     register_handlers(mod, "memcmp", ncmp_begin, ncmp_begin);             // int memcmp(const void *s1, const void *s2, size_t n);
+     register_handlers(mod, "strncmp", ncmp_begin, strncmp_end);           // int strncmp(const char *s1, const char *s2, size_t n);
+     register_handlers(mod, "strncasecmp", ncmp_begin, strncmp_end);       // int strncasecmp(const char *s1, const char *s2, size_t n);
+     register_handlers(mod, "memcmp", ncmp_begin, ncmp_end);               // int memcmp(const void *s1, const void *s2, size_t n);
      register_handlers(mod, "strcpy", strcpy_begin, NULL);                 // char *strcpy(char *dest, const char *src);
      register_handlers(mod, "strncpy", strncpy_begin, NULL);               // char *strncpy(char *dest, const char *src, size_t n);
      register_handlers(mod, "__memcpy_chk", memcpy_begin, NULL);           // void *memcpy(void *dest, const void *src, size_t n);
@@ -989,6 +1030,9 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      register_handlers(mod, "qsort", check_arg1_8, NULL);                  // void qsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *));
      register_handlers(mod, "mmap", mmap_begin, mmap_end);                 // void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
      register_handlers(mod, "getchar", NULL, taint_ret_by_stdin);          // int getchar(void);
+     register_handlers(mod, "strcat", strcat_begin, NULL);                 // char *strcat(char *dest, const char *src);
+     register_handlers(mod, "strncat", strncat_begin, NULL);               // char *strncat(char *dest, const char *src, size_t n);
+
 
      register_handlers(mod, "vfork", restricted_func, NULL);
 
@@ -1012,6 +1056,7 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "shutdown");
      ignore_handlers(mod, "printf");
      ignore_handlers(mod, "fprintf");
+     ignore_handlers(mod, "vfprintf");
      ignore_handlers(mod, "bsd_signal");
      ignore_handlers(mod, "getpid");
      ignore_handlers(mod, "setlocale");

@@ -8,13 +8,13 @@
 #include "drvector.h"
 
 // Do additional checks, while testing
-#define CHECKS
+#undef CHECKS
 
 // Pass instruction among other params when tainting, to debug.
-#define DBG_PASS_INSTR
+#undef DBG_PASS_INSTR
 
 // Parse jump addresses
-#define DBG_PARSE_JUMPS
+#undef DBG_PARSE_JUMPS
 
 // Log paths.
 #define NSHR_LOGFILE_PATH "/home/zhani/Thesis/project/build/nshr.log"
