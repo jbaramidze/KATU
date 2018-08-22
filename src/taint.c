@@ -9,7 +9,11 @@
 #include "drsyms.h"
 
 #define LIBC_NAME "libc.so.6"
+#define LIBM_NAME "libm.so.6"
 #define LD_LINUX  "ld-linux-x86-64.so.2"
+
+static void nshr_taint_cmp_reg2reg_internal(int reg1, int reg2, int type DBG_END_TAINTING_FUNC);
+static void nshr_taint_cmp_mem2mem_internal(uint64_t addr1, uint64_t addr2, int size, int type DBG_END_TAINTING_FUNC);
 
 static int setcc_to_jcc(int opcode)
 {
@@ -279,7 +283,7 @@ int process_restrictor_id(int *ids1, int *ids2, int size, int type DBG_END_TAINT
       }
       else
       {
-        FAIL();
+        //FIXME: Implement this!
       }
     }
   }
@@ -337,6 +341,8 @@ void nshr_taint_rest_imm2reg(uint64_t value, int dst_reg, int type DBG_END_TAINT
   {
     invalidate_eflags();
   }
+
+  nshr_taint_cmp_reg2reg_internal(dst_reg, dst_reg, PROP_TEST DGB_END_CALL_ARG);
 }
 
 
@@ -374,6 +380,8 @@ void nshr_taint_rest_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING
 
   set_reg_taint(src_reg, ids1);
   set_reg_taint(dst_reg, ids2);
+
+  nshr_taint_cmp_reg2reg_internal(dst_reg, dst_reg, PROP_TEST DGB_END_CALL_ARG);
 }
 
 
@@ -399,6 +407,8 @@ void nshr_taint_rest_imm2mem(uint64_t value, int seg_reg, int base_reg, int inde
   {
     invalidate_eflags();
   }
+
+  nshr_taint_cmp_mem2mem_internal(addr, addr, access_size, PROP_TEST DGB_END_CALL_ARG);
 }
 
 
@@ -438,6 +448,8 @@ void nshr_taint_rest_reg2mem(int src_reg, int seg_reg, int base_reg, int index_r
 
   set_reg_taint(src_reg, ids1);
   set_mem_taint(addr, REGSIZE(src_reg), ids2);
+
+  nshr_taint_cmp_mem2mem_internal(addr, addr, REGSIZE(src_reg), PROP_TEST DGB_END_CALL_ARG);
 }
 
 void nshr_taint_rest_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int type DBG_END_TAINTING_FUNC)
@@ -476,6 +488,8 @@ void nshr_taint_rest_mem2reg(int seg_reg, int base_reg, int index_reg, int scale
 
   set_mem_taint(addr, REGSIZE(dst_reg), ids1);
   set_reg_taint(dst_reg, ids2);
+
+  nshr_taint_cmp_reg2reg_internal(dst_reg, dst_reg, PROP_TEST DGB_END_CALL_ARG);
 }
 
 void nshr_taint_bswap(int dst_reg DBG_END_TAINTING_FUNC)
@@ -488,17 +502,39 @@ void nshr_taint_bswap(int dst_reg DBG_END_TAINTING_FUNC)
   }
 }
 
+void nshr_taint_movs_rep(int size DBG_END_TAINTING_FUNC)
+{
+  STOP_IF_NOT_ACTIVE();
+
+  GET_CONTEXT();
+
+  if (!direction_clear(mcontext.xflags)) FAIL();
+
+  check_bounds_reg(DR_REG_ECX DGB_END_CALL_ARG);
+
+  reg_t bytes = reg_get_value(DR_REG_ECX, &mcontext);
+
+  LDEBUG_TAINT(false, "InsDetail:\tDoing memcpy of %d*%d bytes.\n", bytes, size);
+
+  char *si = (char *) reg_get_value(DR_REG_RSI, &mcontext);
+  char *di = (char *) reg_get_value(DR_REG_RDI, &mcontext);
+
+  nshr_taint_mv_constmem2constmem((uint64) si, (uint64) di, bytes*size DGB_END_CALL_ARG);
+}
+
 void nshr_taint_strsto_rep(int size DBG_END_TAINTING_FUNC)
 {
   STOP_IF_NOT_ACTIVE();
 
   GET_CONTEXT();
 
-  LDEBUG_TAINT(false, "InsDetail:\tDoing memset of %d bytes.\n", size);
-
   if (!direction_clear(mcontext.xflags)) FAIL();
 
+  check_bounds_reg(DR_REG_ECX DGB_END_CALL_ARG);
+
   reg_t bytes = reg_get_value(DR_REG_ECX, &mcontext);
+
+  LDEBUG_TAINT(false, "InsDetail:\tDoing memset of %d*%d bytes.\n", bytes, size);
 
   reg_t reg = get_A_of_size(size);
 
@@ -516,11 +552,13 @@ void nshr_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC)
 
   GET_CONTEXT();
 
-  LDEBUG_TAINT(false, "InsDetail:\tDoing strcmp of %d bytes.\n", size);
-
   if (!direction_clear(mcontext.xflags)) FAIL();
 
+  check_bounds_reg(DR_REG_ECX DGB_END_CALL_ARG);
+
   reg_t bytes = reg_get_value(DR_REG_ECX, &mcontext);
+
+  LDEBUG_TAINT(false, "InsDetail:\tDoing strcmp of %d*%d bytes.\n", bytes, size);
 
   int equals = 1;
 
@@ -636,7 +674,10 @@ void nshr_taint_shift_regbyreg(int dst_reg, int src_reg, int type DBG_END_TAINTI
   // Not sure how to shift by tainted amount.
   if (REGTAINTEDANY(src_reg))
   {
-    FAIL();
+    // FIXME: Implement it.
+    REGTAINTRMALL(dst_reg);
+
+    return;
   }
 
   GET_CONTEXT();
@@ -776,6 +817,19 @@ static void process_cond_statement(int type, int taken DBG_END_TAINTING_FUNC)
     t2 = get_taint2_eflags(); // array of 8
     t1 = get_taint1_eflags(); // array of 8
 
+    // One case is, if (a & 0x10), ignore such case since it doesn't give us much
+    if (t1 == NULL || t2 == NULL)
+    {
+      if (type == COND_ZERO)
+      {
+        return;
+      }
+      else
+      {
+        FAIL();
+      }
+    }
+
     // Make sure test %%x %%x was done.
     for (int i = 0; i < 8; i++)
       FAILIF(t1[i] != t2[i]);
@@ -877,6 +931,7 @@ static void process_cond_statement(int type, int taken DBG_END_TAINTING_FUNC)
       else if (type == COND_ZERO)           {} // Gives no info.
       else if (type == COND_LESS_UNSIGNED)  bound(t2, TAINT_BOUND_LOW | TAINT_BOUND_HIGH);
       else if (type == COND_MORE_UNSIGNED)  {} // Gives no info
+
       else                                  FAIL();
     }
     else
@@ -896,9 +951,7 @@ static void nshr_taint_cond_set_internal(int type, instr_t *instr DBG_END_TAINTI
     
     int opcode = setcc_to_jcc(opcode_old);
 
-    /*
-    FIXME: Workaround because DR is missing correct functionality.
-    */
+    // Workaround because DR is missing correct functionality.
 
     instr_t *newinstr = INSTR_CREATE_jcc_short(drcontext, opcode, opnd_create_pc(0));
 
@@ -1002,11 +1055,10 @@ void nshr_taint_cmp_reg2mem(int reg1, int seg_reg, int base_reg, int index_reg, 
   nshr_taint_cmp_reg2constmem(reg1, addr, type DGB_END_CALL_ARG);
 }
 
-void nshr_taint_cmp_reg2reg(int reg1, int reg2, int type DBG_END_TAINTING_FUNC)
+// Used internally and for binary operation related updates of EFLAG.
+static void nshr_taint_cmp_reg2reg_internal(int reg1, int reg2, int type DBG_END_TAINTING_FUNC)
 {
   STOP_IF_NOT_ACTIVE();
-
-  LDEBUG_TAINT(false, "Comparing %s with %s by %s.\n", REGNAME(reg1), REGNAME(reg2), PROP_NAMES[type]);
 
   int found = 0;
 
@@ -1014,21 +1066,78 @@ void nshr_taint_cmp_reg2reg(int reg1, int reg2, int type DBG_END_TAINTING_FUNC)
 
   for (unsigned int i = 0; i < REGSIZE(reg1); i++)
   {
-  	int t1 = REGTAINTVAL(reg1, i);
-  	int t2 = REGTAINTVAL(reg2, i);
+    int t1 = REGTAINTVAL(reg1, i);
+    int t2 = REGTAINTVAL(reg2, i);
 
-  	if (t1 > 0 || t2 > 0)
-  	{
-  	  found = 1;
+    if (t1 > 0 || t2 > 0)
+    {
+      found = 1;
 
       update_eflags(type, i, t1, t2);
-  	}
+    }
   }
 
   if (!found)
   {
-  	invalidate_eflags();
+    invalidate_eflags();
   }
+}
+
+// Used internally and for binary operation related updates of EFLAG.
+static void nshr_taint_cmp_mem2mem_internal(uint64_t addr1, uint64_t addr2, int size, int type DBG_END_TAINTING_FUNC)
+{
+  STOP_IF_NOT_ACTIVE();
+
+  int found = 0;
+
+  clear_eflags();
+
+  for (int i = 0; i < size; i++)
+  {
+    int index1 = mem_taint_find_index(addr1, i);
+    int index2 = mem_taint_find_index(addr2, i);
+
+    int t1 = MEMTAINTVAL(index1, addr1 + i);
+    int t2 = MEMTAINTVAL(index2, addr2 + i);
+
+    if (t1 > 0 || t2 > 0)
+    {
+      found = 1;
+
+      update_eflags(type, i, t1, t2);
+    }
+  }
+
+  if (!found)
+  {
+    invalidate_eflags();
+  }
+}
+
+void nshr_taint_cmp_otherinst_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size DBG_END_TAINTING_FUNC)
+{
+  reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp, 1 DGB_END_CALL_ARG);
+
+  nshr_taint_cmp_mem2mem_internal(addr, addr, access_size, PROP_TEST DGB_END_CALL_ARG);
+}
+
+void nshr_taint_cmp_otherinst_constmem(uint64 addr, int access_size DBG_END_TAINTING_FUNC)
+{
+  nshr_taint_cmp_mem2mem_internal(addr, addr, access_size, PROP_TEST DGB_END_CALL_ARG);
+}
+
+void nshr_taint_cmp_otherinst_reg(int reg DBG_END_TAINTING_FUNC)
+{
+  nshr_taint_cmp_reg2reg_internal(reg, reg, PROP_TEST DGB_END_CALL_ARG);
+}
+
+void nshr_taint_cmp_reg2reg(int reg1, int reg2, int type DBG_END_TAINTING_FUNC)
+{
+  STOP_IF_NOT_ACTIVE();
+
+  LDEBUG_TAINT(false, "Comparing %s with %s by %s.\n", REGNAME(reg1), REGNAME(reg2), PROP_NAMES[type]);
+
+  nshr_taint_cmp_reg2reg_internal(reg1, reg2, type DGB_END_CALL_ARG);
 }
 
 void nshr_taint_cmp_reg2imm(int reg1, int type DBG_END_TAINTING_FUNC)
@@ -1426,6 +1535,8 @@ void nshr_taint_mix_constmem2reg(uint64 addr, int dst_reg, int type DBG_END_TAIN
   }
 
   fix_dest_reg(dst_reg);
+
+  nshr_taint_cmp_reg2reg_internal(dst_reg, dst_reg, PROP_TEST DGB_END_CALL_ARG);
 }
 
 // dst = dst+src_reg (or 1, ^, &, depending on type)
@@ -1468,7 +1579,9 @@ void nshr_taint_mix_reg2mem(int src_reg, int seg_reg, int base_reg, int index_re
     {
       // nothing to do: dst_taint stays whatever it was.
     }
-   }
+  }
+
+  nshr_taint_cmp_mem2mem_internal(addr, addr, REGSIZE(src_reg), PROP_TEST DGB_END_CALL_ARG);
 }
 
 // dst_reg = dst_reg+src (or 1, ^, &, depending on type)
@@ -1516,6 +1629,8 @@ void nshr_taint_mix_mem2reg(int seg_reg, int base_reg, int index_reg, int scale,
   }
 
   fix_dest_reg(dst_reg);
+
+  nshr_taint_cmp_reg2reg_internal(dst_reg, dst_reg, PROP_TEST DGB_END_CALL_ARG);
 }
 
 // dst_reg = src_reg+dst_reg (or 1, ^, &, depending on type)
@@ -1894,7 +2009,7 @@ static void process_jump(app_pc pc_from, app_pc pc, int is_ret DBG_END_TAINTING_
 
     const char *modname = dr_module_preferred_name(data);
 
-    if (strcmp(LD_LINUX, modname) == 0 || strcmp(LIBC_NAME, modname) == 0)
+    if (strcmp(LD_LINUX, modname) == 0 || strcmp(LIBC_NAME, modname) == 0 || strcmp(LIBM_NAME, modname) == 0)
     {
       drsym_info_t sym;
 
@@ -1910,16 +2025,26 @@ static void process_jump(app_pc pc_from, app_pc pc, int is_ret DBG_END_TAINTING_
       // Check if it's known failure.
       drsym_error_t symres = drsym_lookup_address(data -> full_path, pc - data -> start, &sym, DRSYM_DEFAULT_FLAGS);
 
-      LDUMP_TAINT(0, true, "Goind into MODE_IN_LIBC mode to '%s'.\n", sym.name);
-
-      if (strcmp(sym.name, "__libc_start_main") != 0 &&
-          strcmp(sym.name, "_dl_fini") != 0 &&
-          strcmp(sym.name, "msort_with_tmp.part.0") != 0)
+      if (strcmp(LIBM_NAME, modname) == 0)
       {
-        LERROR("ERROR! Failed jumping to %s[%s] at %s  %s:%d.\n", sym.name, modname, data -> full_path, 
-                                            sym.file, sym.line);
+        LDUMP_TAINT(0, true, "Goind into MODE_IN_LIBC mode for LIBM to '%s'.\n", sym.name);
 
+        // Register post-function.
         return_from_libc = NULL;
+      }
+      else
+      {
+        LDUMP_TAINT(0, true, "Goind into MODE_IN_LIBC mode to '%s'.\n", sym.name);
+
+        if (strcmp(sym.name, "__libc_start_main") != 0 &&
+            strcmp(sym.name, "_dl_fini") != 0 &&
+            strcmp(sym.name, "msort_with_tmp.part.0") != 0)
+        {
+          LERROR("ERROR! Failed jumping to %s[%s] at %s  %s:%d.\n", sym.name, modname, data -> full_path, 
+                                              sym.file, sym.line);
+
+          return_from_libc = NULL;
+        }
       }
 
       started_ = MODE_IN_LIBC;
@@ -2252,6 +2377,8 @@ void nshr_taint_mul_imm2reg(int src1_reg, int64 value, int dst1_reg, int dst2_re
 void nshr_taint_wrong(instr_t *instr DBG_END_TAINTING_FUNC)
 {
   STOP_IF_NOT_ACTIVE();
+
+  LERROR("Wrong instruction.\n");
 
   FAIL();
 }

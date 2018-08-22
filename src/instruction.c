@@ -333,7 +333,11 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_binary(type))
       {
-      	// We don't care about adding 5 to tainted reg.
+      	// We don't care about adding 5 to tainted reg. Just update eflags.
+
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_otherinst_reg, false, DBG_TAINT_NUM_PARAMS(1),
+                                 OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
+        
       }
       else if (prop_is_restrictor(type))
       {
@@ -373,7 +377,12 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_binary(type))
       {
-        // We don't care about adding 5 to tainted mem.
+        // We don't care about adding 5 to tainted mem. Just update the flags.
+
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_otherinst_mem, false, DBG_TAINT_NUM_PARAMS(6),
+                                 OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
+                                     OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), 
+                                         OPND_CREATE_INT32(access_size) DBG_END_DR_CLEANCALL);
       }
       else if (prop_is_restrictor(type))
       {
@@ -415,7 +424,10 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       }
       else if (prop_is_binary(type))
       {
-        // Nothing to do in this case.
+        // Nothing to do in this case. Just update eflags.
+
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_otherinst_constmem, false, DBG_TAINT_NUM_PARAMS(2),
+                                 OPND_CREATE_INT64(addr), OPND_CREATE_INT32(access_size) DBG_END_DR_CLEANCALL);
       }
       else if (prop_is_restrictor(type))
       {
@@ -558,6 +570,11 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
                                  OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(dst_reg),
                                      OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
         }
+
+        // Update eflags.
+
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_otherinst_reg, false, DBG_TAINT_NUM_PARAMS(1),
+                                 OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       }
       else if (prop_is_restrictor(type))
       {
@@ -597,10 +614,6 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
         dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2constmem, false, DBG_TAINT_NUM_PARAMS(2), 
                                  OPND_CREATE_INT32(src_reg), OPND_CREATE_INT64(addr) DBG_END_DR_CLEANCALL);
-      }
-      else if (prop_is_restrictor(type))
-      {
-        FAIL();
       }
       else
       {
@@ -1157,7 +1170,7 @@ static void opcode_cmps(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
     int size = opnd_size_in_bytes(opnd_get_size(src1));
 
-    LDUMP("InsDetail:\tDoing strcmp of %d bytes.\n", size);
+    LDUMP("InsDetail:\tDoing memcmp of %d bytes.\n", size);
 
     dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_strcmp_rep, false, DBG_TAINT_NUM_PARAMS(1),
                            OPND_CREATE_INT32(size)  DBG_END_DR_CLEANCALL);
@@ -1171,6 +1184,17 @@ static void opcode_cmps(void *drcontext, instr_t *instr, instrlist_t *ilist)
     LDUMP("InsDetail:\tDoing memset of %d bytes.\n", size);
 
     dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_strsto_rep, false, DBG_TAINT_NUM_PARAMS(1),
+                           OPND_CREATE_INT32(size)  DBG_END_DR_CLEANCALL);
+  }
+  else if (opcode == OP_rep_movs)
+  {
+    opnd_t src1 = instr_get_src(instr, 0);
+
+    int size = opnd_size_in_bytes(opnd_get_size(src1));
+
+    LDUMP("InsDetail:\tDoing memcpy of %d bytes (%d %d).\n", size, instr_num_srcs(instr), instr_num_srcs(instr));
+
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_movs_rep, false, DBG_TAINT_NUM_PARAMS(1),
                            OPND_CREATE_INT32(size)  DBG_END_DR_CLEANCALL);
   }
   else
@@ -2155,10 +2179,12 @@ void nshr_init_opcodes(void)
 
   instrFunctions[OP_nop]                 = opcode_ignore;    // 381
 
+  instrFunctions[OP_movs]                = opcode_cmps;      // 387 (memcpy)
+  instrFunctions[OP_rep_movs]            = opcode_cmps;      // 388 (memcpy)
   instrFunctions[OP_stos]                = opcode_cmps;      // 389 (memset)
   instrFunctions[OP_rep_stos]            = opcode_cmps;      // 390 (memset)
 
-  instrFunctions[OP_cmps]                = opcode_cmps;      // 393 (strcpy)
+  instrFunctions[OP_cmps]                = opcode_cmps;      // 393 (memcmp)
   instrFunctions[OP_rep_cmps]            = opcode_cmps;      // 394 (strcpy)
 
   instrFunctions[OP_repne_scas]          = opcode_ignore;    // 398 (strlen)

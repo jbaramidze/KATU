@@ -16,12 +16,15 @@
 const char *path1 = "/home/zhani/Thesis/test/zaza";
 const char *path2 = "/home/zhani/Thesis/test/zaza1";
 
+
+#define haszero(v) (((v) - 0x01010101UL) & ~(v) & 0x80808080UL)
  
 int main () {
 
-  int b = 10;
 
-  asm volatile ( "mov (%%rax), %%rax" ::"a"(&b): );
+  int a = 256*256*256*8 + 256*256*0 + 256*99 + 8;
+
+  printf("%d.\n", haszero(a));
 
   return 0;
 }

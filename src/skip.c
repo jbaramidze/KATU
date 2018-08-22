@@ -1055,6 +1055,7 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "sleep");
      ignore_handlers(mod, "shutdown");
      ignore_handlers(mod, "printf");
+     ignore_handlers(mod, "putchar");
      ignore_handlers(mod, "fprintf");
      ignore_handlers(mod, "vfprintf");
      ignore_handlers(mod, "bsd_signal");
@@ -1084,6 +1085,7 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "__xstat");
      ignore_handlers(mod, "__fxstat");
      ignore_handlers(mod, "__printf_chk");
+     ignore_handlers(mod, "__fprintf_chk");
      ignore_handlers(mod, "__lxstat");
      ignore_handlers(mod, "_IO_puts");
      ignore_handlers(mod, "wcwidth");
@@ -1106,6 +1108,9 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "getpagesize");
      ignore_handlers(mod, "feof");
      ignore_handlers(mod, "strpbrk");
+     ignore_handlers(mod, "setjmp");
+     ignore_handlers(mod, "_IO_ferror");
+     ignore_handlers(mod, "longjmp");
 
 
 

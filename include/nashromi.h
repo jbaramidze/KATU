@@ -648,6 +648,11 @@ void nshr_taint_cmp_mem2imm(int seg_reg, int base_reg, int index_reg, int scale,
 void nshr_taint_cmp_constmem2reg(uint64_t addr, int size, int reg, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_cmp_constmem2imm(uint64_t addr, int size, int type DBG_END_TAINTING_FUNC);
 
+void nshr_taint_cmp_otherinst_reg(int reg DBG_END_TAINTING_FUNC);
+void nshr_taint_cmp_otherinst_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size DBG_END_TAINTING_FUNC);
+void nshr_taint_cmp_otherinst_constmem(uint64 addr, int access_size DBG_END_TAINTING_FUNC);
+
+
 void nshr_taint_rest_reg2mem(int src_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_rest_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING_FUNC);
 void nshr_taint_rest_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int type DBG_END_TAINTING_FUNC);
@@ -662,6 +667,7 @@ void nshr_taint_shift_regbyimm_feedreg(int src_reg, int imm, int feed_reg, int t
 
 void nshr_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC);
 void nshr_taint_strsto_rep(int size DBG_END_TAINTING_FUNC);
+void nshr_taint_movs_rep(int size DBG_END_TAINTING_FUNC);
 void nshr_taint_bswap(int dst_reg DBG_END_TAINTING_FUNC);
 
 void nshr_taint_check_ret(uint64_t pc_from DBG_END_TAINTING_FUNC);
