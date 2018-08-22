@@ -227,12 +227,11 @@ static int get_format_size(const char *format, int *advance)
   return -1;
 }
 
-static void pre_scanf(DBG_END_TAINTING_FUNC_ALONE)
+static void process_scanf(int num_arg DBG_END_TAINTING_FUNC)
 {
-  int num_arg = 1;
-  num_string_args = 0;
+  const char *format = (const char *) get_arg(num_arg);
 
-  const char *format = (const char *) get_arg(0);
+  num_arg++;
 
   LTEST("SKIPPER:\t\tGoing into scanf with %s.\n", format);
 
@@ -284,6 +283,13 @@ static void pre_scanf(DBG_END_TAINTING_FUNC_ALONE)
   started_ = MODE_IN_LIBC;
 }
 
+static void pre_scanf(DBG_END_TAINTING_FUNC_ALONE)
+{
+  num_string_args = 0;
+
+  process_scanf(0 DGB_END_CALL_ARG);
+}
+
 static void post_scanf(DBG_END_TAINTING_FUNC_ALONE)
 {
   for (int i = 0; i < num_string_args; i++)
@@ -292,6 +298,47 @@ static void post_scanf(DBG_END_TAINTING_FUNC_ALONE)
 
     taint_str(str);
   }
+}
+
+static void pre_sscanf(DBG_END_TAINTING_FUNC_ALONE)
+{
+  num_string_args = 0;
+
+  char *string = (char *) get_arg(0);
+
+  unsigned int tainted = 0;
+
+  for (unsigned int i = 0; i < strlen(string); i++)
+  {
+    int index = mem_taint_find_index((uint64_t) string, i);
+
+    if (MEMTAINTED(index, (uint64_t) string + i))
+    {
+      tainted++;
+    }
+  }
+
+  if (tainted == 0)
+  {
+    // Nothing to do.
+  }
+  else if (tainted == strlen(string))
+  {
+    process_scanf(1 DGB_END_CALL_ARG);
+  }
+  else
+  {
+    FAIL();
+  }
+}
+
+static void pre_fscanf(DBG_END_TAINTING_FUNC_ALONE)
+{
+  FAIL();
+}
+static void post_fscanf(DBG_END_TAINTING_FUNC_ALONE)
+{
+
 }
 
 static void recv_begin(DBG_END_TAINTING_FUNC_ALONE)
@@ -995,7 +1042,10 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
 
    if (strncmp(dr_module_preferred_name(mod), "libc.so", 7) == 0)
    {
-     register_handlers(mod, "scanf", pre_scanf, post_scanf);
+     register_handlers(mod, "scanf", pre_scanf, post_scanf);               // int scanf(const char *format, ...);
+     register_handlers(mod, "sscanf", pre_sscanf, post_scanf);             // int sscanf(const char *str, const char *format, ...);
+     register_handlers(mod, "__isoc99_sscanf", pre_sscanf, post_scanf);    // int sscanf(const char *str, const char *format, ...);
+     register_handlers(mod, "fscanf", pre_fscanf, post_fscanf);            // int fscanf(FILE *stream, const char *format, ...);
      register_handlers(mod, "malloc", malloc_begin, malloc_end);           // void *malloc(size_t size);
      register_handlers(mod, "realloc", realloc_begin, realloc_end);        // void *realloc(void *ptr, size_t size);
      register_handlers(mod, "calloc", calloc_begin, calloc_end);           // void *calloc(size_t nmemb, size_t size);
@@ -1032,7 +1082,6 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      register_handlers(mod, "getchar", NULL, taint_ret_by_stdin);          // int getchar(void);
      register_handlers(mod, "strcat", strcat_begin, NULL);                 // char *strcat(char *dest, const char *src);
      register_handlers(mod, "strncat", strncat_begin, NULL);               // char *strncat(char *dest, const char *src, size_t n);
-
 
      register_handlers(mod, "vfork", restricted_func, NULL);
 
@@ -1102,6 +1151,7 @@ void module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
      ignore_handlers(mod, "getcwd");
      ignore_handlers(mod, "fputs");
      ignore_handlers(mod, "fputc");
+     ignore_handlers(mod, "putc");
      ignore_handlers(mod, "memchr");
      ignore_handlers(mod, "strspn");
      ignore_handlers(mod, "strcspn");

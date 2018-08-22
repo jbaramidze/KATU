@@ -820,7 +820,7 @@ static void process_cond_statement(int type, int taken DBG_END_TAINTING_FUNC)
     // One case is, if (a & 0x10), ignore such case since it doesn't give us much
     if (t1 == NULL || t2 == NULL)
     {
-      if (type == COND_ZERO)
+      if (type == COND_ZERO || type == COND_NONZERO)
       {
         return;
       }
