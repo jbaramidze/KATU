@@ -103,7 +103,7 @@ int prop_is_cond_mov(enum prop_type type )
   return type >= COND_LESS && type <= COND_NOT_SIGN_BIT;
 }
 
-int nshr_tid_new_id(int uid)
+int katu_tid_new_id(int uid)
 {
   tid_[nextID].uid        = uid;
   tid_[nextID].ops_vector = NULL;
@@ -117,19 +117,19 @@ int nshr_tid_new_id(int uid)
   return nextID++;
 }
 
-int nshr_tid_new_id_get()
+int katu_tid_new_id_get()
 {
   return nextID;
 }
 
-int nshr_tid_new_uid_get()
+int katu_tid_new_uid_get()
 {
   return nextUID;
 }
 
-int nshr_tid_copy_id(int id)
+int katu_tid_copy_id(int id)
 {
-  int newid = nshr_tid_new_id(tid_[id].uid);
+  int newid = katu_tid_new_id(tid_[id].uid);
 
   LDEBUG("Utils:\t\tCopied id %d to %d.\n", id, newid);
 
@@ -167,7 +167,7 @@ int nshr_tid_copy_id(int id)
   return newid;
 }
 
-void nshr_id_add_op(int id, enum prop_type operation, int modify_by)
+void katu_id_add_op(int id, enum prop_type operation, int modify_by)
 {
   // FIXME: Problem with those is we should take prop_type into consideration.
   //        e.g. what if it was added, and now we are subtracting?
@@ -221,7 +221,7 @@ static int higher_bound(int uid)
 
 
 // first copy to a teporary register.
-int nshr_make_id_by_merging_all_ids(int *ids1, int *ids2)
+int katu_make_id_by_merging_all_ids(int *ids1, int *ids2)
 {
   // First, make sure at least one of them is tainted.
   int tainted = 0;
@@ -246,43 +246,43 @@ int nshr_make_id_by_merging_all_ids(int *ids1, int *ids2)
     return -1;
   }
 
-  int newid = nshr_tid_new_id(uid);
+  int newid = katu_tid_new_id(uid);
 
   for(unsigned int i = 0; i < 8; i++)
   {
     if (ids1[i] > 0)
     {
-      nshr_id_add_op(newid, PROP_ADD, ids1[i]);
+      katu_id_add_op(newid, PROP_ADD, ids1[i]);
     }
 
     if (ids2[i] > 0)
     {
-      nshr_id_add_op(newid, PROP_ADD, ids2[i]);
+      katu_id_add_op(newid, PROP_ADD, ids2[i]);
     }
   }
 
   return newid;
 }
 
-int nshr_tid_modify_id_by_symbol(int dst_taint, enum prop_type operation, int src_taint)
+int katu_tid_modify_id_by_symbol(int dst_taint, enum prop_type operation, int src_taint)
 {
-  int newid = nshr_tid_copy_id(dst_taint);
+  int newid = katu_tid_copy_id(dst_taint);
 
-  nshr_id_add_op(newid, operation, src_taint);
+  katu_id_add_op(newid, operation, src_taint);
 
   LDEBUG("Utils:\t\tAppended operation '%s' to id %d by ID#%d.\n", PROP_NAMES[operation], newid, src_taint);
 
   return newid;
 }
 
-int nshr_tid_new_uid_by_file(int file)
+int katu_tid_new_uid_by_file(int file)
 {
   uid_[nextUID].descriptor.file = file;
   uid_[nextUID].descr_type      = 1;
   uid_[nextUID].bounded         = 0;
   uid_[nextUID].gr              = NULL;
 
-  int newid  = nshr_tid_new_id(nextUID);
+  int newid  = katu_tid_new_id(nextUID);
 
   tid_[newid].size         = 1;
 
@@ -296,14 +296,14 @@ int nshr_tid_new_uid_by_file(int file)
   return newid;
 }
 
-int nshr_tid_new_uid_by_fd(int fd)
+int katu_tid_new_uid_by_fd(int fd)
 {
   uid_[nextUID].descriptor.fd = fd;
   uid_[nextUID].descr_type    = 0;
   uid_[nextUID].bounded       = 0;
   uid_[nextUID].gr            = NULL;
 
-  int newid  = nshr_tid_new_id(nextUID);
+  int newid  = katu_tid_new_id(nextUID);
 
   tid_[newid].size         = 1;
 
@@ -632,9 +632,9 @@ void bound2(int *ids1, int *ids2, int type)
         // ids1 < ids2 is same as ids1 - ids2 is bound from above.
         if (ids1[i] > 0)
         {
-          id = nshr_tid_copy_id(ids1[i]);
+          id = katu_tid_copy_id(ids1[i]);
 
-          nshr_id_add_op(id, PROP_SUB, ids2[i]);
+          katu_id_add_op(id, PROP_SUB, ids2[i]);
 
           gr -> bound_type = TAINT_BOUND_HIGH;
         }
@@ -653,9 +653,9 @@ void bound2(int *ids1, int *ids2, int type)
 
         if (ids1[i] > 0)
         {
-          id = nshr_tid_copy_id(ids1[i]);
+          id = katu_tid_copy_id(ids1[i]);
 
-          nshr_id_add_op(id, PROP_SUB, ids2[i]);
+          katu_id_add_op(id, PROP_SUB, ids2[i]);
         }
         else
         {

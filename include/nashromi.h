@@ -561,17 +561,17 @@ extern int nextUID;
 extern int nextID;
 extern int nextIID;
 
-int nshr_tid_new_id(int uid);
-int nshr_tid_new_id_get();
-int nshr_tid_new_iid(int id, int index);
-int nshr_tid_new_iid_get();
-int nshr_tid_new_uid_by_fd(int fd);
-int nshr_tid_new_uid_by_file(int file);
-int nshr_tid_new_uid_get();
-int nshr_tid_copy_id(int id);
-int nshr_make_id_by_merging_all_ids(int *ids1, int *ids2);
-int nshr_tid_modify_id_by_symbol(int dst_taint, enum prop_type operation, int src_taint);
-void nshr_id_add_op(int id, enum prop_type operation, int modify_by);
+int katu_tid_new_id(int uid);
+int katu_tid_new_id_get();
+int katu_tid_new_iid(int id, int index);
+int katu_tid_new_iid_get();
+int katu_tid_new_uid_by_fd(int fd);
+int katu_tid_new_uid_by_file(int file);
+int katu_tid_new_uid_get();
+int katu_tid_copy_id(int id);
+int katu_make_id_by_merging_all_ids(int *ids1, int *ids2);
+int katu_tid_modify_id_by_symbol(int dst_taint, enum prop_type operation, int src_taint);
+void katu_id_add_op(int id, enum prop_type operation, int modify_by);
 
 //
 // Function declarations.
@@ -581,107 +581,107 @@ void dump();
 void vulnerability_detected();
 
 // syscalls.
-void nshr_event_post_syscall(void *drcontext, int id);
-bool nshr_event_pre_syscall(void *drcontext, int id);
-bool nshr_syscall_filter(void *drcontext, int sysnum);
+void katu_event_post_syscall(void *drcontext, int id);
+bool katu_event_pre_syscall(void *drcontext, int id);
+bool katu_syscall_filter(void *drcontext, int sysnum);
 
 // taint.
-void nshr_taint_by_fd(reg_t addr, unsigned int size, int fd);
-void nshr_taint_by_file(reg_t addr, unsigned int size, int file);
+void katu_taint_by_fd(reg_t addr, unsigned int size, int fd);
+void katu_taint_by_file(reg_t addr, unsigned int size, int file);
 
-void nshr_taint_wrong(instr_t *instr DBG_END_TAINTING_FUNC);
+void katu_taint_wrong(instr_t *instr DBG_END_TAINTING_FUNC);
 
-void nshr_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_reg2reg(int src_reg, int dst_reg DBG_END_TAINTING_FUNC);
-void nshr_taint_neg_reg(int reg DBG_END_TAINTING_FUNC);
-void nshr_taint_neg_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size DBG_END_TAINTING_FUNC);
+void katu_taint_mv_2coeffregs2reg(int index_reg, int base_reg, int dst_reg DBG_END_TAINTING_FUNC);
+void katu_taint_mv_reg2reg(int src_reg, int dst_reg DBG_END_TAINTING_FUNC);
+void katu_taint_neg_reg(int reg DBG_END_TAINTING_FUNC);
+void katu_taint_neg_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size DBG_END_TAINTING_FUNC);
 
 
 // Works also if size of source is bigger, just copies necessary part.
-void nshr_taint_mv_reg2regzx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_reg2regsx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_regbyte2regsx(int src_reg, int src_index, int dst_reg DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_mem2regzx(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_mem2regsx(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_reg2mem(int src_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_constmem2reg(uint64 src_addr, int dst_reg DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_constmem2regzx(uint64 src_addr, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC); 
-void nshr_taint_mv_constmem2regsx(uint64 src_addr, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_constmem2mem(uint64 src_addr, int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_constmem2constmem(uint64 src_addr, uint64 dst_addr, uint64_t size DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_mem2mem(int src_seg_reg, int src_base_reg, int src_index_reg, int src_scale, int src_disp, 
+void katu_taint_mv_reg2regzx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC);
+void katu_taint_mv_reg2regsx(int src_reg, int dst_reg DBG_END_TAINTING_FUNC);
+void katu_taint_mv_regbyte2regsx(int src_reg, int src_index, int dst_reg DBG_END_TAINTING_FUNC);
+void katu_taint_mv_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg DBG_END_TAINTING_FUNC);
+void katu_taint_mv_mem2regzx(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC);
+void katu_taint_mv_mem2regsx(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC);
+void katu_taint_mv_reg2mem(int src_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC);
+void katu_taint_mv_constmem2reg(uint64 src_addr, int dst_reg DBG_END_TAINTING_FUNC);
+void katu_taint_mv_constmem2regzx(uint64 src_addr, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC); 
+void katu_taint_mv_constmem2regsx(uint64 src_addr, int dst_reg, int extended_from_size DBG_END_TAINTING_FUNC);
+void katu_taint_mv_constmem2mem(uint64 src_addr, int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size DBG_END_TAINTING_FUNC);
+void katu_taint_mv_constmem2constmem(uint64 src_addr, uint64 dst_addr, uint64_t size DBG_END_TAINTING_FUNC);
+void katu_taint_mv_mem2mem(int src_seg_reg, int src_base_reg, int src_index_reg, int src_scale, int src_disp, 
                                   int dst_seg_reg, int dst_base_reg, int dst_index_reg, int dst_scale, int dst_disp, int access_size DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_reg2constmem(int src_reg, uint64 addr DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_reg_rm(int dst_reg DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_baseindexmem_rm(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size DBG_END_TAINTING_FUNC);
-void nshr_taint_mv_mem_rm(uint64 addr, int size DBG_END_TAINTING_FUNC);
+void katu_taint_mv_reg2constmem(int src_reg, uint64 addr DBG_END_TAINTING_FUNC);
+void katu_taint_mv_reg_rm(int dst_reg DBG_END_TAINTING_FUNC);
+void katu_taint_mv_baseindexmem_rm(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size DBG_END_TAINTING_FUNC);
+void katu_taint_mv_mem_rm(uint64 addr, int size DBG_END_TAINTING_FUNC);
 
-void nshr_taint_div_reg(int dividend1_reg, int dividend2_reg, int divisor_reg, int quotinent_reg, int remainder_reg DBG_END_TAINTING_FUNC);
-void nshr_taint_div_mem(int dividend1_reg, int dividend2_reg, int divisor_seg_reg, int divisor_base_reg, int divisor_index_reg, int divisor_scale, 
+void katu_taint_div_reg(int dividend1_reg, int dividend2_reg, int divisor_reg, int quotinent_reg, int remainder_reg DBG_END_TAINTING_FUNC);
+void katu_taint_div_mem(int dividend1_reg, int dividend2_reg, int divisor_seg_reg, int divisor_base_reg, int divisor_index_reg, int divisor_scale, 
                                                  int divisor_disp, int access_size, int quotinent_reg, int remainder_reg DBG_END_TAINTING_FUNC);
-void nshr_taint_mul_reg2reg(int src1_reg, int src2_reg, int dst1_reg, int dst2_reg DBG_END_TAINTING_FUNC);
-void nshr_taint_mul_imm2reg(int src1_reg, int64 value, int dst1_reg, int dst2_reg DBG_END_TAINTING_FUNC);
-void nshr_taint_mul_immbyconstmem2reg(int64 value, uint64_t addr, int access_size, int dst_reg DBG_END_TAINTING_FUNC);
-void nshr_taint_mul_mem2reg(int src1_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int dst1_reg, int dst2_reg DBG_END_TAINTING_FUNC);
+void katu_taint_mul_reg2reg(int src1_reg, int src2_reg, int dst1_reg, int dst2_reg DBG_END_TAINTING_FUNC);
+void katu_taint_mul_imm2reg(int src1_reg, int64 value, int dst1_reg, int dst2_reg DBG_END_TAINTING_FUNC);
+void katu_taint_mul_immbyconstmem2reg(int64 value, uint64_t addr, int access_size, int dst_reg DBG_END_TAINTING_FUNC);
+void katu_taint_mul_mem2reg(int src1_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int dst1_reg, int dst2_reg DBG_END_TAINTING_FUNC);
 
-void nshr_taint_cond_mv_reg2reg(int src_reg, int dst_reg, instr_t *instr, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_cond_mv_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, instr_t *instr, int type DBG_END_TAINTING_FUNC);
+void katu_taint_cond_mv_reg2reg(int src_reg, int dst_reg, instr_t *instr, int type DBG_END_TAINTING_FUNC);
+void katu_taint_cond_mv_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, instr_t *instr, int type DBG_END_TAINTING_FUNC);
 
-void nshr_taint_cond_set_reg(int dst_reg, int type, instr_t *instr DBG_END_TAINTING_FUNC);
-void nshr_taint_cond_set_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int type, instr_t *instr DBG_END_TAINTING_FUNC);
+void katu_taint_cond_set_reg(int dst_reg, int type, instr_t *instr DBG_END_TAINTING_FUNC);
+void katu_taint_cond_set_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int type, instr_t *instr DBG_END_TAINTING_FUNC);
 
-void nshr_taint_cond_jmp(instr_t *instr, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_ind_jmp_reg(int src_reg DBG_END_TAINTING_FUNC);
-void nshr_taint_ind_jmp_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp, int size DBG_END_TAINTING_FUNC);
+void katu_taint_cond_jmp(instr_t *instr, int type DBG_END_TAINTING_FUNC);
+void katu_taint_ind_jmp_reg(int src_reg DBG_END_TAINTING_FUNC);
+void katu_taint_ind_jmp_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp, int size DBG_END_TAINTING_FUNC);
 
 // e.g dst_reg=src_reg+dst_reg, dst_reg=src_reg^dst_reg.....
-void nshr_taint_mix_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_mix_reg2mem(int src_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_mix_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_mix_constmem2reg(uint64 addr, int dst_reg, int type DBG_END_TAINTING_FUNC); 
+void katu_taint_mix_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING_FUNC);
+void katu_taint_mix_reg2mem(int src_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC);
+void katu_taint_mix_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int type DBG_END_TAINTING_FUNC);
+void katu_taint_mix_constmem2reg(uint64 addr, int dst_reg, int type DBG_END_TAINTING_FUNC); 
 
 
-void nshr_taint_cmp_reg2reg(int reg1, int reg2, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_cmp_reg2mem(int reg1, int seg_reg, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_cmp_reg2constmem(int reg1, uint64_t addr, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_cmp_reg2imm(int reg1, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_cmp_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int size, int reg, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_cmp_mem2imm(int seg_reg, int base_reg, int index_reg, int scale, int disp, int size, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_cmp_constmem2reg(uint64_t addr, int size, int reg, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_cmp_constmem2imm(uint64_t addr, int size, int type DBG_END_TAINTING_FUNC);
+void katu_taint_cmp_reg2reg(int reg1, int reg2, int type DBG_END_TAINTING_FUNC);
+void katu_taint_cmp_reg2mem(int reg1, int seg_reg, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC);
+void katu_taint_cmp_reg2constmem(int reg1, uint64_t addr, int type DBG_END_TAINTING_FUNC);
+void katu_taint_cmp_reg2imm(int reg1, int type DBG_END_TAINTING_FUNC);
+void katu_taint_cmp_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int size, int reg, int type DBG_END_TAINTING_FUNC);
+void katu_taint_cmp_mem2imm(int seg_reg, int base_reg, int index_reg, int scale, int disp, int size, int type DBG_END_TAINTING_FUNC);
+void katu_taint_cmp_constmem2reg(uint64_t addr, int size, int reg, int type DBG_END_TAINTING_FUNC);
+void katu_taint_cmp_constmem2imm(uint64_t addr, int size, int type DBG_END_TAINTING_FUNC);
 
-void nshr_taint_cmp_otherinst_reg(int reg DBG_END_TAINTING_FUNC);
-void nshr_taint_cmp_otherinst_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size DBG_END_TAINTING_FUNC);
-void nshr_taint_cmp_otherinst_constmem(uint64 addr, int access_size DBG_END_TAINTING_FUNC);
+void katu_taint_cmp_otherinst_reg(int reg DBG_END_TAINTING_FUNC);
+void katu_taint_cmp_otherinst_mem(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size DBG_END_TAINTING_FUNC);
+void katu_taint_cmp_otherinst_constmem(uint64 addr, int access_size DBG_END_TAINTING_FUNC);
 
 
-void nshr_taint_rest_reg2mem(int src_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_rest_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_rest_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_rest_imm2reg(uint64_t value, int dst_reg, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_rest_imm2mem(uint64_t value, int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int type DBG_END_TAINTING_FUNC);
+void katu_taint_rest_reg2mem(int src_reg, int seg_reg, int base_reg, int index_reg, int scale, int disp, int type DBG_END_TAINTING_FUNC);
+void katu_taint_rest_reg2reg(int src_reg, int dst_reg, int type DBG_END_TAINTING_FUNC);
+void katu_taint_rest_mem2reg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int dst_reg, int type DBG_END_TAINTING_FUNC);
+void katu_taint_rest_imm2reg(uint64_t value, int dst_reg, int type DBG_END_TAINTING_FUNC);
+void katu_taint_rest_imm2mem(uint64_t value, int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int type DBG_END_TAINTING_FUNC);
 
-void nshr_taint_shift_regbyimm(int dst_reg, int64 value, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_shift_regbyreg(int dst_reg, int src_reg, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_shift_membyreg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int src_reg, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_shift_membyimm(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int64 value, int type DBG_END_TAINTING_FUNC);
-void nshr_taint_shift_regbyimm_feedreg(int src_reg, int imm, int feed_reg, int type DBG_END_TAINTING_FUNC);
+void katu_taint_shift_regbyimm(int dst_reg, int64 value, int type DBG_END_TAINTING_FUNC);
+void katu_taint_shift_regbyreg(int dst_reg, int src_reg, int type DBG_END_TAINTING_FUNC);
+void katu_taint_shift_membyreg(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int src_reg, int type DBG_END_TAINTING_FUNC);
+void katu_taint_shift_membyimm(int seg_reg, int base_reg, int index_reg, int scale, int disp, int access_size, int64 value, int type DBG_END_TAINTING_FUNC);
+void katu_taint_shift_regbyimm_feedreg(int src_reg, int imm, int feed_reg, int type DBG_END_TAINTING_FUNC);
 
-void nshr_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC);
-void nshr_taint_strsto_rep(int size DBG_END_TAINTING_FUNC);
-void nshr_taint_movs_rep(int size DBG_END_TAINTING_FUNC);
-void nshr_taint_bswap(int dst_reg DBG_END_TAINTING_FUNC);
+void katu_taint_strcmp_rep(int size DBG_END_TAINTING_FUNC);
+void katu_taint_strsto_rep(int size DBG_END_TAINTING_FUNC);
+void katu_taint_movs_rep(int size DBG_END_TAINTING_FUNC);
+void katu_taint_bswap(int dst_reg DBG_END_TAINTING_FUNC);
 
-void nshr_taint_check_ret(uint64_t pc_from DBG_END_TAINTING_FUNC);
-void nshr_taint_check_jmp_reg(uint64_t pc_from, int reg DBG_END_TAINTING_FUNC);
-void nshr_taint_check_jmp_mem(uint64_t pc_from, int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC);
-void nshr_taint_check_jmp_immed(uint64_t pc_from, uint64_t pc DBG_END_TAINTING_FUNC);
+void katu_taint_check_ret(uint64_t pc_from DBG_END_TAINTING_FUNC);
+void katu_taint_check_jmp_reg(uint64_t pc_from, int reg DBG_END_TAINTING_FUNC);
+void katu_taint_check_jmp_mem(uint64_t pc_from, int seg_reg, int base_reg, int index_reg, int scale, int disp DBG_END_TAINTING_FUNC);
+void katu_taint_check_jmp_immed(uint64_t pc_from, uint64_t pc DBG_END_TAINTING_FUNC);
 
 // instructions.
-dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr_t *inst, bool for_trace, 
+dr_emit_flags_t katu_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr_t *inst, bool for_trace, 
                                 bool translating, void *user_data);
-void nshr_init_opcodes(void);
+void katu_init_opcodes(void);
 void init_ilp(void);
 void finish_ilp(void);
 
@@ -703,7 +703,7 @@ void log_location(app_pc pc);
 
 #ifdef PROCESS_STATISTICS
 
-void nshr_taint_statistics(instr_t *instr);
+void katu_taint_statistics(instr_t *instr);
 
 extern int num_strs;
 extern int num_cti;

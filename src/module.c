@@ -12,7 +12,7 @@ void dump()
 {
   dr_fprintf(dumpfile, "\n\nStarting dump of ID:\n");
 
-  for (int i = 1; i < nshr_tid_new_id_get(); i++)
+  for (int i = 1; i < katu_tid_new_id_get(); i++)
   {
     dr_fprintf(dumpfile, "ID #%d\t\t -> uid %d size %d ops_size: %d\n", i, tid_[i].uid, tid_[i].size, ID2OPSIZE(i));
 
@@ -30,7 +30,7 @@ void dump()
 
   dr_fprintf(dumpfile, "\n\nStarting dump of UID:\n");
 
-  for (int i = 1; i < nshr_tid_new_uid_get(); i++)
+  for (int i = 1; i < katu_tid_new_uid_get(); i++)
   {
     const char *path;
 
@@ -84,7 +84,7 @@ event_exit(void)
     hashtable_delete(&jump_addr_hashtable);
     hashtable_delete(&malloc_hashtable);
 
-    for (int i = 1; i < nshr_tid_new_uid_get(); i++)
+    for (int i = 1; i < katu_tid_new_uid_get(); i++)
     {
       Group_restriction *gr = uid_[i].gr;
 
@@ -106,7 +106,7 @@ event_exit(void)
   free(uid_);
 
   // Foreach tid, remove operations.
-  for (int i = 1; i < nshr_tid_new_id_get(); i++)
+  for (int i = 1; i < katu_tid_new_id_get(); i++)
   {
     if (ID2OPS(i) != NULL)
     {
@@ -130,12 +130,12 @@ event_exit(void)
   #endif
 }
 
-static void nshr_handle_taint(long long addr, int size)
+static void katu_handle_taint(long long addr, int size)
 {
-  nshr_taint_by_fd(addr, size, FD_MANUAL_TAINT);
+  katu_taint_by_fd(addr, size, FD_MANUAL_TAINT);
 }
 
-static void nshr_handle_dump(long long addr)
+static void katu_handle_dump(long long addr)
 {
   int index = mem_taint_find_index(addr, 0);
 
@@ -159,7 +159,7 @@ static void nshr_handle_dump(long long addr)
 // Marks where to begin/end instrumentation. temporary.
 //
 
-static void nshr_handle_annotation(int index)
+static void katu_handle_annotation(int index)
 {
   if (index == 1)
   {
@@ -199,7 +199,7 @@ void init(void)
     FAIL();
   }
 
-  nshr_init_opcodes();
+  katu_init_opcodes();
 
   eflags_.valid = -1;
 
@@ -277,19 +277,19 @@ dr_init(client_id_t client_id)
 
   drmgr_priority_t pri_replace = {sizeof(pri_replace), "nashromi", NULL, NULL, 800};
 
-  drmgr_register_bb_instrumentation_event(NULL, nshr_event_bb, &pri_replace);
+  drmgr_register_bb_instrumentation_event(NULL, katu_event_bb, &pri_replace);
   drmgr_register_module_load_event(module_load_event);
-  drmgr_register_post_syscall_event(nshr_event_post_syscall);
-  drmgr_register_pre_syscall_event(nshr_event_pre_syscall);
+  drmgr_register_post_syscall_event(katu_event_post_syscall);
+  drmgr_register_pre_syscall_event(katu_event_pre_syscall);
 
-  dr_register_filter_syscall_event(nshr_syscall_filter);
+  dr_register_filter_syscall_event(katu_syscall_filter);
   dr_register_exit_event(event_exit);
   dr_annotation_register_call("dynamorio_annotate_zhani_signal",
-                                 (void *) nshr_handle_annotation, false, 1, DR_ANNOTATION_CALL_TYPE_FASTCALL);
-  dr_annotation_register_call("nshr_dump_taint",
-                                (void *) nshr_handle_dump, false, 1, DR_ANNOTATION_CALL_TYPE_FASTCALL);
+                                 (void *) katu_handle_annotation, false, 1, DR_ANNOTATION_CALL_TYPE_FASTCALL);
+  dr_annotation_register_call("katu_dump_taint",
+                                (void *) katu_handle_dump, false, 1, DR_ANNOTATION_CALL_TYPE_FASTCALL);
   dr_annotation_register_call("nshrtaint",
-                                (void *) nshr_handle_taint, false, 2, DR_ANNOTATION_CALL_TYPE_FASTCALL);
+                                (void *) katu_handle_taint, false, 2, DR_ANNOTATION_CALL_TYPE_FASTCALL);
 
   if (drsym_init(0) != DRSYM_SUCCESS) 
   {

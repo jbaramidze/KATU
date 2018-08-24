@@ -170,7 +170,7 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
       {
         LDUMP("InsDetail:\tZero extend %s to %s.\n", REGNAME(base_reg), REGNAME(dst_reg));
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regzx, false, DBG_TAINT_NUM_PARAMS(2),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_reg2regzx, false, DBG_TAINT_NUM_PARAMS(2),
                                OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       }
       else
@@ -178,7 +178,7 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
         LDUMP("InsDetail:\tTaint combination of %s, and %s to %s.\n", REGNAME(base_reg), REGNAME(index_reg),
                                           REGNAME(dst_reg));
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_2coeffregs2reg, false, DBG_TAINT_NUM_PARAMS(3),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_2coeffregs2reg, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(base_reg),
                                         OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       }
@@ -187,14 +187,14 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
     {
       LDUMP("InsDetail:\tZero extend %s to %s.\n", REGNAME(index_reg), REGNAME(dst_reg));
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regzx, false, DBG_TAINT_NUM_PARAMS(2),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_reg2regzx, false, DBG_TAINT_NUM_PARAMS(2),
                              OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
     }
     else if (base_reg > 0) // dst = base + disp
     {
       LDUMP("InsDetail:\tZero extend %s to %s.\n", REGNAME(base_reg), REGNAME(dst_reg));
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regzx, false, DBG_TAINT_NUM_PARAMS(2),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_reg2regzx, false, DBG_TAINT_NUM_PARAMS(2),
                              OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
     }
     else
@@ -206,7 +206,7 @@ static void opcode_lea(void *drcontext, instr_t *instr, instrlist_t *ilist)
   {
     LDUMP("InsDetail:\tRemove taint at %s.\n", REGNAME(dst_reg));
 
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, DBG_TAINT_NUM_PARAMS(1),
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_reg_rm, false, DBG_TAINT_NUM_PARAMS(1),
                              OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
   }
   else
@@ -243,7 +243,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
                                            REGNAME(seg_reg), REGNAME(base_reg), scale, 
                                                 REGNAME(index_reg), disp, REGNAME(dst_reg));
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_mem2reg, false, DBG_TAINT_NUM_PARAMS(6),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_mem2reg, false, DBG_TAINT_NUM_PARAMS(6),
                                  OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                      OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       }
@@ -253,7 +253,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
                                            REGNAME(seg_reg), REGNAME(base_reg), scale, 
                                                 REGNAME(index_reg), disp, REGNAME(dst_reg), extend_from, REGSIZE(dst_reg));
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_mem2regzx, false, DBG_TAINT_NUM_PARAMS(7),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_mem2regzx, false, DBG_TAINT_NUM_PARAMS(7),
                                  OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                      OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), OPND_CREATE_INT32(dst_reg), 
                                          OPND_CREATE_INT32(extend_from) DBG_END_DR_CLEANCALL);
@@ -264,7 +264,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
                                            REGNAME(seg_reg), REGNAME(base_reg), scale, 
                                                 REGNAME(index_reg), disp, REGNAME(dst_reg), extend_from, REGSIZE(dst_reg));
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_mem2regsx, false, DBG_TAINT_NUM_PARAMS(7),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_mem2regsx, false, DBG_TAINT_NUM_PARAMS(7),
                                  OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                      OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), OPND_CREATE_INT32(dst_reg), 
                                          OPND_CREATE_INT32(extend_from) DBG_END_DR_CLEANCALL);
@@ -275,7 +275,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
                 REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, 
                       REGNAME(dst_reg), REGNAME(dst_reg));
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_mem2reg, false, DBG_TAINT_NUM_PARAMS(7),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mix_mem2reg, false, DBG_TAINT_NUM_PARAMS(7),
                                OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                       OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(dst_reg),
                                           OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
@@ -287,7 +287,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
                         REGNAME(dst_reg), REGNAME(dst_reg));
 
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_rest_mem2reg, false, DBG_TAINT_NUM_PARAMS(7),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_rest_mem2reg, false, DBG_TAINT_NUM_PARAMS(7),
                                  OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                      OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(dst_reg),
                                           OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
@@ -298,7 +298,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
         LDUMP("InsDetail:\tConditional taint of '%s' from [%s:%s + %d*%s + %d] to %s.\n", PROP_NAMES[type], 
                            REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, REGNAME(dst_reg));
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cond_mv_mem2reg, false, DBG_TAINT_NUM_PARAMS(8),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_cond_mv_mem2reg, false, DBG_TAINT_NUM_PARAMS(8),
                                OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                   OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(dst_reg), 
                                      OPND_CREATE_INT64(instr_dupl(instr)), OPND_CREATE_INT32(type)   DBG_END_DR_CLEANCALL);
@@ -328,14 +328,14 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
         LDUMP("InsDetail:\tRemove taint at %s\n", REGNAME(dst_reg));
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, DBG_TAINT_NUM_PARAMS(1),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_reg_rm, false, DBG_TAINT_NUM_PARAMS(1),
                                  OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       }
       else if (prop_is_binary(type))
       {
       	// We don't care about adding 5 to tainted reg. Just update eflags.
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_otherinst_reg, false, DBG_TAINT_NUM_PARAMS(1),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_cmp_otherinst_reg, false, DBG_TAINT_NUM_PARAMS(1),
                                  OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
         
       }
@@ -347,7 +347,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
 
         LDUMP("InsDetail:\tRestricting by '%s' taint at %s by 0x%x\n", PROP_NAMES[type], REGNAME(dst_reg), value);
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_rest_imm2reg, false, DBG_TAINT_NUM_PARAMS(3),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_rest_imm2reg, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT64(value), OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(type) 
                                       DBG_END_DR_CLEANCALL);
       }
@@ -370,7 +370,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
         LDUMP("InsDetail:\tRemove taint at [%s: %s + %d*%s + %d], %d bytes.\n",
                                    REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, access_size);
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_baseindexmem_rm, false, DBG_TAINT_NUM_PARAMS(6),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_baseindexmem_rm, false, DBG_TAINT_NUM_PARAMS(6),
                                OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                      OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), 
                                          OPND_CREATE_INT32(access_size) DBG_END_DR_CLEANCALL);
@@ -379,7 +379,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
         // We don't care about adding 5 to tainted mem. Just update the flags.
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_otherinst_mem, false, DBG_TAINT_NUM_PARAMS(6),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_cmp_otherinst_mem, false, DBG_TAINT_NUM_PARAMS(6),
                                  OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                      OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), 
                                          OPND_CREATE_INT32(access_size) DBG_END_DR_CLEANCALL);
@@ -394,7 +394,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
                   PROP_NAMES[type], REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp,
                          value, access_size);
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_rest_imm2mem, false, DBG_TAINT_NUM_PARAMS(8),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_rest_imm2mem, false, DBG_TAINT_NUM_PARAMS(8),
                                  OPND_CREATE_INT64(value), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
                                      OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp),
                                           OPND_CREATE_INT32(access_size), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
@@ -419,14 +419,14 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
         LDUMP("InsDetail:\tRemove taint at pc-relative %llx, %d bytes.\n", addr, access_size);
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_mem_rm, false, DBG_TAINT_NUM_PARAMS(2), 
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_mem_rm, false, DBG_TAINT_NUM_PARAMS(2), 
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(access_size) DBG_END_DR_CLEANCALL);
       }
       else if (prop_is_binary(type))
       {
         // Nothing to do in this case. Just update eflags.
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_otherinst_constmem, false, DBG_TAINT_NUM_PARAMS(2),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_cmp_otherinst_constmem, false, DBG_TAINT_NUM_PARAMS(2),
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(access_size) DBG_END_DR_CLEANCALL);
       }
       else if (prop_is_restrictor(type))
@@ -472,7 +472,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
                                         REGNAME(src_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, 
                                             REGNAME(index_reg), disp);
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2mem, false, DBG_TAINT_NUM_PARAMS(6), 
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_reg2mem, false, DBG_TAINT_NUM_PARAMS(6), 
                                  OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
                                      OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), 
                                          OPND_CREATE_INT32(disp) DBG_END_DR_CLEANCALL);
@@ -483,7 +483,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
                                   REGNAME(src_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), 
                                            disp);
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_reg2mem, false, DBG_TAINT_NUM_PARAMS(7),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mix_reg2mem, false, DBG_TAINT_NUM_PARAMS(7),
                                  OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
                                     OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), 
                                          OPND_CREATE_INT32(disp), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
@@ -494,7 +494,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
                                   REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), 
                                            disp, REGNAME(src_reg));
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_rest_reg2mem, false, DBG_TAINT_NUM_PARAMS(7),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_rest_reg2mem, false, DBG_TAINT_NUM_PARAMS(7),
                                  OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
                                     OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), 
                                          OPND_CREATE_INT32(disp), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
@@ -516,28 +516,28 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
         LDUMP("InsDetail:\tRemoving taint from %s.\n", REGNAME(dst_reg));
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, DBG_TAINT_NUM_PARAMS(1),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_reg_rm, false, DBG_TAINT_NUM_PARAMS(1),
                              OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       }
       else if (type == PROP_MOVZX)
       {
         LDUMP("InsDetail:\tZero extend %s to %s.\n", REGNAME(src_reg), REGNAME(dst_reg));
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regzx, false, DBG_TAINT_NUM_PARAMS(2),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_reg2regzx, false, DBG_TAINT_NUM_PARAMS(2),
                                OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       }
       else if (type == PROP_MOVSX)
       {
         LDUMP("InsDetail:\tSign extend %s to %s.\n", REGNAME(src_reg), REGNAME(dst_reg));
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regsx, false, DBG_TAINT_NUM_PARAMS(2),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_reg2regsx, false, DBG_TAINT_NUM_PARAMS(2),
                                OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       }
       else if (type == PROP_MOV)
       {
         LDUMP("InsDetail:\tTaint from %s to %s.\n", REGNAME(src_reg), REGNAME(dst_reg));
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2reg, false, DBG_TAINT_NUM_PARAMS(2),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_reg2reg, false, DBG_TAINT_NUM_PARAMS(2),
                                OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       }
       else if (prop_is_binary(type))
@@ -554,7 +554,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
           {
             LDUMP("InsDetail:\tRemoving taint from %s.\n", REGNAME(dst_reg));
 
-            dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg_rm, false, DBG_TAINT_NUM_PARAMS(1),
+            dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_reg_rm, false, DBG_TAINT_NUM_PARAMS(1),
                                  OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
           }
           else
@@ -566,21 +566,21 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
         {
           LDUMP("InsDetail:\tDoing '%s' at taint from %s and %s to %s.\n", PROP_NAMES[type], REGNAME(src_reg), REGNAME(dst_reg), REGNAME(dst_reg));
 
-          dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_reg2reg, false, DBG_TAINT_NUM_PARAMS(3),
+          dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mix_reg2reg, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(dst_reg),
                                      OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
         }
 
         // Update eflags.
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_otherinst_reg, false, DBG_TAINT_NUM_PARAMS(1),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_cmp_otherinst_reg, false, DBG_TAINT_NUM_PARAMS(1),
                                  OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       }
       else if (prop_is_restrictor(type))
       {
         LDUMP("InsDetail:\tRestricting by '%s' taint at %s and %s to %s.\n", PROP_NAMES[type], REGNAME(src_reg), REGNAME(dst_reg), REGNAME(dst_reg));
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_rest_reg2reg, false, DBG_TAINT_NUM_PARAMS(3),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_rest_reg2reg, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(type) 
                                      DBG_END_DR_CLEANCALL);
       }
@@ -589,7 +589,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
         LDUMP("InsDetail:\tConditional taint of '%s' from %s to %s.\n", PROP_NAMES[type], 
                            REGNAME(src_reg), REGNAME(dst_reg));
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cond_mv_reg2reg, false, DBG_TAINT_NUM_PARAMS(4),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_cond_mv_reg2reg, false, DBG_TAINT_NUM_PARAMS(4),
                                OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT64(instr_dupl(instr)),
                                    OPND_CREATE_INT32(type)   DBG_END_DR_CLEANCALL);
       }
@@ -612,7 +612,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
         LDUMP("InsDetail:\tTaint from %s to pc-relative %llx.\n", REGNAME(src_reg), addr);
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2constmem, false, DBG_TAINT_NUM_PARAMS(2), 
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_reg2constmem, false, DBG_TAINT_NUM_PARAMS(2), 
                                  OPND_CREATE_INT32(src_reg), OPND_CREATE_INT64(addr) DBG_END_DR_CLEANCALL);
       }
       else
@@ -647,7 +647,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
       {
         LDUMP("InsDetail:\tTaint from pc-relative %llx to %s.\n", addr, REGNAME(dst_reg));
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_constmem2reg, false, DBG_TAINT_NUM_PARAMS(2),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_constmem2reg, false, DBG_TAINT_NUM_PARAMS(2),
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
       }
       else if (prop_is_binary(type))
@@ -655,7 +655,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
         LDUMP("InsDetail:\tDoing '%s' to taint at pc-relative %llx and %s to %s.\n", PROP_NAMES[type], 
                   addr, REGNAME(dst_reg), REGNAME(dst_reg));
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mix_constmem2reg, false, DBG_TAINT_NUM_PARAMS(3),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mix_constmem2reg, false, DBG_TAINT_NUM_PARAMS(3),
                                 OPND_CREATE_INT64(addr), OPND_CREATE_INT32(dst_reg),
                                    OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
       }
@@ -664,7 +664,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
         LDUMP("InsDetail:\tZero extend %d bytes from %llx to %s, %d bytes.\n", 
                               extend_from, addr, REGNAME(dst_reg), REGSIZE(dst_reg));
  
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_constmem2regzx, false, DBG_TAINT_NUM_PARAMS(3),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_constmem2regzx, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(dst_reg),
                                    OPND_CREATE_INT32(extend_from) DBG_END_DR_CLEANCALL);
       }
@@ -673,7 +673,7 @@ static void propagate(void *drcontext, instr_t *instr, instrlist_t *ilist,
         LDUMP("InsDetail:\tSign extend %d bytes from %llx to %s, %d bytes.\n", 
                               extend_from, addr, REGNAME(dst_reg), REGSIZE(dst_reg));
 
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_constmem2regsx, false, DBG_TAINT_NUM_PARAMS(3),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_constmem2regsx, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(dst_reg),
                                    OPND_CREATE_INT32(extend_from) DBG_END_DR_CLEANCALL);
       }
@@ -722,7 +722,7 @@ static void opcode_pop(void *drcontext, instr_t *instr, instrlist_t *ilist)
                                        REGNAME(seg_reg), REGNAME(base_reg), scale, 
                                             REGNAME(index_reg), disp, REGNAME(dst_reg));
 
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_mem2reg, false, DBG_TAINT_NUM_PARAMS(6),
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_mem2reg, false, DBG_TAINT_NUM_PARAMS(6),
                              OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                  OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
   }
@@ -756,7 +756,7 @@ static void opcode_push(void *drcontext, instr_t *instr, instrlist_t *ilist)
     LDUMP("InsDetail:\tRemove taint at base+disp %s: %s + %d*%s + %d, %d bytes.\n",
                                REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, access_size);
 
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_baseindexmem_rm, false, DBG_TAINT_NUM_PARAMS(6),
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_baseindexmem_rm, false, DBG_TAINT_NUM_PARAMS(6),
                           OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                  OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), 
                                      OPND_CREATE_INT32(access_size) DBG_END_DR_CLEANCALL);
@@ -769,7 +769,7 @@ static void opcode_push(void *drcontext, instr_t *instr, instrlist_t *ilist)
                                 REGNAME(src_reg), REGNAME(seg_reg), REGNAME(base_reg), scale, 
                                      REGNAME(index_reg), disp);
 
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2mem, false, DBG_TAINT_NUM_PARAMS(6), 
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_reg2mem, false, DBG_TAINT_NUM_PARAMS(6), 
                              OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
                                  OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), 
                                      OPND_CREATE_INT32(disp) DBG_END_DR_CLEANCALL);
@@ -786,7 +786,7 @@ static void opcode_push(void *drcontext, instr_t *instr, instrlist_t *ilist)
                                 addr, REGNAME(seg_reg), REGNAME(base_reg), 
                                      scale, REGNAME(index_reg), disp, access_size);
 
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_constmem2mem, false, DBG_TAINT_NUM_PARAMS(7), 
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_constmem2mem, false, DBG_TAINT_NUM_PARAMS(7), 
                              OPND_CREATE_INT64(addr), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
                                  OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp),
                                       OPND_CREATE_INT32(access_size) DBG_END_DR_CLEANCALL);
@@ -801,7 +801,7 @@ static void opcode_push(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
     int access_size = opnd_size_in_bytes(opnd_get_size(src));
 
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_mem2mem, false, DBG_TAINT_NUM_PARAMS(11), 
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_mem2mem, false, DBG_TAINT_NUM_PARAMS(11), 
                              OPND_CREATE_INT32(src_seg_reg), OPND_CREATE_INT32(src_base_reg), OPND_CREATE_INT32(src_index_reg), 
                                  OPND_CREATE_INT32(src_scale), OPND_CREATE_INT32(src_disp), OPND_CREATE_INT32(seg_reg), 
                                      OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale), 
@@ -876,7 +876,7 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
       LDUMP("InsDetail:\tUpdating eflags by comparing %s and %s via '%s'.\n", REGNAME(reg1), REGNAME(reg2), PROP_NAMES[type]);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_reg2reg, false, DBG_TAINT_NUM_PARAMS(3),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_cmp_reg2reg, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT32(reg1), OPND_CREATE_INT32(reg2), OPND_CREATE_INT32(type)
                                       DBG_END_DR_CLEANCALL);
     }
@@ -884,7 +884,7 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
     {
        LDUMP("InsDetail:\tUpdating eflags by comparing %s and immediate via '%s'.\n", REGNAME(reg1), PROP_NAMES[type]);
 
-       dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_reg2imm, false, DBG_TAINT_NUM_PARAMS(2),
+       dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_cmp_reg2imm, false, DBG_TAINT_NUM_PARAMS(2),
                                  OPND_CREATE_INT32(reg1), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
     }
     else if (opnd_is_base_disp(second))
@@ -899,7 +899,7 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
                                  REGNAME(seg_reg), REGNAME(base_reg), scale, 
                                         REGNAME(index_reg), disp, PROP_NAMES[type]);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_reg2mem, false, DBG_TAINT_NUM_PARAMS(7),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_cmp_reg2mem, false, DBG_TAINT_NUM_PARAMS(7),
                                  OPND_CREATE_INT32(reg1), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
                                      OPND_CREATE_INT32(index_reg),  OPND_CREATE_INT32(scale),  
                                           OPND_CREATE_INT32(disp), OPND_CREATE_INT32(type)
@@ -913,7 +913,7 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
       LDUMP("InsDetail:\tUpdating eflags by comparing %s and [%llx] via '%s'.\n", REGNAME(reg1), addr, PROP_NAMES[type]);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_reg2constmem, false, DBG_TAINT_NUM_PARAMS(3),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_cmp_reg2constmem, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT32(reg1), OPND_CREATE_INT64(addr), OPND_CREATE_INT32(type) 
                                         DBG_END_DR_CLEANCALL);
     }
@@ -940,7 +940,7 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
                            REGNAME(seg_reg), REGNAME(base_reg), scale, 
                                   REGNAME(index_reg), disp, REGNAME(reg2), PROP_NAMES[type]);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_mem2reg, false, DBG_TAINT_NUM_PARAMS(8),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_cmp_mem2reg, false, DBG_TAINT_NUM_PARAMS(8),
                                  OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                      OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(size),
                                          OPND_CREATE_INT32(reg2), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
@@ -951,7 +951,7 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
                            REGNAME(seg_reg), REGNAME(base_reg), scale, 
                                   REGNAME(index_reg), disp, PROP_NAMES[type], size);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_mem2imm, false, DBG_TAINT_NUM_PARAMS(7),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_cmp_mem2imm, false, DBG_TAINT_NUM_PARAMS(7),
                                  OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                      OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), OPND_CREATE_INT32(size),
                                          OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
@@ -975,7 +975,7 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
       LDUMP("InsDetail:\tUpdating eflags by comparing [%llx] and %s via '%s'.\n", addr, REGNAME(reg2), PROP_NAMES[type]);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_constmem2reg, false, DBG_TAINT_NUM_PARAMS(4),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_cmp_constmem2reg, false, DBG_TAINT_NUM_PARAMS(4),
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(size), OPND_CREATE_INT32(reg2), 
                                      OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
     }
@@ -983,7 +983,7 @@ static void opcode_cmp(void *drcontext, instr_t *instr, instrlist_t *ilist)
     {      
       LDUMP("InsDetail:\tUpdating eflags by comparing [%llx] and immediate via '%s', %d bytes.\n", addr, PROP_NAMES[type], size);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cmp_constmem2imm, false, DBG_TAINT_NUM_PARAMS(3),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_cmp_constmem2imm, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT64(addr), OPND_CREATE_INT32(size), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
     }
     else
@@ -1035,7 +1035,7 @@ static void process_conditional_jmp(void *drcontext, instr_t *instr, instrlist_t
 
       LDUMP("InsDetail:\tChecking bounds for indirect jump via %s.\n", REGNAME(src_reg));
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_ind_jmp_reg, false, DBG_TAINT_NUM_PARAMS(1),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_ind_jmp_reg, false, DBG_TAINT_NUM_PARAMS(1),
                            OPND_CREATE_INT32(src_reg)  DBG_END_DR_CLEANCALL);
     }
     else if (opnd_is_base_disp(src))
@@ -1056,7 +1056,7 @@ static void process_conditional_jmp(void *drcontext, instr_t *instr, instrlist_t
       LDUMP("InsDetail:\tChecking bounds for indirect jump to [%s:%s + %d*%s + %d].\n", REGNAME(seg_reg), 
                              REGNAME(base_reg), scale, REGNAME(index_reg), disp);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_ind_jmp_mem, false, DBG_TAINT_NUM_PARAMS(6),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_ind_jmp_mem, false, DBG_TAINT_NUM_PARAMS(6),
                                OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                      OPND_CREATE_INT32(scale), OPND_CREATE_INT32(disp), OPND_CREATE_INT32(size)
                                           DBG_END_DR_CLEANCALL);
@@ -1083,7 +1083,7 @@ static void process_conditional_jmp(void *drcontext, instr_t *instr, instrlist_t
       LDUMP("InsDetail:\tUpdate bounds by conditional jump %s.\n", PROP_NAMES[cond]);
 
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cond_jmp, false, DBG_TAINT_NUM_PARAMS(2),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_cond_jmp, false, DBG_TAINT_NUM_PARAMS(2),
                            OPND_CREATE_INT64(instr_dupl(instr)), OPND_CREATE_INT32(cond)  
                                   DBG_END_DR_CLEANCALL);
     }
@@ -1120,7 +1120,7 @@ static void opcode_convert(void *drcontext, instr_t *instr, instrlist_t *ilist)
     {
       LDUMP("InsDetail:\tSign extend %s to %s.\n", REGNAME(DR_REG_AL), REGNAME(DR_REG_AX));
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regsx, false, DBG_TAINT_NUM_PARAMS(2),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_reg2regsx, false, DBG_TAINT_NUM_PARAMS(2),
                              OPND_CREATE_INT32(DR_REG_AL), OPND_CREATE_INT32(DR_REG_AX) DBG_END_DR_CLEANCALL);
     }
     // sign extend AX -> EAX
@@ -1128,7 +1128,7 @@ static void opcode_convert(void *drcontext, instr_t *instr, instrlist_t *ilist)
     {
       LDUMP("InsDetail:\tSign extend %s to %s.\n", REGNAME(DR_REG_AX), REGNAME(DR_REG_EAX));
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regsx, false, DBG_TAINT_NUM_PARAMS(2),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_reg2regsx, false, DBG_TAINT_NUM_PARAMS(2),
                              OPND_CREATE_INT32(DR_REG_AX), OPND_CREATE_INT32(DR_REG_EAX) DBG_END_DR_CLEANCALL);
     }
     // sign extend EAX -> RAX
@@ -1136,7 +1136,7 @@ static void opcode_convert(void *drcontext, instr_t *instr, instrlist_t *ilist)
     {
       LDUMP("InsDetail:\tSign extend %s to %s.\n", REGNAME(DR_REG_EAX), REGNAME(DR_REG_RAX));
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_reg2regsx, false, DBG_TAINT_NUM_PARAMS(2),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_reg2regsx, false, DBG_TAINT_NUM_PARAMS(2),
                              OPND_CREATE_INT32(DR_REG_EAX), OPND_CREATE_INT32(DR_REG_RAX) DBG_END_DR_CLEANCALL);
     }
     else
@@ -1150,7 +1150,7 @@ static void opcode_convert(void *drcontext, instr_t *instr, instrlist_t *ilist)
                  REGNAME(dst_reg));
 
     // sign extend AX -> DX:AX
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mv_regbyte2regsx, false, DBG_TAINT_NUM_PARAMS(3),
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mv_regbyte2regsx, false, DBG_TAINT_NUM_PARAMS(3),
                            OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(REGSIZE(src_reg) - 1), OPND_CREATE_INT32(dst_reg) 
                                 DBG_END_DR_CLEANCALL);
   }
@@ -1172,7 +1172,7 @@ static void opcode_cmps(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
     LDUMP("InsDetail:\tDoing memcmp of %d bytes.\n", size);
 
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_strcmp_rep, false, DBG_TAINT_NUM_PARAMS(1),
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_strcmp_rep, false, DBG_TAINT_NUM_PARAMS(1),
                            OPND_CREATE_INT32(size)  DBG_END_DR_CLEANCALL);
   }
   else if (opcode == OP_rep_stos)
@@ -1183,7 +1183,7 @@ static void opcode_cmps(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
     LDUMP("InsDetail:\tDoing memset of %d bytes.\n", size);
 
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_strsto_rep, false, DBG_TAINT_NUM_PARAMS(1),
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_strsto_rep, false, DBG_TAINT_NUM_PARAMS(1),
                            OPND_CREATE_INT32(size)  DBG_END_DR_CLEANCALL);
   }
   else if (opcode == OP_rep_movs)
@@ -1194,7 +1194,7 @@ static void opcode_cmps(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
     LDUMP("InsDetail:\tDoing memcpy of %d bytes (%d %d).\n", size, instr_num_srcs(instr), instr_num_srcs(instr));
 
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_movs_rep, false, DBG_TAINT_NUM_PARAMS(1),
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_movs_rep, false, DBG_TAINT_NUM_PARAMS(1),
                            OPND_CREATE_INT32(size)  DBG_END_DR_CLEANCALL);
   }
   else
@@ -1217,7 +1217,7 @@ static void opcode_bswap(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
   LDUMP("InsDetail:\tDoing bswap on %s.\n", REGNAME(src_reg));
 
-  dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_bswap, false, DBG_TAINT_NUM_PARAMS(1),
+  dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_bswap, false, DBG_TAINT_NUM_PARAMS(1),
                            OPND_CREATE_INT32(src_reg)  DBG_END_DR_CLEANCALL);
 }
 
@@ -1251,7 +1251,7 @@ static void opcode_dblshift(void *drcontext, instr_t *instr, instrlist_t *ilist)
       {
         LDUMP("InsDetail:\tShifting left %s by %d bytes, fed by %s.\n", REGNAME(src_reg), imm, REGNAME(feed_reg));
   
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_regbyimm_feedreg, false, DBG_TAINT_NUM_PARAMS(4),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_shift_regbyimm_feedreg, false, DBG_TAINT_NUM_PARAMS(4),
                                    OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(imm), OPND_CREATE_INT32(feed_reg),
                                        OPND_CREATE_INT32(0) DBG_END_DR_CLEANCALL);
       }
@@ -1259,7 +1259,7 @@ static void opcode_dblshift(void *drcontext, instr_t *instr, instrlist_t *ilist)
       {
         LDUMP("InsDetail:\tShifting right %s by %d bytes, fed by %s.\n", REGNAME(src_reg), imm, REGNAME(feed_reg));
   
-        dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_regbyimm_feedreg, false, DBG_TAINT_NUM_PARAMS(4),
+        dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_shift_regbyimm_feedreg, false, DBG_TAINT_NUM_PARAMS(4),
                                    OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(imm), OPND_CREATE_INT32(feed_reg),
                                        OPND_CREATE_INT32(1) DBG_END_DR_CLEANCALL);
       }
@@ -1300,7 +1300,7 @@ static void opcode_shift(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
       LDUMP("InsDetail:\tShifting '%s' %s by %s bytes.\n", SHIFT_NAMES[type], REGNAME(dst_reg), REGNAME(src_reg));
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_regbyreg, false, DBG_TAINT_NUM_PARAMS(3),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_shift_regbyreg, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(type)
                                      DBG_END_DR_CLEANCALL);
     }
@@ -1310,7 +1310,7 @@ static void opcode_shift(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
       LDUMP("InsDetail:\tShifting '%s' %s by %lld bytes.\n", SHIFT_NAMES[type], REGNAME(dst_reg), value);
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_regbyimm, false, DBG_TAINT_NUM_PARAMS(3),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_shift_regbyimm, false, DBG_TAINT_NUM_PARAMS(3),
                                  OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT64(value), OPND_CREATE_INT32(type)
                                      DBG_END_DR_CLEANCALL);
     }
@@ -1336,7 +1336,7 @@ static void opcode_shift(void *drcontext, instr_t *instr, instrlist_t *ilist)
       LDUMP("InsDetail:\tShifting '%s' %d bytes of [%s:%s + %d*%s + %d] by %s bytes.\n", SHIFT_NAMES[type], access_size, 
                                  REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, REGNAME(src_reg));
   
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_membyreg, false, DBG_TAINT_NUM_PARAMS(8),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_shift_membyreg, false, DBG_TAINT_NUM_PARAMS(8),
                                  OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                      OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(access_size),
                                          OPND_CREATE_INT32(src_reg), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
@@ -1349,7 +1349,7 @@ static void opcode_shift(void *drcontext, instr_t *instr, instrlist_t *ilist)
       LDUMP("InsDetail:\tShifting '%s' %d bytes of [%s:%s + %d*%s + %d] by %lld bytes.\n", SHIFT_NAMES[type], access_size, 
                          REGNAME(seg_reg), REGNAME(base_reg), scale, REGNAME(index_reg), disp, value);
   
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_shift_membyimm, false, DBG_TAINT_NUM_PARAMS(8),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_shift_membyimm, false, DBG_TAINT_NUM_PARAMS(8),
                                  OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                      OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(access_size),
                                          OPND_CREATE_INT64(value), OPND_CREATE_INT32(type) DBG_END_DR_CLEANCALL);
@@ -1388,7 +1388,7 @@ static void opcode_imul(void *drcontext, instr_t *instr, instrlist_t *ilist)
       LDUMP("InsDetail:\tMultiplying %s and %s -> %s:%s.\n", REGNAME(src1_reg), REGNAME(src2_reg), 
                                 REGNAME(dst1_reg), REGNAME(dst2_reg));
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mul_reg2reg, false, DBG_TAINT_NUM_PARAMS(4),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mul_reg2reg, false, DBG_TAINT_NUM_PARAMS(4),
                             OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(src2_reg), 
                                   OPND_CREATE_INT32(dst1_reg), OPND_CREATE_INT32(dst2_reg) 
                                       DBG_END_DR_CLEANCALL);
@@ -1412,7 +1412,7 @@ static void opcode_imul(void *drcontext, instr_t *instr, instrlist_t *ilist)
       LDUMP("InsDetail:\tMultiplying %s and %s -> %s.\n", REGNAME(src1_reg), REGNAME(src2_reg), 
                                 REGNAME(dst1_reg));
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mul_reg2reg, false, DBG_TAINT_NUM_PARAMS(4),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mul_reg2reg, false, DBG_TAINT_NUM_PARAMS(4),
                             OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT32(src2_reg), 
                                   OPND_CREATE_INT32(dst1_reg), OPND_CREATE_INT32(DR_REG_NULL) 
                                       DBG_END_DR_CLEANCALL);
@@ -1428,7 +1428,7 @@ static void opcode_imul(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
       LDUMP("InsDetail:\tMultiplying %s and %lld -> %s.\n", REGNAME(src1_reg), src2_val, REGNAME(dst1_reg));
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mul_imm2reg, false, DBG_TAINT_NUM_PARAMS(4),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mul_imm2reg, false, DBG_TAINT_NUM_PARAMS(4),
                             OPND_CREATE_INT32(src1_reg), OPND_CREATE_INT64(src2_val), 
                                   OPND_CREATE_INT32(dst1_reg), OPND_CREATE_INT32(DR_REG_NULL) 
                                        DBG_END_DR_CLEANCALL);
@@ -1450,7 +1450,7 @@ static void opcode_imul(void *drcontext, instr_t *instr, instrlist_t *ilist)
       LDUMP("InsDetail:\tMultiplying %s and [%s:%s + %d*%s + %d] -> %s.\n", REGNAME(src2_reg), REGNAME(seg_reg), 
                  REGNAME(base_reg), scale, REGNAME(index_reg), disp, REGNAME(dst1_reg));
 
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mul_mem2reg, false, DBG_TAINT_NUM_PARAMS(9),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mul_mem2reg, false, DBG_TAINT_NUM_PARAMS(9),
                             OPND_CREATE_INT32(src2_reg), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
                                 OPND_CREATE_INT32(index_reg),OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp),
                                     OPND_CREATE_INT32(access_size), OPND_CREATE_INT32(dst1_reg), OPND_CREATE_INT32(DR_REG_NULL)
@@ -1532,7 +1532,7 @@ static void opcode_mul(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
     if (size == 8)
     {
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mul_mem2reg, false, DBG_TAINT_NUM_PARAMS(9),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mul_mem2reg, false, DBG_TAINT_NUM_PARAMS(9),
                             OPND_CREATE_INT32(DR_REG_RAX), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
                                 OPND_CREATE_INT32(index_reg),OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp),
                                     OPND_CREATE_INT32(size), OPND_CREATE_INT32(DR_REG_RDX), OPND_CREATE_INT32(DR_REG_RAX)
@@ -1540,7 +1540,7 @@ static void opcode_mul(void *drcontext, instr_t *instr, instrlist_t *ilist)
     }
     else if (size == 4)
     {
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mul_mem2reg, false, DBG_TAINT_NUM_PARAMS(9),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mul_mem2reg, false, DBG_TAINT_NUM_PARAMS(9),
                             OPND_CREATE_INT32(DR_REG_EAX), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
                                 OPND_CREATE_INT32(index_reg),OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp),
                                     OPND_CREATE_INT32(size), OPND_CREATE_INT32(DR_REG_EDX), OPND_CREATE_INT32(DR_REG_EAX)
@@ -1548,7 +1548,7 @@ static void opcode_mul(void *drcontext, instr_t *instr, instrlist_t *ilist)
     }
     else if (size == 2)
     {
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mul_mem2reg, false, DBG_TAINT_NUM_PARAMS(9),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mul_mem2reg, false, DBG_TAINT_NUM_PARAMS(9),
                             OPND_CREATE_INT32(DR_REG_AX), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
                                 OPND_CREATE_INT32(index_reg),OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp),
                                     OPND_CREATE_INT32(size), OPND_CREATE_INT32(DR_REG_DX), OPND_CREATE_INT32(DR_REG_AX)
@@ -1556,7 +1556,7 @@ static void opcode_mul(void *drcontext, instr_t *instr, instrlist_t *ilist)
     }
     else if (size == 1)
     {
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mul_mem2reg, false, DBG_TAINT_NUM_PARAMS(9),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mul_mem2reg, false, DBG_TAINT_NUM_PARAMS(9),
                             OPND_CREATE_INT32(DR_REG_AL), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
                                 OPND_CREATE_INT32(index_reg),OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp),
                                     OPND_CREATE_INT32(size), OPND_CREATE_INT32(DR_REG_AH), OPND_CREATE_INT32(DR_REG_AL)
@@ -1569,28 +1569,28 @@ static void opcode_mul(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
     if (size == 8)
     {
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mul_reg2reg, false, DBG_TAINT_NUM_PARAMS(4),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mul_reg2reg, false, DBG_TAINT_NUM_PARAMS(4),
                               OPND_CREATE_INT32(reg), OPND_CREATE_INT32(DR_REG_RAX), 
                                     OPND_CREATE_INT32(DR_REG_RDX), OPND_CREATE_INT32(DR_REG_RAX) 
                                         DBG_END_DR_CLEANCALL);
     }
     else if (size == 4)
     {
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mul_reg2reg, false, DBG_TAINT_NUM_PARAMS(4),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mul_reg2reg, false, DBG_TAINT_NUM_PARAMS(4),
                               OPND_CREATE_INT32(reg), OPND_CREATE_INT32(DR_REG_EAX), 
                                     OPND_CREATE_INT32(DR_REG_EDX), OPND_CREATE_INT32(DR_REG_EAX) 
                                         DBG_END_DR_CLEANCALL);
     }
     else if (size == 2)
     {
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mul_reg2reg, false, DBG_TAINT_NUM_PARAMS(4),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mul_reg2reg, false, DBG_TAINT_NUM_PARAMS(4),
                               OPND_CREATE_INT32(reg), OPND_CREATE_INT32(DR_REG_AX), 
                                     OPND_CREATE_INT32(DR_REG_DX), OPND_CREATE_INT32(DR_REG_AX) 
                                         DBG_END_DR_CLEANCALL);
     }
     else if (size == 1)
     {
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_mul_reg2reg, false, DBG_TAINT_NUM_PARAMS(4),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_mul_reg2reg, false, DBG_TAINT_NUM_PARAMS(4),
                               OPND_CREATE_INT32(reg), OPND_CREATE_INT32(DR_REG_AL), 
                                     OPND_CREATE_INT32(DR_REG_AH), OPND_CREATE_INT32(DR_REG_AL) 
                                         DBG_END_DR_CLEANCALL);
@@ -1667,7 +1667,7 @@ static void opcode_div(void *drcontext, instr_t *instr, instrlist_t *ilist)
   {
     if (opnd_is_reg(src))
     {
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_div_reg, false, DBG_TAINT_NUM_PARAMS(5),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_div_reg, false, DBG_TAINT_NUM_PARAMS(5),
                               OPND_CREATE_INT32(opnd_get_reg(instr_get_src(instr, 1))), 
                                   OPND_CREATE_INT32(opnd_get_reg(instr_get_src(instr, 2))),
                                       OPND_CREATE_INT32(opnd_get_reg(src)),
@@ -1677,7 +1677,7 @@ static void opcode_div(void *drcontext, instr_t *instr, instrlist_t *ilist)
     }
     else
     {
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_div_mem, false, DBG_TAINT_NUM_PARAMS(10),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_div_mem, false, DBG_TAINT_NUM_PARAMS(10),
                               OPND_CREATE_INT32(opnd_get_reg(instr_get_src(instr, 1))), 
                                   OPND_CREATE_INT32(opnd_get_reg(instr_get_src(instr, 2))),
                                     OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg), 
@@ -1691,14 +1691,14 @@ static void opcode_div(void *drcontext, instr_t *instr, instrlist_t *ilist)
   {
     if (opnd_is_reg(src))
     {
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_div_reg, false, DBG_TAINT_NUM_PARAMS(5),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_div_reg, false, DBG_TAINT_NUM_PARAMS(5),
                               OPND_CREATE_INT32(DR_REG_AH), OPND_CREATE_INT32(DR_REG_AL), OPND_CREATE_INT32(opnd_get_reg(src)),
                                    OPND_CREATE_INT32(DR_REG_AL), OPND_CREATE_INT32(DR_REG_AH) 
                                         DBG_END_DR_CLEANCALL);
     }
     else
     {
-      dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_div_mem, false, DBG_TAINT_NUM_PARAMS(10),
+      dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_div_mem, false, DBG_TAINT_NUM_PARAMS(10),
                               OPND_CREATE_INT32(DR_REG_AH), OPND_CREATE_INT32(DR_REG_AL),
                                     OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg), 
                                         OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(size),
@@ -1761,7 +1761,7 @@ static void opcode_ignore(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
 static void wrong_opcode(void *drcontext, instr_t *instr, instrlist_t *ilist)
 { 
-  dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_wrong, false, DBG_TAINT_NUM_PARAMS(1),
+  dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_wrong, false, DBG_TAINT_NUM_PARAMS(1),
                               OPND_CREATE_INT64(instr_dupl(instr)) DBG_END_DR_CLEANCALL);
 }
 
@@ -1780,7 +1780,7 @@ static void opcode_neg(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
     LDUMP("InsDetail:\tNegating %s.\n", REGNAME(dst_reg));
 
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_neg_reg, false, DBG_TAINT_NUM_PARAMS(1),
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_neg_reg, false, DBG_TAINT_NUM_PARAMS(1),
                               OPND_CREATE_INT32(dst_reg) DBG_END_DR_CLEANCALL);
   }
   else if (opnd_is_base_disp(dst))
@@ -1797,7 +1797,7 @@ static void opcode_neg(void *drcontext, instr_t *instr, instrlist_t *ilist)
                                              REGNAME(seg_reg), REGNAME(base_reg), scale, 
                                                   REGNAME(index_reg), disp);
     
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_neg_mem, false, DBG_TAINT_NUM_PARAMS(6),
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_neg_mem, false, DBG_TAINT_NUM_PARAMS(6),
                               OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg),
                                   OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(access_size)
                                    DBG_END_DR_CLEANCALL);
@@ -1827,7 +1827,7 @@ static void opcode_ret(void *drcontext, instr_t *instr, instrlist_t *ilist)
     LDUMP("InsDetail:\tReturning.\n");
   }
 
-  dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_check_ret, false, DBG_TAINT_NUM_PARAMS(1),
+  dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_check_ret, false, DBG_TAINT_NUM_PARAMS(1),
                          OPND_CREATE_INT64(0) DBG_END_DR_CLEANCALL);
 }
 
@@ -1847,7 +1847,7 @@ static void opcode_cond_set(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
     LDUMP("InsDetail:\tChecking conditional set of %s type '%s'.\n", REGNAME(dst_reg), PROP_NAMES[type]);
 
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cond_set_reg, false, DBG_TAINT_NUM_PARAMS(3),
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_cond_set_reg, false, DBG_TAINT_NUM_PARAMS(3),
                           OPND_CREATE_INT32(dst_reg), OPND_CREATE_INT32(type), OPND_CREATE_INT64(instr_dupl(instr)) DBG_END_DR_CLEANCALL);
   }
   else if (opnd_is_base_disp(dst))
@@ -1863,7 +1863,7 @@ static void opcode_cond_set(void *drcontext, instr_t *instr, instrlist_t *ilist)
     LDUMP("InsDetail:\tChecking conditional set of [%s:%s + %d*%s + %d] type '%s'.\n", REGNAME(seg_reg), REGNAME(base_reg), scale, 
                                                                         REGNAME(index_reg), disp, PROP_NAMES[type]);
 
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_cond_set_mem, false, DBG_TAINT_NUM_PARAMS(8),
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_cond_set_mem, false, DBG_TAINT_NUM_PARAMS(8),
                           OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), OPND_CREATE_INT32(index_reg), 
                                  OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp), OPND_CREATE_INT32(access_size),
                                      OPND_CREATE_INT32(type), OPND_CREATE_INT64(instr_dupl(instr)) DBG_END_DR_CLEANCALL);
@@ -1925,7 +1925,7 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
       LDUMP("InsDetail:\tProcessing jump to register %s.\n", REGNAME(reg));
     }
 
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_check_jmp_reg, false, DBG_TAINT_NUM_PARAMS(2),
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_check_jmp_reg, false, DBG_TAINT_NUM_PARAMS(2),
                             OPND_CREATE_INT64(pc_from), OPND_CREATE_INT32(reg) DBG_END_DR_CLEANCALL);
 
     return;
@@ -1948,7 +1948,7 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
                                                   REGNAME(index_reg), disp);
     }
 
-    dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_check_jmp_mem, false, DBG_TAINT_NUM_PARAMS(6),
+    dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_check_jmp_mem, false, DBG_TAINT_NUM_PARAMS(6),
                             OPND_CREATE_INT64(pc_from), OPND_CREATE_INT32(seg_reg), OPND_CREATE_INT32(base_reg), 
                                 OPND_CREATE_INT32(index_reg), OPND_CREATE_INT32(scale),  OPND_CREATE_INT32(disp) 
                                      DBG_END_DR_CLEANCALL);
@@ -1980,12 +1980,12 @@ static void opcode_call(void *drcontext, instr_t *instr, instrlist_t *ilist)
 
   LDUMP("InsDetail:\tProcessing jump to immediate 0x%llx.\n", pc);
 
-  dr_insert_clean_call(drcontext, ilist, instr, (void *) nshr_taint_check_jmp_immed, false, DBG_TAINT_NUM_PARAMS(2),
+  dr_insert_clean_call(drcontext, ilist, instr, (void *) katu_taint_check_jmp_immed, false, DBG_TAINT_NUM_PARAMS(2),
                             OPND_CREATE_INT64(pc_from), OPND_CREATE_INT64(pc) DBG_END_DR_CLEANCALL);
 }
 
 
-void nshr_init_opcodes(void)
+void katu_init_opcodes(void)
 {
   for (int i = 0; i < MAX_OPCODE; i++)
   {
@@ -2201,7 +2201,7 @@ void nshr_init_opcodes(void)
 // Called for each added basic block.
 //
 
-dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr_t *instr, bool for_trace,
+dr_emit_flags_t katu_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr_t *instr, bool for_trace,
                                 bool translating, void *user_data)
 {
   STOP_IF_IGNORING(DR_EMIT_DEFAULT);
@@ -2224,7 +2224,7 @@ dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr
 
     #ifdef PROCESS_STATISTICS
 
-    dr_insert_clean_call(drcontext, bb, instr, (void *) nshr_taint_statistics, false, 1, 
+    dr_insert_clean_call(drcontext, bb, instr, (void *) katu_taint_statistics, false, 1, 
                              OPND_CREATE_INT64(instr_dupl(instr)));
 
     #endif

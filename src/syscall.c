@@ -11,7 +11,7 @@
 // Return true for syscalls we want to monitor.
 //
 
-bool nshr_syscall_filter(void *drcontext, int sysnum)
+bool katu_syscall_filter(void *drcontext, int sysnum)
 {
   if (sysnum == SYS_read || sysnum == SYS_open) 
   {
@@ -75,7 +75,7 @@ static void post_read(void *drcontext)
   {
     LTEST("Syscall:\tRead %d bytes from FD#%d to %p\n", result, read_fd, read_addr);
 
-    nshr_taint_by_fd((reg_t) read_addr, result, fds_[read_fd]);
+    katu_taint_by_fd((reg_t) read_addr, result, fds_[read_fd]);
   }
 }
 
@@ -83,7 +83,7 @@ static void post_read(void *drcontext)
 // Called for each syscall.
 //
 
-bool nshr_event_pre_syscall(void *drcontext, int id)
+bool katu_event_pre_syscall(void *drcontext, int id)
 {
   STOP_IF_NOT_ACTIVE(true)
 
@@ -99,7 +99,7 @@ bool nshr_event_pre_syscall(void *drcontext, int id)
   return true;
 }
 
-void nshr_event_post_syscall(void *drcontext, int id)
+void katu_event_post_syscall(void *drcontext, int id)
 {
   STOP_IF_NOT_ACTIVE()
 

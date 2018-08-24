@@ -95,7 +95,7 @@ static void taint_str(const char *str)
 
   LTEST("SKIPPER:\t\tTainting string at %p, %d bytes.\n", str, size);
 
-  nshr_taint_by_fd((reg_t) str, size, 0);
+  katu_taint_by_fd((reg_t) str, size, 0);
 }
 
 /*
@@ -274,7 +274,7 @@ static void process_scanf(int num_arg DBG_END_TAINTING_FUNC)
       }
       else
       {
-        nshr_taint_by_fd(get_arg(num_arg), size, 0);
+        katu_taint_by_fd(get_arg(num_arg), size, 0);
       }
 
       num_arg++;
@@ -354,7 +354,7 @@ static void recv_end(DBG_END_TAINTING_FUNC_ALONE)
 
   if (r > 0)
   {
-    nshr_taint_by_fd((reg_t) arg_data.s1, r, fds_[arg_data.i1]);
+    katu_taint_by_fd((reg_t) arg_data.s1, r, fds_[arg_data.i1]);
   }
 }
 
@@ -471,7 +471,7 @@ static void strdup_end(DBG_END_TAINTING_FUNC_ALONE)
 
   if (dst != NULL)
   {
-    nshr_taint_mv_constmem2constmem((uint64) arg_data.s1, (uint64) dst, strlen(dst) + 1 DGB_END_CALL_ARG);
+    katu_taint_mv_constmem2constmem((uint64) arg_data.s1, (uint64) dst, strlen(dst) + 1 DGB_END_CALL_ARG);
   }
 }
 
@@ -513,8 +513,8 @@ static void memmove_begin(DBG_END_TAINTING_FUNC_ALONE)
   // copy to new location first
   int *tmp = (int *) malloc(size);
 
-  nshr_taint_mv_constmem2constmem((uint64) src, (uint64) tmp, size DGB_END_CALL_ARG);
-  nshr_taint_mv_constmem2constmem((uint64) tmp, (uint64) dst, size DGB_END_CALL_ARG);
+  katu_taint_mv_constmem2constmem((uint64) src, (uint64) tmp, size DGB_END_CALL_ARG);
+  katu_taint_mv_constmem2constmem((uint64) tmp, (uint64) dst, size DGB_END_CALL_ARG);
 
   free(tmp);
 }
@@ -529,7 +529,7 @@ static void memcpy_begin(DBG_END_TAINTING_FUNC_ALONE)
 
   check_bounds_reg(size_reg DGB_END_CALL_ARG);
 
-  nshr_taint_mv_constmem2constmem((uint64) src, (uint64) dst, size DGB_END_CALL_ARG);
+  katu_taint_mv_constmem2constmem((uint64) src, (uint64) dst, size DGB_END_CALL_ARG);
 }
 
 static void strcpy_begin(DBG_END_TAINTING_FUNC_ALONE)
@@ -539,7 +539,7 @@ static void strcpy_begin(DBG_END_TAINTING_FUNC_ALONE)
 
   unsigned int len = strlen(src) + 1;
 
-  nshr_taint_mv_constmem2constmem((uint64) src, (uint64) dst, len DGB_END_CALL_ARG);
+  katu_taint_mv_constmem2constmem((uint64) src, (uint64) dst, len DGB_END_CALL_ARG);
 }
 
 static void strncpy_begin(DBG_END_TAINTING_FUNC_ALONE)
@@ -550,7 +550,7 @@ static void strncpy_begin(DBG_END_TAINTING_FUNC_ALONE)
 
   unsigned int len = get_strlen_or_n(src, size);
 
-  nshr_taint_mv_constmem2constmem((uint64) src, (uint64) dst, len DGB_END_CALL_ARG);
+  katu_taint_mv_constmem2constmem((uint64) src, (uint64) dst, len DGB_END_CALL_ARG);
 }
 
 static void strcat_begin(DBG_END_TAINTING_FUNC_ALONE)
@@ -561,7 +561,7 @@ static void strcat_begin(DBG_END_TAINTING_FUNC_ALONE)
   unsigned int dst_size = strlen(dst);
   unsigned int src_size = strlen(src) + 1;
 
-  nshr_taint_mv_constmem2constmem((uint64) src, (uint64) dst + dst_size, src_size DGB_END_CALL_ARG);
+  katu_taint_mv_constmem2constmem((uint64) src, (uint64) dst + dst_size, src_size DGB_END_CALL_ARG);
 }
 
 static void strncat_begin(DBG_END_TAINTING_FUNC_ALONE)
@@ -573,7 +573,7 @@ static void strncat_begin(DBG_END_TAINTING_FUNC_ALONE)
   unsigned int dst_size = strlen(dst);
   unsigned int src_size = get_strlen_or_n(src, size);
 
-  nshr_taint_mv_constmem2constmem((uint64) src, (uint64) dst + dst_size, src_size DGB_END_CALL_ARG);
+  katu_taint_mv_constmem2constmem((uint64) src, (uint64) dst + dst_size, src_size DGB_END_CALL_ARG);
 }
 
 static void read_begin(DBG_END_TAINTING_FUNC_ALONE)
@@ -588,7 +588,7 @@ static void read_end(DBG_END_TAINTING_FUNC_ALONE)
 
   if (r > 0)
   {
-    nshr_taint_by_fd((reg_t) arg_data.s1, r, fds_[arg_data.i1]);
+    katu_taint_by_fd((reg_t) arg_data.s1, r, fds_[arg_data.i1]);
   }
 }
 
@@ -620,7 +620,7 @@ static void fgets_end(DBG_END_TAINTING_FUNC_ALONE)
 
     int index = *f;
 
-    nshr_taint_by_file((reg_t) arg_data.s1, size, index);
+    katu_taint_by_file((reg_t) arg_data.s1, size, index);
   }
 }
 
@@ -642,13 +642,13 @@ static void fread_end(DBG_END_TAINTING_FUNC_ALONE)
 
     int index = *f;
 
-    nshr_taint_by_file((reg_t) arg_data.s1, r, index);
+    katu_taint_by_file((reg_t) arg_data.s1, r, index);
   }
 }
 
 static void taint_ret_by_stdin(DBG_END_TAINTING_FUNC_ALONE)
 {
-  int newid = nshr_tid_new_uid_by_fd(0);
+  int newid = katu_tid_new_uid_by_fd(0);
 
   int ids[1];
 
@@ -687,7 +687,7 @@ static void atoi_end(DBG_END_TAINTING_FUNC_ALONE)
     // We should create new ids from uid and taint EAX.
     for (unsigned int i = 0; i < REGSIZE(DR_REG_EAX); i++)
     {
-      int newid = nshr_tid_new_id(arg_data.i1);
+      int newid = katu_tid_new_id(arg_data.i1);
       SETREGTAINTVAL(DR_REG_EAX, i, newid);
     }
   }
@@ -732,7 +732,7 @@ static void strtol_end(DBG_END_TAINTING_FUNC_ALONE)
     // We should create new ids from uid and taint EAX.
     for (unsigned int i = 0; i < REGSIZE(DR_REG_EAX); i++)
     {
-      int newid = nshr_tid_new_id(arg_data.i1);
+      int newid = katu_tid_new_id(arg_data.i1);
       SETREGTAINTVAL(DR_REG_EAX, i, newid);
     }
   }
@@ -821,7 +821,7 @@ static void mmap_end(DBG_END_TAINTING_FUNC_ALONE)
 
   LTEST("SKIPPER:\t\tTainting string at %p, %d bytes.\n", ret, arg_data.i1);
 
-  nshr_taint_by_fd((reg_t) ret, arg_data.i1, arg_data.i2);
+  katu_taint_by_fd((reg_t) ret, arg_data.i1, arg_data.i2);
 }
 
 static void realloc_begin(DBG_END_TAINTING_FUNC_ALONE)
@@ -885,7 +885,7 @@ static void realloc_end(DBG_END_TAINTING_FUNC_ALONE)
     // Lookup failure.
     if (old_size == 0) FAIL();
 
-    nshr_taint_mv_constmem2constmem((uint64) arg_data.v1, (uint64) ret, old_size DGB_END_CALL_ARG);
+    katu_taint_mv_constmem2constmem((uint64) arg_data.v1, (uint64) ret, old_size DGB_END_CALL_ARG);
 
     if (!hashtable_remove(&malloc_hashtable, arg_data.v1))
     {
