@@ -117,6 +117,17 @@ event_exit(void)
   free(tid_);
 
   dr_printf("Info:\t\tExitting.\n");
+
+  #ifdef PROCESS_STATISTICS
+
+  dr_printf("Statistics:\n  Total instructions:\t\t\t\t %d\n  CTI:\t\t\t\t\t\t %d  (conditional %d, unconditional %d)\n  "
+               "MOV's:\t\t\t\t\t% d\n  Logical/Arithmetic instructions:\t\t %d\n  Comparisons:\t\t\t\t\t %d\n  "
+               "Stack-related instructions:\t\t\t %d\n  Other instructions:\t\t\t\t %d\n", 
+               num_strs, num_cti, num_cbr, num_cti - num_cbr,
+               num_mov, num_bin, num_cmp, 
+               num_pp, num_strs - num_cti - num_mov - num_bin - num_cmp - num_pp );
+
+  #endif
 }
 
 static void nshr_handle_taint(long long addr, int size)

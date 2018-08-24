@@ -16,6 +16,9 @@
 // Parse jump addresses
 #undef DBG_PARSE_JUMPS
 
+// Dump statistics
+#undef PROCESS_STATISTICS
+
 // Log paths.
 #define NSHR_LOGFILE_PATH "/home/zhani/Thesis/project/build/nshr.log"
 #define NSHR_DUMPFILE_PATH "/home/zhani/Thesis/project/build/nshr.dump"
@@ -697,5 +700,19 @@ void set_mem_taint(uint64_t addr, int size, int *ids);
 reg_t get_arg(int arg);
 
 void log_location(app_pc pc);
+
+#ifdef PROCESS_STATISTICS
+
+void nshr_taint_statistics(instr_t *instr);
+
+extern int num_strs;
+extern int num_cti;
+extern int num_cbr;
+extern int num_mov;
+extern int num_bin;
+extern int num_cmp;
+extern int num_pp;
+
+#endif
 
 #endif

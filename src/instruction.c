@@ -2221,6 +2221,13 @@ dr_emit_flags_t nshr_event_bb(void *drcontext, void *tag, instrlist_t *bb, instr
     }
 
     (*instrFunctions[opcode])(drcontext, instr, bb);
+
+    #ifdef PROCESS_STATISTICS
+
+    dr_insert_clean_call(drcontext, bb, instr, (void *) nshr_taint_statistics, false, 1, 
+                             OPND_CREATE_INT64(instr_dupl(instr)));
+
+    #endif
   }
 
   return DR_EMIT_DEFAULT;

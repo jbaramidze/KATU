@@ -2382,3 +2382,35 @@ void nshr_taint_wrong(instr_t *instr DBG_END_TAINTING_FUNC)
 
   FAIL();
 }
+
+#ifdef PROCESS_STATISTICS
+
+int num_strs = 0;
+int num_cti = 0;
+int num_mov = 0;
+int num_cbr = 0;
+int num_bin = 0;
+int num_cmp = 0;
+int num_pp = 0;
+
+
+void nshr_taint_statistics(instr_t *instr)
+{
+  STOP_IF_NOT_ACTIVE();
+
+  if (instr_is_cti(instr)) num_cti++;
+  else if (instr_is_mov(instr)) num_mov++;
+
+  if (instr_is_cbr(instr)) num_cbr++;
+
+  int op = instr_get_opcode(instr);
+
+  if (op == OP_add || op == OP_or || op == OP_adc || op == OP_sbb || op == OP_and || op == OP_sub || op == OP_xor || 
+      op == OP_not || op == OP_neg || op == OP_mul || op == OP_div || op == OP_idiv) num_bin++;
+  else if (op == OP_cmp || op == OP_test) num_cmp++;
+  else if (op == OP_push || op == OP_push_imm || op == OP_pusha || op == OP_pop || op == OP_popa) num_pp++;
+
+  num_strs++;
+}
+
+#endif
