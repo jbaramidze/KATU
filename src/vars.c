@@ -108,6 +108,7 @@ int katu_tid_new_id(int uid)
   tid_[nextID].uid        = uid;
   tid_[nextID].ops_vector = NULL;
   tid_[nextID].negated    = 0;
+  tid_[nextID].size       = 1;
 
   if (nextID >= MAX_ID)
   {
@@ -260,6 +261,9 @@ int katu_make_id_by_merging_all_ids(int *ids1, int *ids2)
       katu_id_add_op(newid, PROP_ADD, ids2[i]);
     }
   }
+
+
+  LDEBUG("Utils:\t\tMerged ids to produce new ID#%d.\n", newid);
 
   return newid;
 }
@@ -618,6 +622,32 @@ int *get_taint2_eflags()
   return NULL;
 }
 
+void add_gr_to_id(int id, int gr_id, int gr_mask)
+{
+  // Don't add exactly the same GR.
+  if (uid_[ID2UID(id)].gr == NULL || uid_[ID2UID(id)].gr -> id != gr_id || uid_[ID2UID(id)].gr -> bound_type != gr_mask)
+  {
+    Group_restriction *gr = (Group_restriction *) malloc(sizeof(Group_restriction));
+    gr -> id = gr_id;
+    gr -> bound_type = gr_mask;
+  
+    gr -> next = uid_[ID2UID(id)].gr;
+  
+    uid_[ID2UID(id)].gr = gr;
+  }
+
+  for (unsigned int i = 0; i < ID2OPSIZE(id); i++)
+  {
+    int id2 = ID2OPVAL(id, i);
+
+    // We have id 0 for negation operation.
+    if (id2 != 0)
+    {
+      add_gr_to_id(id2, gr_id, gr_mask);
+    }
+  }
+}
+
 void bound2(int *ids1, int *ids2, int type)
 {
   for (int i = 0; i < 8; i++)
@@ -625,7 +655,7 @@ void bound2(int *ids1, int *ids2, int type)
     if (ids1[i] != -1 || ids2[i] != -1)
     {
       int id;
-      Group_restriction *gr = (Group_restriction *) malloc(sizeof(Group_restriction));
+      int bound_type = 0;
 
       if (type == COND_LESS || type == COND_LESS_UNSIGNED)
       {
@@ -636,20 +666,20 @@ void bound2(int *ids1, int *ids2, int type)
 
           katu_id_add_op(id, PROP_SUB, ids2[i]);
 
-          gr -> bound_type = TAINT_BOUND_HIGH;
+          bound_type = TAINT_BOUND_HIGH;
         }
         // imm < ids2 is same as ids2 is bound from below
         else
         {
           id = ids2[i];
 
-          gr -> bound_type = TAINT_BOUND_LOW;
+          bound_type = TAINT_BOUND_LOW;
         }
       }
       // ids1 == ids2 can be interpreted as ids1 - ids2 is fixed.
       else if (type == COND_EQ)
       {
-        gr -> bound_type = TAINT_BOUND_FIX;
+        bound_type = TAINT_BOUND_FIX;
 
         if (ids1[i] > 0)
         {
@@ -667,10 +697,7 @@ void bound2(int *ids1, int *ids2, int type)
         FAIL();
       }
 
-      gr -> id = id;
-      gr -> next = uid_[ID2UID(id)].gr;
-
-      uid_[ID2UID(id)].gr = gr;
+      add_gr_to_id(id, id, bound_type);
     }
     else
     {
@@ -690,12 +717,7 @@ void bound(int *ids, int mask)
 
       if (ID2OPSIZE(id) > 0)
       {
-        Group_restriction *gr = (Group_restriction *) malloc(sizeof(Group_restriction));
-        gr -> id = id;
-        gr -> bound_type = mask;
-        gr -> next = uid_[uid].gr;
-
-        uid_[uid].gr = gr;
+        add_gr_to_id(id, id, mask);
 
         if (i == 0)
         {

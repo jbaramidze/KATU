@@ -230,6 +230,7 @@ typedef struct {
 struct Group_restriction{
   int id;
 
+  // Cannot have several types together! fix code in LP section to enable.
   int bound_type;
   struct Group_restriction *next;
 };

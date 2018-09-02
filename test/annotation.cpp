@@ -16,13 +16,22 @@
 const char *path1 = "/home/zhani/Thesis/test/zaza";
 const char *path2 = "/home/zhani/Thesis/test/zaza1";
 
-
+int A[10];
  
 int main () {
-  for (int i = 0; i < 1000000; i++)
+
+  int a = 2;
+  int b = 2;
+
+  nshrtaint((long long int) &a, 4);
+  nshrtaint((long long int) &a, b);
+
+  volatile int c = a + b;
+  
+  if (c < 100 && a > 0 && b > 0)
   {
-    volatile char t = getchar();
-  }
+    volatile int d = A[b];
+  } 
 
 
   return 0;

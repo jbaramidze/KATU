@@ -2104,6 +2104,10 @@ void katu_taint_div_mem(int dividend1_reg, int dividend2_reg, int divisor_seg_re
 
   reg_t addr = decode_addr(divisor_seg_reg, divisor_base_reg, divisor_index_reg, divisor_scale, divisor_disp, 1 DGB_END_CALL_ARG);
 
+
+  LDEBUG_TAINT(false, "Doing division of [%s:%s] by MEM 0x%llx to [%s:%s].\n", REGNAME(dividend1_reg), REGNAME(dividend2_reg), 
+                                    addr, REGNAME(quotinent_reg), REGNAME(remainder_reg));
+
   int divident1_tainted = REGTAINTEDANY(dividend1_reg);
   int divident2_tainted = REGTAINTEDANY(dividend2_reg);
   int divisor_tainted   = MEMTAINTEDANY(addr, access_size);
@@ -2121,6 +2125,9 @@ void katu_taint_div_mem(int dividend1_reg, int dividend2_reg, int divisor_seg_re
 void katu_taint_div_reg(int dividend1_reg, int dividend2_reg, int divisor_reg, int quotinent_reg, int remainder_reg DBG_END_TAINTING_FUNC)
 {
   STOP_IF_NOT_ACTIVE();
+
+  LDEBUG_TAINT(false, "Doing division of [%s:%s] by %s to [%s:%s].\n", REGNAME(dividend1_reg), REGNAME(dividend2_reg), 
+                                    REGNAME(divisor_reg), REGNAME(quotinent_reg), REGNAME(remainder_reg));
 
   int divident1_tainted = REGTAINTEDANY(dividend1_reg);
   int divident2_tainted = REGTAINTEDANY(dividend2_reg);
@@ -2140,6 +2147,8 @@ void katu_taint_mul_mem2reg(int src1_reg, int seg_reg, int base_reg, int index_r
   STOP_IF_NOT_ACTIVE();
 
   reg_t addr = decode_addr(seg_reg, base_reg, index_reg, scale, disp, 1 DGB_END_CALL_ARG);
+
+  LDEBUG_TAINT(false, "Multiplying %s with MEM 0x%llx, destination %s and %s.\n", REGNAME(src1_reg), addr, REGNAME(dst1_reg), REGNAME(dst2_reg));
 
   int src1_tainted = REGTAINTEDANY(src1_reg);
   int src2_tainted = MEMTAINTEDANY(addr, access_size);
@@ -2220,6 +2229,8 @@ void katu_taint_mul_immbyconstmem2reg(int64 value, uint64_t addr, int access_siz
 {
   STOP_IF_NOT_ACTIVE();
 
+  LDEBUG_TAINT(false, "Multiplying 0x%llx with MEM 0x%llx, destination %s.\n", value, addr, REGNAME(dst_reg));
+
   int src1_tainted = MEMTAINTEDANY(value, access_size);
 
   if (!src1_tainted)
@@ -2254,6 +2265,8 @@ void katu_taint_mul_immbyconstmem2reg(int64 value, uint64_t addr, int access_siz
 void katu_taint_mul_reg2reg(int src1_reg, int src2_reg, int dst1_reg, int dst2_reg DBG_END_TAINTING_FUNC)
 {
   STOP_IF_NOT_ACTIVE();
+
+  LDEBUG_TAINT(false, "Multiplying %s with %s, destination %s.\n", REGNAME(src1_reg), REGNAME(src2_reg), REGNAME(dst1_reg));
 
   int src1_tainted = REGTAINTEDANY(src1_reg);
   int src2_tainted = REGTAINTEDANY(src2_reg);
@@ -2324,6 +2337,8 @@ void katu_taint_mul_reg2reg(int src1_reg, int src2_reg, int dst1_reg, int dst2_r
 void katu_taint_mul_imm2reg(int src1_reg, int64 value, int dst1_reg, int dst2_reg DBG_END_TAINTING_FUNC)
 {
   STOP_IF_NOT_ACTIVE();
+
+  LDEBUG_TAINT(false, "Multiplying %s with 0x%llx, destination %s.\n", REGNAME(src1_reg), value, REGNAME(dst1_reg));
 
   int src1_tainted = REGTAINTEDANY(src1_reg);
 

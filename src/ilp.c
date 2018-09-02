@@ -38,6 +38,13 @@ static int uids_t[MAX_CONSTRAINTS];
 static int uid_counter;
 static int uid_total[MAX_CONSTRAINTS];
 
+static int added_tid_low_counter;
+static int added_tid_high_counter;
+static int added_tid_fixed_counter;
+static int added_tid_low[MAX_CONSTRAINTS];
+static int added_tid_high[MAX_CONSTRAINTS];
+static int added_tid_fixed[MAX_CONSTRAINTS];
+
 void reset_KS()
 {
   int t = 1;
@@ -223,6 +230,10 @@ int solve_ilp_for_id(int id DBG_END_TAINTING_FUNC)
 
   uid_counter = 1;
 
+  added_tid_low_counter   = 0;
+  added_tid_high_counter  = 0;
+  added_tid_fixed_counter = 0;
+
   reset_KS();
 
   // Construct the objectve function.
@@ -305,13 +316,101 @@ int solve_ilp_for_id(int id DBG_END_TAINTING_FUNC)
       // Add this gr as a constraint.
       int constrained_id = gr -> id;
 
+      int added = 0;
+
+      // Make sure gr was not added yet first.
+      if (gr -> bound_type & TAINT_BOUND_LOW)
+      {
+        for (int i = 0; i < added_tid_low_counter; i++)
+        {
+          if (constrained_id == added_tid_low[i])
+          {
+            added = 1;
+
+            break;
+          }
+        }
+
+        if (added)
+        {
+          gr = gr -> next;
+
+          continue;
+        }
+        else 
+        {
+          added_tid_low[added_tid_low_counter++] = constrained_id;
+
+          if (added_tid_low_counter >= MAX_CONSTRAINTS)
+          {
+            FAIL();
+          }
+        }
+      }
+      else if (gr -> bound_type & TAINT_BOUND_HIGH)
+      {
+        for (int i = 0; i < added_tid_high_counter; i++)
+        {
+          if (constrained_id == added_tid_high[i])
+          {
+            added = 1;
+
+            break;
+          }
+        }
+
+        if (added)
+        {
+          gr = gr -> next;
+
+          continue;
+        }
+        else 
+        {
+          added_tid_high[added_tid_high_counter++] = constrained_id;
+
+          if (added_tid_high_counter >= MAX_CONSTRAINTS)
+          {
+            FAIL();
+          }
+        }
+      }
+      else if (gr -> bound_type & TAINT_BOUND_FIX)
+      {
+        for (int i = 0; i < added_tid_fixed_counter; i++)
+        {
+          if (constrained_id == added_tid_fixed[i])
+          {
+            added = 1;
+
+            break;
+          }
+        }
+
+        if (added)
+        {
+          gr = gr -> next;
+
+          continue;
+        }
+        else 
+        {
+          added_tid_fixed[added_tid_fixed_counter++] = constrained_id;
+
+          if (added_tid_fixed_counter >= MAX_CONSTRAINTS)
+          {
+            FAIL();
+          }
+        }
+      }
+
       for(int i = 0; i < MAX_UID; i++) 
               uid_constr_map[i] = -1;
       uid_constr_vector_size = 0;
 
       recursively_get_uid_constr(constrained_id, PROP_ADD);
 
-      LDUMP("ILP:\tPrinting constraint: \n");
+      LDUMP("ILP:\tPrinting constraint for TID #%d: \n", constrained_id);
 
       for (int i = 0; i < uid_constr_vector_size; i++) 
       {
