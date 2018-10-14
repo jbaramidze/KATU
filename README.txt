@@ -1,0 +1,1 @@
+KATU is a tool that I developed for my Master's Thesis in TU Kaiserslautern. It detects unbounded memory accesses using dynamic taint analysis. For more information you can take a look at a presentation or report.
